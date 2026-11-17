@@ -19,14 +19,31 @@ const WAKE_TTL = 3;        // 被唤醒后至少再模拟几帧
 const SIM_HZ = 60;
 const QS = new URLSearchParams(location.search);
 
-// xorshift32：热循环里只用它，不用 Math.random
-let _rs = ((Date.now() ^ 0x9e3779b9) | 0) || 1;
+// xorshift32：模拟里只用它，不用 Math.random。初始种子固定，由宿主（页面 / 测试）显式设置
+let _rs = 0x2545f491;
+function rngState() { return _rs; }
+function setRngState(s) { _rs = (s | 0) || 1; }
 function rnd() {
   _rs ^= _rs << 13; _rs ^= _rs >>> 17; _rs ^= _rs << 5;
   return (_rs >>> 0) * 2.3283064365386963e-10;
 }
 function rndi(n) { return (rnd() * n) | 0; }
 function seedRng(s) { _rs = (s | 0) || 1; }
+
+/* ---------------------------------------------------------------------
+ * 1.1b 确定性数学：模拟里禁止用 Math.sin / cos / exp / pow / log / hypot
+ *      （不同 JS 引擎的结果在最后几位可能不同）。这里只用 + - * / 和 Math.floor / sqrt / abs，
+ *      这些在 IEEE 754 下每个引擎结果都一样。精度约 1e-7，模拟够用。渲染层不受这条限制。
+ * ------------------------------------------------------------------- */
+const TAU = 6.283185307179586, HALF_PI = 1.5707963267948966;
+function dsin(x) {
+  x -= Math.floor(x / TAU + 0.5) * TAU;              // 归到 [-π, π]
+  if (x > HALF_PI) x = 3.141592653589793 - x;         // 再折到 [-π/2, π/2]
+  else if (x < -HALF_PI) x = -3.141592653589793 - x;
+  const x2 = x * x;
+  return x * (1 + x2 * (-1 / 6 + x2 * (1 / 120 + x2 * (-1 / 5040 + x2 * (1 / 362880 + x2 * (-1 / 39916800))))));
+}
+function dcos(x) { return dsin(x + HALF_PI); }
 
 /* ---------------------------------------------------------------------
  * 1.2 材料表（声明式；所有通用行为都从这张表读）
@@ -49,7 +66,7 @@ const MAT_DEFAULTS = {
   flame: 0, residue: 1,
   meltTemp: Infinity, meltInto: EMPTY, latent: 0, latentRate: 4,
   boilTemp: Infinity, boilInto: EMPTY,
-  freezeTemp: -Infinity, freezeInto: EMPTY,
+  freezeTemp: -Infinity, freezeInto: EMPTY, freezeLatent: 0,
   conductivity: 0.15, heatCapacity: 1.5, relax: 0.001,
   hardness: 0.2, emissive: 0, alpha: 1, palette: ['#ff00ff'],
   spawnTemp: AMBIENT, life: null, decayInto: EMPTY, decayChance: 0,
@@ -101,11 +118,11 @@ defMat(SNOW, 'SNOW', '雪', { state: S_POWDER, cat: 'powder', density: 200, cond
 // ---- 液体（密度：熔岩 > 酸 > 盐水 > 水 > 油；粘度：熔岩 >> 油 > 酸 > 水）----
 defMat(WATER, 'WATER', '水', { state: S_LIQUID, cat: 'liquid', density: 1000, dispersion: 5,
   conductivity: 0.6, heatCapacity: 4, relax: 0, hardness: 0.03, alpha: 0.82, electric: true,
-  boilTemp: 100, boilInto: STEAM, freezeTemp: 0, freezeInto: ICE,
+  boilTemp: 100, boilInto: STEAM, freezeTemp: 0, freezeInto: ICE, freezeLatent: 1500,
   palette: ['#3a7bd5', '#3574cc', '#4082da'], note: '比热大：能把燃烧的东西降到燃点以下；会被土、沙、木头吸收，会蒸发' });
 defMat(SALTWATER, 'SALTWATER', '盐水', { state: S_LIQUID, cat: 'liquid', density: 1100, dispersion: 5,
   conductivity: 0.6, heatCapacity: 4, relax: 0, hardness: 0.03, alpha: 0.85, electric: true,
-  boilTemp: 104, boilInto: STEAM, freezeTemp: -18, freezeInto: ICE,
+  boilTemp: 104, boilInto: STEAM, freezeTemp: -18, freezeInto: ICE, freezeLatent: 1500,
   palette: ['#3f9aa8', '#3a90a0', '#46a3b0'], note: '比水重，冰点更低，导电' });
 defMat(OIL, 'OIL', '油', { state: S_LIQUID, cat: 'liquid', density: 850, viscosity: 0.45, dispersion: 3,
   heatCapacity: 2, hardness: 0.03, alpha: 0.92,
@@ -196,7 +213,7 @@ const M_STATE = new Uint8Array(NT), M_DENS = new Float32Array(NT), M_VISC = new 
       M_FLAME = new Float32Array(NT), M_RESIDUE = new Float32Array(NT),
       M_MELT = new Float32Array(NT), M_MELTINTO = new Uint8Array(NT), M_LATENT = new Uint16Array(NT), M_LATK = new Float32Array(NT),
       M_BOIL = new Float32Array(NT), M_BOILINTO = new Uint8Array(NT),
-      M_FREEZE = new Float32Array(NT), M_FREEZEINTO = new Uint8Array(NT),
+      M_FREEZE = new Float32Array(NT), M_FREEZEINTO = new Uint8Array(NT), M_FLATENT = new Uint16Array(NT),
       M_IHC = new Float32Array(NT), M_RELAX = new Float32Array(NT), M_HARD = new Float32Array(NT),
       M_SPAWN = new Float32Array(NT), M_LIFE0 = new Uint16Array(NT), M_LIFE1 = new Uint16Array(NT),
       M_DECAY = new Uint8Array(NT), M_DECAYP = new Float32Array(NT),
@@ -221,7 +238,7 @@ function hexToRgb(h) {
     M_BURNTIME[t] = m.burnTime; M_BURNTEMP[t] = m.burnTemp; M_FLAME[t] = m.flame; M_RESIDUE[t] = m.residue;
     M_MELT[t] = m.meltTemp; M_MELTINTO[t] = m.meltInto; M_LATENT[t] = m.latent; M_LATK[t] = m.latentRate;
     M_BOIL[t] = m.boilTemp; M_BOILINTO[t] = m.boilInto;
-    M_FREEZE[t] = m.freezeTemp; M_FREEZEINTO[t] = m.freezeInto;
+    M_FREEZE[t] = m.freezeTemp; M_FREEZEINTO[t] = m.freezeInto; M_FLATENT[t] = m.freezeLatent;
     M_IHC[t] = 1 / m.heatCapacity; M_RELAX[t] = m.relax; M_HARD[t] = m.hardness;
     M_SPAWN[t] = m.spawnTemp;
     if (m.life) { M_LIFE0[t] = m.life[0]; M_LIFE1[t] = m.life[1]; }
@@ -247,7 +264,7 @@ function hexToRgb(h) {
  *
  *            │ 熔岩                         │ 火 / 余烬            │ 盐           │ 冰                    │ 石头/砖/混凝土
  *  ──────────┼──────────────────────────────┼──────────────────────┼──────────────┼───────────────────────┼───────────────
- *  水        │ 蒸汽 + 熔岩降温260°C (.3)    │ 水升温 + 火熄灭 (1)  │ 盐水+空(.04) │ 冰+冰(.002，水<4°C时) │ —
+ *  水        │ 蒸汽 + 熔岩降温260°C (.3)    │ 水升温 + 火熄灭 (1)  │ 盐水+空(.04) │ 冰+冰(.002，过冷水<-1°C) │ —
  *  盐水      │ 蒸汽 + 熔岩降温260°C (.3)    │ 盐水升温 + 火熄灭(1) │ —            │ 盐水+水 (.012)        │ —
  *  盐        │ —                            │ —                    │ —            │ 空+盐水 (.03)         │ —
  *  酸液      │ 火+熔岩 (1)                  │ —                    │ 溶解 (.02)   │ 溶解 (.02)            │ 溶解 (.0015~.004)
@@ -272,6 +289,7 @@ function hexToRgb(h) {
  *    火药(170°C，受潮不燃) → 2 帧后小爆炸      TNT(240°C) → 60 帧引信后爆炸
  *
  * 【温度相变】
+ *    冰 <──<0°C 且放够潜热──── 水（结冰时温度钉在 0°C，冰层下面的水要很久才冻上）
  *    冰 ──>0°C 且吸够潜热──> 水 ──>100°C──> 蒸汽 ──<85°C──> 水汽（湿度场）──高空饱和──> 云 ──> 雨 / 雪
  *    雪 ──>0.5°C 且吸够潜热──> 水      蒸汽碰到 <50°C 的固体表面 → 直接凝成水珠
  *    盐水 ──>104°C──> 蒸汽     盐水 ──<-18°C──> 冰
@@ -295,7 +313,7 @@ const RULES = [
   { a: WATER, b: EMBER, p: 1, a2: WATER, b2: EMPTY, aDT: 6 },
   { a: SALTWATER, b: EMBER, p: 1, a2: SALTWATER, b2: EMPTY, aDT: 6 },
   { a: WATER, b: SALT, p: 0.04, a2: SALTWATER, b2: EMPTY },
-  { a: WATER, b: ICE, p: 0.002, a2: ICE, b2: ICE, maxT: 4, aT: -4 },
+  { a: WATER, b: ICE, p: 0.002, a2: ICE, b2: ICE, maxT: -1, aT: -2 },     // 只有过冷水（< -1°C）碰到冰才会瞬间结晶
   { a: SALT, b: ICE, p: 0.03, a2: EMPTY, b2: SALTWATER, bT: 1 },
   { a: SALTWATER, b: ICE, p: 0.012, a2: SALTWATER, b2: WATER, bT: 1 },
   { a: ACID, b: LAVA, p: 1, a2: FIRE, b2: LAVA, aT: 900 },
@@ -320,7 +338,9 @@ const env = {
   timeScale: 1,            // 0 / 1 / 10 / 60
   wind: 0.2,               // 风向与相对强度：-1（向左）.. 1（向右）
   windPower: 0.3,          // 风力 0..1
-  moistIn: 0,              // 高空外来水汽（天气预设用；属于外部输入）
+  moistPerMin: 0,          // 天气预设每分钟最多注入多少格水汽（外部输入）
+  atmosCap: 0,             // 每个粗格列的大气含水容量，大气里的水汽 + 云到了这个量就停止注入
+  atmos: 0,                // 当前大气里的水汽 + 云（每 4 步更新一次）
   cloudFade: 0,            // 晴天时云的消散速率（外部输出）
   temp: AMBIENT,           // 全局气温
   weather: 'clear', storm: 0,
@@ -329,6 +349,11 @@ const env = {
   waterIn: 0, waterOut: 0, waterSink: 0,
   rainCount: 0, snowCount: 0, strikes: 0, charge: 0,
 };
+// 水量收支明细（单位：格水），只用来诊断，不参与模拟
+const LEDGER_KEYS = ['weatherIn', 'cloneIn', 'precip', 'voidOut', 'evapSurface', 'evapWet', 'steamToVapor', 'transpire', 'plantUse', 'seep', 'decayOut', 'sublimate', 'cloudFade', 'condense', 'cloudEvap', 'wallCondense'];
+const WL = {};
+function ledgerReset() { for (const k of LEDGER_KEYS) WL[k] = 0; }
+ledgerReset();
 
 /* ---------------------------------------------------------------------
  * 1.5 网格与分块
@@ -365,6 +390,7 @@ function clearGrid() {
   wet.fill(0); aux.fill(0); fuel.fill(0);
   elecCount = 0; fpClear(); exClear(); bodiesClear(); clearWeather();
   env.waterIn = env.waterOut = env.waterSink = 0; env.rainCount = env.snowCount = env.strikes = 0; env.charge = 0;
+  ledgerReset();
   structDirty = true;
   wakeAll();
 }

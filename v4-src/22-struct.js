@@ -155,7 +155,7 @@ function makeBody(cells) {
 }
 
 function stampBody(b) {
-  const c = Math.cos(b.ang), s = Math.sin(b.ang), R = b.r, lw = b.lw, lh = b.lh, tag = b.id + 1;
+  const c = dcos(b.ang), s = dsin(b.ang), R = b.r, lw = b.lw, lh = b.lh, tag = b.id + 1;
   const x0 = Math.max(0, Math.floor(b.x - R)), x1 = Math.min(W - 1, Math.ceil(b.x + R));
   const y0 = Math.max(0, Math.floor(b.y - R)), y1 = Math.min(H - 1, Math.ceil(b.y + R));
   let n = 0, sub = 0, subD = 0;
@@ -207,7 +207,7 @@ function unstampBody(b) {
 // colStatic = 其中撞在静止物上的格数，colBody = 撞到的另一个刚体（没有则为 -1）
 let colStatic = 0, colBody = -1;
 function collide(b, X, Y, A) {
-  const c = Math.cos(A), s = Math.sin(A), pts = b.pts;
+  const c = dcos(A), s = dsin(A), pts = b.pts;
   let n = 0, sx = 0, sy = 0, ns = 0, other = -1;
   for (let k = 0, m = b.n * 2; k < m; k += 2) {
     const px = pts[k], py = pts[k + 1];
@@ -270,7 +270,7 @@ function fractureBody(b, impact) {
     aux[j] = a > d ? a - d : 0;
   }
   fracVX = b.vx * 0.5; fracVY = b.vy * 0.5; fracTick = tick;
-  const c = Math.cos(b.ang), s = Math.sin(b.ang);
+  const c = dcos(b.ang), s = dsin(b.ang);
   if (b.mat === GLASS || b.n < 24) {                   // 玻璃和小块：直接碎成渣
     for (let lj = 0; lj < b.lh; lj++) for (let li = 0; li < b.lw; li++) {
       const l = li + lj * b.lw, t = b.lt[l];
@@ -285,7 +285,7 @@ function fractureBody(b, impact) {
   stampBody(b);
   const stamp = b.stamp, tag = b.id + 1, cuts = 1 + (rnd() < 0.5 ? 1 : 0) + (b.n > 400 ? 1 : 0);
   const ca = [], sa = [];
-  for (let k = 0; k < cuts; k++) { const a = rnd() * 3.1416; ca.push(Math.cos(a)); sa.push(Math.sin(a)); }
+  for (let k = 0; k < cuts; k++) { const a = rnd() * 3.1416; ca.push(dcos(a)); sa.push(dsin(a)); }
   for (let k = 0; k < b.stampN; k++) {
     const j = stamp[k];
     if (!((flags[j] & F_BODY) && life[j] === tag)) continue;
@@ -335,7 +335,7 @@ function stepBody(b) {
     const other = colStatic === 0 && colBody >= 0 ? bodies[colBody] : null;
     if (other) {
       // 撞上的是另一个还在动的刚体：按质量把两者的速度拉平（一起往下掉），只有相对速度够大才算撞击
-      const mt = b.mass + other.mass, rel = Math.hypot(b.vx - other.vx, b.vy - other.vy);
+      const mt = b.mass + other.mass, rvx = b.vx - other.vx, rvy = b.vy - other.vy, rel = Math.sqrt(rvx * rvx + rvy * rvy);
       const vx = (b.vx * b.mass + other.vx * other.mass) / mt, vy = (b.vy * b.mass + other.vy * other.mass) / mt;
       b.vx = other.vx = vx; b.vy = other.vy = vy; b.om *= 0.8;
       if (rel > 0.9) { st.crash += rel * Math.min(400, b.n); if (onCrash) onCrash(colX, colY, rel, b.n); }
@@ -344,7 +344,7 @@ function stepBody(b) {
     }
     // 撞上静止物：对接触点施加冲量（会带来转动），再加一点摩擦
     let rx = colX - b.x, ry = colY - b.y;
-    const rl = Math.hypot(rx, ry);
+    const rl = Math.sqrt(rx * rx + ry * ry);
     let nx, ny;
     if (rl < 0.6) { nx = -gx; ny = -gy; rx = 0; ry = 0; } else { nx = -rx / rl; ny = -ry / rl; }
     const vcx = b.vx - b.om * ry, vcy = b.vy + b.om * rx, vn = vcx * nx + vcy * ny;
@@ -370,7 +370,7 @@ function stepBody(b) {
   b.stuck = movedAny ? 0 : (b.stuck || 0) + 1;         // 卡在别的碎块里一动不动：一段时间后就地冻结
   let wedged = b.stuck > 24;
   if (b.age % 90 === 0) {                              // 每 1.5 秒看一次：几乎没挪窝也算卡住（浸在液体里漂着的不算）
-    if (b.age > 90 && b.sub === 0 && Math.hypot(b.x - b.sx, b.y - b.sy) < 1.5) wedged = true;
+    if (b.age > 90 && b.sub === 0 && (b.x - b.sx) * (b.x - b.sx) + (b.y - b.sy) * (b.y - b.sy) < 2.25) wedged = true;
     b.sx = b.x; b.sy = b.y;
   }
   if (b.rest > 10) freezeBody(b, false);

@@ -8,7 +8,7 @@ function runSteps(n) { for (let k = 0; k < n; k++) simStep(); }
 
 function tArena() {
   // 自测默认环境：恒为正午、20°C、无风、晴，结构力学关闭（很多用例把容器悬在半空）。需要的用例自己打开。
-  env.dayNight = false; env.temp = AMBIENT; env.wind = 0; env.windPower = 0; env.structure = false; sceneScript = null;
+  env.dayNight = false; env.temp = AMBIENT; env.wind = 0; env.windPower = 0; env.structure = false; sceneState = null;
   setWeather('clear'); env.windPower = 0; env.cloudFade = 0; updateSun();
   clearGrid(); setGravity('down'); seedRng(20240607);
   return { cx: W >> 1, cy: H >> 1 };
@@ -48,7 +48,9 @@ for (const r of RULES) {
       (r.b2 !== r.b && r.b2 !== EMPTY && countType(r.b2) > b20) ||
       (r.b2 === EMPTY && countType(r.b) < b0) ||
       (r.a2 === EMPTY && countType(r.a) < a0);
-    const n = tUntil(Math.min(8000, Math.ceil(60 / r.p)), 2, cond);
+    // 带温度条件的规则：全程把主动方维持在条件温度以下（比如过冷水），否则潜热会把它钉回冰点
+    const hold = r.maxT === undefined ? null : () => { for (let y = y0 + 1; y < y0 + 3; y++) for (let x = x0 + 1; x < x1; x++) { const i = x + y * W; if (type[i] === r.a) temp[i] = r.maxT - 3; } };
+    const n = tUntil(Math.min(8000, Math.ceil(60 / r.p)), 2, () => { if (hold) hold(); return cond(); });
     return { ok: n > 0, info: n > 0 ? n + ' 步出现产物' : '超时未出现产物' };
   });
 }

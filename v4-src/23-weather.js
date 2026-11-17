@@ -11,6 +11,8 @@ const RAIN_THR = 2.0;
 let GW = 1, GH = 1;
 let windX = new Float32Array(1), heatC = new Float32Array(1);
 let vapor = new Float32Array(1), vaporB = new Float32Array(1), cloud = new Float32Array(1), cloudB = new Float32Array(1);
+let solidC = new Float32Array(1);   // 每个粗格里被固体 / 粉末 / 液体占住的比例：挡水汽、挡风
+let solidRow = 0;
 let lastBolt = null;       // 最近一次闪电（渲染用来整屏闪一下）
 
 function allocWeather() {
@@ -18,9 +20,24 @@ function allocWeather() {
   const n = GW * GH;
   windX = new Float32Array(n); heatC = new Float32Array(n);
   vapor = new Float32Array(n); vaporB = new Float32Array(n); cloud = new Float32Array(n); cloudB = new Float32Array(n);
+  solidC = new Float32Array(n); solidRow = 0;
 }
 
-function clearWeather() { windX.fill(0); heatC.fill(0); vapor.fill(0); cloud.fill(0); }
+function clearWeather() { windX.fill(0); heatC.fill(0); vapor.fill(0); cloud.fill(0); solidC.fill(0); solidRow = 0; env.atmos = 0; }
+
+// 每次只重算四分之一的粗格行（每 16 步全部刷新一遍）
+function refreshSolid() {
+  for (let cy = solidRow; cy < GH; cy += 4) {
+    const y0 = cy << 3, y1 = Math.min(H, y0 + 8);
+    for (let cx = 0; cx < GW; cx++) {
+      const x0 = cx << 3, x1 = Math.min(W, x0 + 8);
+      let n = 0;
+      for (let y = y0; y < y1; y++) for (let x = x0, i = y * W + x0; x < x1; x++, i++) { const o = type[i]; if (o !== 0 && M_STATE[o] < S_GAS) n++; }
+      solidC[cx + cy * GW] = n / ((x1 - x0) * (y1 - y0));
+    }
+  }
+  solidRow = (solidRow + 1) & 3;
+}
 
 function vaporAdd(x, y, amount) { vapor[(x >> 3) + (y >> 3) * GW] += amount; }
 
@@ -32,7 +49,7 @@ function weatherWater() {
 
 function updateSun() {
   if (!env.dayNight) { env.el = 1; env.sun = 1; env.ambient = env.temp; return; }
-  const el = Math.sin((env.time - 0.25) * 6.2832);
+  const el = dsin((env.time - 0.25) * 6.2832);
   env.el = el;
   env.sun = el > 0 ? Math.min(1, el * 1.6) : 0;
   env.ambient = env.temp + el * 4 - 1;
@@ -46,7 +63,7 @@ function spawnPrecip(cx, cy, alt) {
   if (type[i] !== 0) return false;
   if (env.ambient - alt * 6 <= 0.5) { put(i, SNOW, x, y); env.snowCount++; }
   else { put(i, WATER, x, y); temp[i] = Math.max(1, Math.min(env.ambient, 15)); env.rainCount++; }
-  st.rain++;
+  st.rain++; WL.precip++;
   return true;
 }
 
@@ -54,45 +71,59 @@ function stepVapor() {
   const n = GW * GH, amb = env.ambient;
   let tf = 1 + (amb - 20) / 40;
   tf = tf < 0.3 ? 0.3 : tf > 2 ? 2 : tf;
+  refreshSolid();
   vaporB.fill(0); cloudB.fill(0);
   const upOff = gy > 0 ? -GW : gy < 0 ? GW : 0;
+  // 天气是「有预算的源」：每分钟最多注入 moistPerMin 格水（按 400 格宽的画面折算），
+  // 大气里已有的水汽 + 云越接近容量 atmosCap（每个粗格列），注入越少；到容量就停
+  let topCells = 0;
+  for (let cy = 0; cy < GH; cy++) if (altitudeOf(cy) > 0.8) topCells += GW;
+  let inject = 0;
+  if (env.moistPerMin > 0 && topCells > 0) {
+    const room = 1 - env.atmos / (env.atmosCap * GW);
+    if (room > 0) inject = env.moistPerMin / 900 * (W / 400) * room / topCells;
+  }
+  let atmos = 0;
   for (let cy = 0; cy < GH; cy++) {
-    const alt = altitudeOf(cy), sat = (0.35 + 5.6 * Math.pow(1 - alt, 1.5)) * tf;
+    const alt = altitudeOf(cy), lo = 1 - alt, sat = (0.35 + 5.6 * lo * Math.sqrt(lo)) * tf;
     for (let cx = 0; cx < GW; cx++) {
       const c = cx + cy * GW;
       let v = vapor[c], cl = cloud[c];
-      if (v > sat) { const d = (v - sat) * 0.25; v -= d; cl += d; }                      // 过饱和 → 凝成云
-      else if (cl > 0 && v < sat * 0.6) { const d = Math.min(cl, (sat * 0.6 - v) * 0.03); cl -= d; v += d; }   // 太干 → 云散
+      if (v > sat) { const d = (v - sat) * 0.25; v -= d; cl += d; WL.condense += d; }                      // 过饱和 → 凝成云
+      else if (cl > 0 && v < sat * 0.6) { const d = Math.min(cl, (sat * 0.6 - v) * 0.03); cl -= d; v += d; WL.cloudEvap += d; }   // 太干 → 云散
       if (alt > 0.8) {                                                                 // 高空：天气预设的外部输入 / 输出
-        if (env.moistIn > 0) { v += env.moistIn; env.waterIn += env.moistIn; }
-        if (env.cloudFade > 0) { const d = cl * env.cloudFade + v * env.cloudFade; cl -= cl * env.cloudFade; v -= v * env.cloudFade; env.waterOut += d; }
+        if (inject > 0) { v += inject; env.waterIn += inject; WL.weatherIn += inject; }
+        if (env.cloudFade > 0) { const d = cl * env.cloudFade + v * env.cloudFade; cl -= cl * env.cloudFade; v -= v * env.cloudFade; env.waterOut += d; WL.cloudFade += d; }
       }
       // 云够厚就降水：超过一半阈值开始零星落雨，超过阈值越厚下得越急；每一滴都从云里扣掉
       if (cl > RAIN_THR * 0.5 && rnd() < Math.min(0.6, (cl - RAIN_THR * 0.5) * 0.06 + (cl > RAIN_THR ? (cl - RAIN_THR) * 0.2 : 0))) { if (spawnPrecip(cx, cy, alt)) cl -= 1; }
       if (env.storm > 0 && cl > RAIN_THR * 0.8) env.charge += env.storm * 0.0006 * cl;
       if (v < 1e-6) v = 0;
       if (cl < 1e-6) cl = 0;
-      // 输运：水汽上升 + 随风 + 扩散；云只随风和少量扩散
+      atmos += v + cl;
+      // 输运：水汽上升 + 随风 + 扩散；云只随风和少量扩散。往哪个粗格走，都要按那个粗格的空隙比例打折（水汽不穿墙）
       const w = windX[c], aw = w < 0 ? -w : w, fw = aw * 0.15 > 0.3 ? 0.3 : aw * 0.15;
       const side = w > 0 ? (cx < GW - 1 ? c + 1 : -1) : (cx > 0 ? c - 1 : -1);
       const up = upOff !== 0 && c + upOff >= 0 && c + upOff < n ? c + upOff : -1;
+      const openHere = 1 - solidC[c];
       let keep = v;
-      if (up >= 0) { const d = v * 0.08; vaporB[up] += d; keep -= d; }
-      if (side >= 0) { const d = v * fw; vaporB[side] += d; keep -= d; }
-      const dv = v * 0.02;
-      if (cx > 0) { vaporB[c - 1] += dv; keep -= dv; }
-      if (cx < GW - 1) { vaporB[c + 1] += dv; keep -= dv; }
-      if (cy > 0) { vaporB[c - GW] += dv; keep -= dv; }
-      if (cy < GH - 1) { vaporB[c + GW] += dv; keep -= dv; }
+      if (up >= 0) { const d = v * 0.08 * (1 - solidC[up]) * openHere; vaporB[up] += d; keep -= d; }
+      if (side >= 0) { const d = v * fw * (1 - solidC[side]) * openHere; vaporB[side] += d; keep -= d; }
+      const dv = v * 0.02 * openHere;
+      if (cx > 0) { const d = dv * (1 - solidC[c - 1]); vaporB[c - 1] += d; keep -= d; }
+      if (cx < GW - 1) { const d = dv * (1 - solidC[c + 1]); vaporB[c + 1] += d; keep -= d; }
+      if (cy > 0) { const d = dv * (1 - solidC[c - GW]); vaporB[c - GW] += d; keep -= d; }
+      if (cy < GH - 1) { const d = dv * (1 - solidC[c + GW]); vaporB[c + GW] += d; keep -= d; }
       vaporB[c] += keep;
       let keepC = cl;
-      if (side >= 0) { const d = cl * fw * 0.7; cloudB[side] += d; keepC -= d; }
+      if (side >= 0) { const d = cl * fw * 0.7 * (1 - solidC[side]); cloudB[side] += d; keepC -= d; }
       const dc = cl * 0.008;
-      if (cx > 0) { cloudB[c - 1] += dc; keepC -= dc; }
-      if (cx < GW - 1) { cloudB[c + 1] += dc; keepC -= dc; }
+      if (cx > 0) { const d = dc * (1 - solidC[c - 1]); cloudB[c - 1] += d; keepC -= d; }
+      if (cx < GW - 1) { const d = dc * (1 - solidC[c + 1]); cloudB[c + 1] += d; keepC -= d; }
       cloudB[c] += keepC;
     }
   }
+  env.atmos = atmos;
   let t = vapor; vapor = vaporB; vaporB = t;
   t = cloud; cloud = cloudB; cloudB = t;
   if (env.charge > 1) { env.charge = 0; lightning(); }
@@ -111,10 +142,10 @@ function stepWeather() {
     heatC[c] += (ex - heatC[c]) * 0.2;
   }
   if (ph === 0) {
-    const gust = Math.sin(tick * 0.004), pw = env.windPower;
+    const gust = dsin(tick * 0.004), pw = env.windPower;
     for (let cy = 0; cy < GH; cy++) {
       const alt = altitudeOf(cy);
-      const base = env.wind * pw * 1.4 * (0.5 + 0.7 * alt) + Math.sin(tick * 0.011 + cy * 0.7) * 0.1 * pw + gust * 0.08 * pw;
+      const base = env.wind * pw * 1.4 * (0.5 + 0.7 * alt) + dsin(tick * 0.011 + cy * 0.7) * 0.1 * pw + gust * 0.08 * pw;
       for (let cx = 0; cx < GW; cx++) {
         const c = cx + cy * GW;
         let d = ((cx < GW - 1 ? heatC[c + 1] : 0) - (cx > 0 ? heatC[c - 1] : 0)) * 0.003;   // 往热的一侧吸
@@ -196,19 +227,20 @@ function lightning(tx) {
 }
 
 // 雷声延迟：按落点到「听者」（画面底边中点）的距离算，越远越晚
-function thunderDelay(x, y) { return 0.15 + Math.hypot(x - W / 2, y - (H - 1)) / W * 2.2; }
+function thunderDelay(x, y) { const dx = x - W / 2, dy = y - (H - 1); return 0.15 + Math.sqrt(dx * dx + dy * dy) / W * 2.2; }
 
+// moistPerMin：每分钟最多注入多少格水（按 400 格宽的画面折算）；atmosCap：每个粗格列的大气含水容量，到了就停止注入
 const WEATHER_PRESETS = {
-  clear:  { name: '晴',   moistIn: 0,     cloudFade: 0.004, storm: 0, windPower: 0.2 },
-  cloudy: { name: '多云', moistIn: 0.0006, cloudFade: 0,     storm: 0, windPower: 0.3 },
-  rain:   { name: '雨',   moistIn: 0.0015, cloudFade: 0,     storm: 0, windPower: 0.45 },
-  storm:  { name: '雷暴', moistIn: 0.0025, cloudFade: 0,     storm: 1, windPower: 0.8 },
-  snow:   { name: '雪',   moistIn: 0.0004, cloudFade: 0,     storm: 0, windPower: 0.35, temp: -6 },
+  clear:  { name: '晴',   moistPerMin: 0,   atmosCap: 0,   cloudFade: 0.004, storm: 0, windPower: 0.2 },
+  cloudy: { name: '多云', moistPerMin: 40,  atmosCap: 1.2, cloudFade: 0,     storm: 0, windPower: 0.3 },
+  rain:   { name: '雨',   moistPerMin: 260, atmosCap: 3.0, cloudFade: 0,     storm: 0, windPower: 0.45 },
+  storm:  { name: '雷暴', moistPerMin: 420, atmosCap: 4.0, cloudFade: 0,     storm: 1, windPower: 0.8 },
+  snow:   { name: '雪',   moistPerMin: 120, atmosCap: 2.0, cloudFade: 0,     storm: 0, windPower: 0.35, temp: -6 },
 };
 
 function setWeather(key) {
   const p = WEATHER_PRESETS[key];
   if (!p) return;
-  env.weather = key; env.moistIn = p.moistIn; env.cloudFade = p.cloudFade; env.storm = p.storm; env.windPower = p.windPower;
+  env.weather = key; env.moistPerMin = p.moistPerMin; env.atmosCap = p.atmosCap; env.cloudFade = p.cloudFade; env.storm = p.storm; env.windPower = p.windPower;
   if (p.temp !== undefined) env.temp = p.temp; else if (env.temp < 5) env.temp = AMBIENT;
 }

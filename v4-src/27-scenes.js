@@ -2,7 +2,33 @@
 /* =====================================================================
  * 2.15 预设场景（不依赖 DOM，自测和 soak 测试也用它）
  * ===================================================================== */
-let sceneScript = null;    // 场景自带的小脚本，每个模拟步调用一次（比如「入夜才喷发」）
+// 场景状态：场景自带的持续过程（比如火山喷发），每个模拟步由 stepScene 推进。
+// 它是纯数据，可以存档、可以算进哈希；不要在这里放函数或闭包。
+let sceneState = null;
+
+function stepScene() {
+  const s = sceneState;
+  if (s === null) return;
+  if (s.kind === 'eruption') {
+    if (s.armed) { if (env.el < -0.05) s.armed = false; else return; }
+    if (s.budget <= 0) return;
+    const cx = s.cx, mouth = s.mouth;
+    for (let x = cx - 2; x <= cx + 2; x++) {          // 火山口底下涌出新的熔岩，凝住的口子会被重新顶开
+      const y = mouth + 5, i = x + y * W, t = type[i];
+      if (t === LAVA) { if (temp[i] < 1400) temp[i] = 1500; wake(x, y); }
+      else if (t === 0 || t === STONE) { put(i, LAVA, x, y); s.budget--; }
+    }
+    for (let n = 0; n < 2; n++) {                     // 把岩浆柱往上顶
+      const tx = cx - 2 + rndi(5), ty = mouth + 4;
+      for (let y = ty; y > 2; y--) {
+        const j = tx + y * W;
+        if (type[j] === 0) { put(j, LAVA, tx, y); s.budget--; break; }
+        if (type[j] === STONE) { put(j, LAVA, tx, y); break; }
+        if (type[j] !== LAVA) break;
+      }
+    }
+  }
+}
 
 function setBurning(x, y) {
   if (!inb(x, y)) return;
@@ -35,7 +61,7 @@ function drawTree(x, ground, h, r) {
 
 function groundLine(amp, k1, k2, baseY) {
   const g = new Int32Array(W);
-  for (let x = 0; x < W; x++) g[x] = Math.floor(baseY + Math.sin(x * k1) * amp + Math.sin(x * k2 + 1.7) * amp * 0.6);
+  for (let x = 0; x < W; x++) g[x] = Math.floor(baseY + dsin(x * k1) * amp + dsin(x * k2 + 1.7) * amp * 0.6);
   return g;
 }
 
@@ -45,7 +71,7 @@ function buildVolcano(withSource) {
   const top = new Int32Array(W);
   for (let x = 0; x < W; x++) {
     const k = Math.max(0, 1 - Math.abs(x - cx) / half);
-    const h = Math.floor(Math.pow(k, 1.25) * peak + (k > 0 ? Math.sin(x * 0.31) * 2 + Math.sin(x * 0.11) * 3 : 0));
+    const h = Math.floor((k * Math.sqrt(Math.sqrt(k))) * peak + (k > 0 ? dsin(x * 0.31) * 2 + dsin(x * 0.11) * 3 : 0));
     top[x] = base - Math.max(0, h);
     for (let y = top[x]; y < base; y++) put(x + y * W, STONE, x, y);
     if (top[x] > sea - 4 && top[x] < base) for (let y = top[x] - 2; y < top[x]; y++) if (inb(x, y)) put(x + y * W, SAND, x, y);   // 海滩
@@ -55,27 +81,13 @@ function buildVolcano(withSource) {
   fillRect(LAVA, cx - 2, mouth + 4, cx + 2, mouth + depth);
   fillCircle(LAVA, cx, mouth + depth, 7);
   fillRect(EMPTY, cx - 2, mouth - 6, cx + 2, mouth + 3);
-  // 岩浆供给：火山口底下每隔几步涌出新的熔岩，凝住的口子会被重新顶开。总量有限（budget 格），喷完就停。
-  const eruption = budget => () => {
-    if (budget <= 0) return;
-    for (let x = cx - 2; x <= cx + 2; x++) {
-      const y = mouth + 5, i = x + y * W, t = type[i];
-      if (t === LAVA) { if (temp[i] < 1400) temp[i] = 1500; wake(x, y); }
-      else if (t === 0 || t === STONE) { put(i, LAVA, x, y); budget--; }
-    }
-    for (let n = 0; n < 2; n++) {                                         // 把岩浆柱往上顶
-    const tx = cx - 2 + rndi(5), ty = mouth + 4;
-    for (let y = ty; y > 2; y--) { const j = tx + y * W; if (type[j] === 0) { put(j, LAVA, tx, y); budget--; break; } if (type[j] === STONE) { put(j, LAVA, tx, y); break; } if (type[j] !== LAVA) break; }
-    }
-  };
-  const openVent = () => { sceneScript = eruption(withSource || 6000); };
-  if (withSource) openVent();
+  // 岩浆供给交给场景状态（可存档）：budget 格岩浆喷完就停；armed = 等太阳落山才开始
+  sceneState = { kind: 'eruption', cx, mouth, budget: withSource || 6000, armed: !withSource };
   for (let k = 0; k < 26; k++) {                        // 山腰点几丛植物
     const x = cx + (rnd() < 0.5 ? -1 : 1) * Math.floor(half * (0.45 + rnd() * 0.4));
     if (x < 1 || x >= W - 1 || top[x] >= sea) continue;
     for (let h = 1; h <= 2 + rndi(4); h++) if (inb(x, top[x] - h)) put(x + (top[x] - h) * W, PLANT, x, top[x] - h);
   }
-  return openVent;
 }
 
 function sceneVolcano() {
@@ -86,8 +98,7 @@ function sceneVolcano() {
 function sceneVolcanoDayNight() {
   // 从下午开始，时间流速 10x（一昼夜 1 分钟）；太阳落山的那一刻火山口才打开
   env.time = 0.6; env.timeScale = 10; setWeather('clear'); env.wind = -0.3;
-  const openVent = buildVolcano(0);
-  sceneScript = () => { if (env.el < -0.05) openVent(); };      // 太阳落山：换成喷发脚本
+  buildVolcano(0);                                    // 太阳落山的那一刻才开始喷
 }
 
 function buildForest(density) {
@@ -223,7 +234,7 @@ function buildGarden() {
   const pondX = Math.floor(W * 0.68), pondR = Math.floor(W * 0.09);
   for (let x = 0; x < W; x++) {
     const d = Math.abs(x - pondX);
-    if (d < pondR) g[x] += Math.floor(Math.cos(d / pondR * 1.5708) * 9);       // 挖一个池塘
+    if (d < pondR) g[x] += Math.floor(dcos(d / pondR * 1.5708) * 9);       // 挖一个池塘
     for (let y = g[x]; y < H; y++) put(x + y * W, y > H - 4 ? STONE : SOIL, x, y);
   }
   const level = Math.min(g[Math.max(0, pondX - pondR)], g[Math.min(W - 1, pondX + pondR)]) + 1;
@@ -256,7 +267,7 @@ function sceneWaterfall() {
   const steps = [[0, 0.30, 0.34], [0.30, 0.52, 0.56], [0.52, 0.70, 0.76]];
   for (const [a, b, top] of steps) {
     const xa = Math.floor(W * a), xb = Math.floor(W * b), yt = Math.floor(H * top);
-    for (let x = xa; x < xb; x++) for (let y = yt + Math.floor(Math.sin(x * 0.4) * 1.5); y < base; y++) if (inb(x, y)) put(x + y * W, STONE, x, y);
+    for (let x = xa; x < xb; x++) for (let y = yt + Math.floor(dsin(x * 0.4) * 1.5); y < base; y++) if (inb(x, y)) put(x + y * W, STONE, x, y);
   }
   // 每级台阶上凿一个浅水槽，让水先蓄再溢
   for (const [a, b, top] of steps) {
@@ -279,13 +290,14 @@ function sceneWaterfall() {
 }
 
 function sceneWinterLake() {
-  env.time = 0.4; env.timeScale = 1; setWeather('snow'); env.wind = 0.4;
+  // 冬日午后，时间停住：日照升华恒定。大气含水到了容量天气就停止注入，降雪 = 升华，积雪量自己稳住
+  env.time = 0.42; env.timeScale = 0; setWeather('snow'); env.wind = 0.4;
   temp.fill(env.temp);
   const g = groundLine(3, 0.028, 0.07, H - 30);
   const lakeX = W >> 1, lakeR = Math.floor(W * 0.3);
   for (let x = 0; x < W; x++) {
     const d = Math.abs(x - lakeX);
-    if (d < lakeR) g[x] += Math.floor(Math.cos(d / lakeR * 1.5708) * 18);
+    if (d < lakeR) g[x] += Math.floor(dcos(d / lakeR * 1.5708) * 18);
     for (let y = g[x]; y < H; y++) { const i = x + y * W; put(i, y > H - 4 ? STONE : SOIL, x, y); temp[i] = -2; }
   }
   const level = Math.min(g[lakeX - lakeR], g[lakeX + lakeR]) + 2;
@@ -304,6 +316,7 @@ function sceneWinterLake() {
     for (let y = g[x] - h; y < g[x]; y++) for (let dx = 0; dx < 2; dx++) put(x + dx + y * W, WOOD, x + dx, y);
     for (let k = 1; k <= 4; k++) for (const d of [-1, 1]) { const bx = x + d * k + (d > 0 ? 1 : 0), by = g[x] - h + 2 + k; if (inb(bx, by)) put(bx + by * W, WOOD, bx, by); }
   }
+  soakSoil(145);                                         // 湖底和地面早就湿透了，不会把湖水吸干
   for (let c = 0; c < GW * GH; c++) if (altitudeOf((c / GW) | 0) > 0.75) cloud[c] = 1.5;
   env.waterIn += weatherWater();
 }
@@ -324,12 +337,14 @@ const SCENES = [
 // 清空并搭建第 k 个预设；每个场景自己设定时间、天气和风
 function buildScene(k) {
   env.temp = AMBIENT; env.dayNight = true; env.structure = true; env.wind = 0.2; env.windPower = 0.3;
-  sceneScript = null;
+  sceneState = null;
   setWeather('clear');
   clearGrid();
   setGravity('down');
   updateSun();
   SCENES[k].fn();
+  // 场景里一开始就有的植物年龄随机铺满整个寿命：之后陆续老死、陆续长新的，不会同一时间整片枯掉
+  for (let i = 0; i < N; i++) if (type[i] === PLANT && !(flags[i] & F_TIP)) life[i] = rndi(plantLifespan(seed[i]));
   updateSun();
   temp.forEach((v, i) => { if (type[i] === 0) temp[i] = env.ambient; });
   structDirty = true;

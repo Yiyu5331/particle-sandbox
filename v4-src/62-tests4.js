@@ -565,6 +565,7 @@ defTest('昼夜：夜里更冷、蒸发更慢；时间流速可调', () => {
 /* =====================================================================
  * 6c. 长时间稳定性测试（soak）：每个预设跑 10 分钟模拟时间（36000 步），每 10 秒记一次
  * ===================================================================== */
+const SOAK_TRANSIENT = [FIRE, SMOKE, STEAM, EMBER, SPARK, FOAM];
 const SOAK_MATS = [WATER, PLANT, DEADPLANT, WOOD, CHARCOAL, ASH, SOIL, LAVA, STONE, SEED, FLOWER, SNOW, ICE, SMOKE, STEAM];
 
 function soakSample() {
@@ -608,6 +609,19 @@ function soakVerdict(k, samples) {
   const peakChunks = samples.reduce((m, s) => Math.max(m, s.chunks), 0);
   const peakBurn = samples.reduce((m, s) => Math.max(m, s.burning + s.fire), 0);
   const heapGrowth = avg(late, s => s.heap) - avg(samples.slice(1, Math.max(2, Math.floor(n * 0.25))), s => s.heap);
-  return { name: SCENES[k].name, first, last, samples, growing, peakChunks, peakBurn, heapGrowth,
+  // v4.1 判定：最后 2 分钟（最后 13 个采样点，相隔 10 秒）里，每种材料首尾数量的变化 < 2%。
+  // 数量很少的材料允许 ±2 格的抖动；火、烟、蒸汽、余烬、电火花、泡沫这类转瞬即逝的东西只记录不判定。
+  const win = samples.slice(Math.max(0, n - 13));
+  const unstable = [], drift = {};
+  for (let t = 1; t < NT; t++) {
+    if (SOAK_TRANSIENT.indexOf(t) >= 0) continue;
+    const a = win[0].cnt[t], b = win[win.length - 1].cnt[t];
+    const mean = win.reduce((s, x) => s + x.cnt[t], 0) / win.length;
+    if (mean === 0) continue;
+    const d = Math.abs(b - a), pct = d / mean;
+    drift[MATERIALS[t].name] = +(pct * 100).toFixed(2);
+    if (pct >= 0.02 && d > 2) unstable.push(MATERIALS[t].name + ' ' + a + '→' + b + '（' + (pct * 100).toFixed(1) + '%）');
+  }
+  return { name: SCENES[k].name, first, last, samples, growing, peakChunks, peakBurn, heapGrowth, unstable, drift,
            lateChunks: avg(late, s => s.chunks), lateBurn: avg(late, s => s.burning + s.fire) };
 }

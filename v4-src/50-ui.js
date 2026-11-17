@@ -451,7 +451,7 @@ function syncEnvUI() {
   $('envWind').value = Math.round(env.wind * 100); $('envPower').value = Math.round(env.windPower * 100);
   $('envTemp').value = Math.round(env.temp); $('envTempVal').textContent = Math.round(env.temp) + '°C';
   $('envTime').value = Math.round(env.time * 100); $('envSpeed').value = String(env.timeScale);
-  $('envHumid').value = Math.round(Math.min(100, env.moistIn / 0.004 * 100));
+  $('envHumid').value = Math.round(Math.min(100, env.moistPerMin / 6));
   $('envDayNight').checked = env.dayNight; $('envStruct').checked = env.structure;
   document.querySelectorAll('#envWeather button').forEach(b => b.classList.toggle('on', b.dataset.w === env.weather));
 }
@@ -466,7 +466,7 @@ function buildEnvPanel() {
   }
   $('envWind').addEventListener('input', e => { env.wind = +e.target.value / 100; });
   $('envPower').addEventListener('input', e => { env.windPower = +e.target.value / 100; });
-  $('envHumid').addEventListener('input', e => { env.moistIn = +e.target.value / 100 * 0.004; });
+  $('envHumid').addEventListener('input', e => { env.moistPerMin = +e.target.value * 6; if (env.atmosCap < 0.8) env.atmosCap = 1.6; });
   $('envTemp').addEventListener('input', e => { env.temp = +e.target.value; $('envTempVal').textContent = env.temp + '°C'; updateSun(); });
   $('envTime').addEventListener('input', e => { env.time = Math.min(0.999, +e.target.value / 100); updateSun(); sceneDirty = true; });
   $('envSpeed').addEventListener('change', e => { env.timeScale = +e.target.value; });

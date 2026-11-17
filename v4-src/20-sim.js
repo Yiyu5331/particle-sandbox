@@ -199,6 +199,17 @@ function moveGas(x, y, i, t) {
 /* ---------------------------------------------------------------------
  * 2.2 燃烧：燃料 + 热量 + 氧气
  * ------------------------------------------------------------------- */
+// 逆着重力往上走 48 格，路上只有空气 / 气体就算「通着天」
+function openSky(x, y) {
+  for (let k = 1; k <= 48; k++) {
+    const nx = x - gx * k, ny = y - gy * k;
+    if (nx < 0 || nx >= W || ny < 0 || ny >= H) return true;
+    const o = type[nx + ny * W];
+    if (o !== 0 && M_STATE[o] < S_GAS) return false;
+  }
+  return true;
+}
+
 // 旁边有没有还能支持燃烧的空气
 function hasOxygen(x, y) {
   for (let k = 0; k < 4; k++) {
@@ -318,6 +329,7 @@ function burnStep(x, y, i, t, T) {
  * 2.3 植物：基因来自 seed 字节，整株共用
  *     低 4 位：株高上限 8~32 格；4-5 位：分叉概率；6-7 位：叶片密度
  * ------------------------------------------------------------------- */
+function plantLifespan(g) { return 520 + (g & 15) * 48; }   // 寿命（慢速过程的轮次，约等于秒）
 function geneHeight(g) { return 8 + (((g & 15) * 1.6) | 0); }
 function geneBranch(g) { return 0.05 + ((g >> 4) & 3) * 0.05; }
 function geneLeaf(g) { return 0.3 + ((g >> 6) & 3) * 0.13; }
@@ -362,7 +374,7 @@ function drawSap(x, y, need) {
   let cx = x, cy = y;
   for (let n = 0; n < 50; n++) {
     const c = cx + cy * W;
-    if (wet[c] >= need) { wet[c] -= need; env.waterSink += need / 100; return true; }
+    if (wet[c] >= need) { wet[c] -= need; env.waterSink += need / 100; WL.plantUse += need / 100; return true; }
     const nx = cx + gx, ny = cy + gy;
     if (nx < 0 || nx >= W || ny < 0 || ny >= H) return false;
     if (type[nx + ny * W] === PLANT) { cx = nx; cy = ny; continue; }
@@ -373,12 +385,12 @@ function drawSap(x, y, need) {
     }
     if (found) continue;
     const b = nx + ny * W, o = type[b];
-    if ((o === SOIL || o === SAND) && wet[b] >= need) { wet[b] -= need; env.waterSink += need / 100; return true; }
+    if ((o === SOIL || o === SAND) && wet[b] >= need) { wet[b] -= need; env.waterSink += need / 100; WL.plantUse += need / 100; return true; }
     for (let k = 0; k < 4; k++) {
       const wx = cx + DX4[k], wy = cy + DY4[k];
       if (wx < 0 || wx >= W || wy < 0 || wy >= H || type[wx + wy * W] !== WATER) continue;
       if (rnd() * 100 < need) clearCell(wx + wy * W, wx, wy);
-      env.waterSink += need / 100;
+      env.waterSink += need / 100; WL.plantUse += need / 100;
       return true;
     }
     return false;
@@ -488,7 +500,7 @@ function hookSteam(x, y, i) {
   if (nx < 0 || nx >= W || ny < 0 || ny >= H) return false;
   const j = nx + ny * W, o = type[j];
   if (o !== 0 && M_STATE[o] < S_LIQUID && temp[j] < 50 && rnd() < 0.3) {
-    type[i] = WATER; life[i] = 0; flags[i] = parity; temp[i] = 60;
+    type[i] = WATER; life[i] = 0; flags[i] = parity; temp[i] = 60; WL.wallCondense++;
     wake(x, y);
     return true;
   }
@@ -536,7 +548,7 @@ function hookClone(x, y, i) {
   for (let k = 0; k < 4; k++) {
     const kk = (k0 + k) & 3, nx = x + DX4[kk], ny = y + DY4[kk];
     if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
-    if (type[nx + ny * W] === 0) { put(nx + ny * W, src, nx, ny); return false; }
+    if (type[nx + ny * W] === 0) { put(nx + ny * W, src, nx, ny); if (src === WATER || src === SALTWATER || src === STEAM || src === SNOW || src === ICE) WL.cloneIn++; return false; }
   }
   return false;
 }
@@ -550,14 +562,14 @@ function hookVoid(x, y, i) {
     if (px < 0 || px >= W || py < 0 || py >= H) continue;
     const j = px + py * W, o = type[j];
     if (o === 0 || o === VOID || o === ANCHOR || (flags[j] & F_BODY)) continue;
-    if (d2 <= 2) { clearCell(j, px, py); continue; }
+    if (d2 <= 2) { if (o === WATER || o === SALTWATER || o === SNOW || o === ICE || o === STEAM) WL.voidOut++; clearCell(j, px, py); continue; }
     if (rnd() < 0.6) {
       let sx = dx > 0 ? -1 : dx < 0 ? 1 : 0, sy = dy > 0 ? -1 : dy < 0 ? 1 : 0;
       const adx = dx < 0 ? -dx : dx, ady = dy < 0 ? -dy : dy;
       if (adx > 2 * ady) sy = 0; else if (ady > 2 * adx) sx = 0;
       const qx = px + sx, qy = py + sy, q = qx + qy * W, qt = type[q];
       if (qt === 0) { if (M_RIGID[o]) structDirty = true; swapCells(j, q, px, py, qx, qy); }
-      else if (qt === VOID) clearCell(j, px, py);
+      else if (qt === VOID) { if (o === WATER || o === SALTWATER || o === SNOW || o === ICE || o === STEAM) WL.voidOut++; clearCell(j, px, py); }
     }
   }
   return false;
@@ -633,7 +645,7 @@ function updateCell(x, y, i) {
   if (w > M_SAP[t] && T > 100) {
     wet[i] = w - 1; T -= 120; temp[i] = T;   // 汽化潜热很大：每烘掉 1 单位水分要吃掉 120°C，一个燃烧的邻格烤不干一块湿透的木头
     const d = 1;
-    vaporAdd(x, y, d / 100);
+    vaporAdd(x, y, d / 100); WL.evapWet += d / 100;
     wake(x, y);
     if (rnd() < 0.04) emitSmoke(x, y, 0);
   }
@@ -654,10 +666,22 @@ function updateCell(x, y, i) {
     morph(i, M_BOILINTO[t], x, y); temp[i] = T < 135 ? 160 : T + 25; st.boil++;
     return;
   } else if (T < M_FREEZE[t]) {
-    if (t === STEAM) { clearCell(i, x, y); vaporAdd(x, y, 1); return; }   // 蒸汽冷下来变成看不见的水汽
-    morph(i, M_FREEZEINTO[t], x, y);
-    return;
-  }
+    if (t === STEAM) {
+      if (openSky(x, y)) { clearCell(i, x, y); vaporAdd(x, y, 1); WL.steamToVapor++; }   // 头顶通着天：变成看不见的水汽升上去
+      else { type[i] = WATER; life[i] = 0; flags[i] = parity; temp[i] = 60; WL.wallCondense++; wake(x, y); }   // 关在容器里：就地凝成水珠
+      return;
+    }
+    const lat = M_FLATENT[t];
+    if (lat > 0) {                           // 结冰要放出潜热：温度钉在冰点，放够了才变成冰
+      const add = ((M_FREEZE[t] - T) * 4) | 0;
+      temp[i] = M_FREEZE[t];
+      if (add > 0) {
+        const L = life[i] + add;
+        if (L >= lat) { morph(i, M_FREEZEINTO[t], x, y); temp[i] = M_FREEZE[t] - 0.5; return; }
+        life[i] = L; wake(x, y);
+      }
+    } else { morph(i, M_FREEZEINTO[t], x, y); return; }
+  } else if (M_FLATENT[t] > 0 && life[i] > 0) life[i] = 0;    // 回暖了：结冰进度清零
 
   // 燃烧
   if (M_FLAM[t] > 0) {
@@ -690,7 +714,7 @@ function updateCell(x, y, i) {
       const r = RX[base + o];
       if (r === null || (flags[j] & F_BODY)) continue;
       wake(x, y);                            // 只要身边有能反应的对象，这一块就保持清醒
-      if ((r.maxT === undefined || temp[i] < r.maxT) && rnd() < r.p) {
+      if ((r.maxT === undefined || T < r.maxT) && rnd() < r.p) {     // 温度条件按这一步开始时的温度判断
         if (applyRule(r, i, j, x, y, nx, ny)) return;
       }
     }
@@ -762,7 +786,7 @@ function stepExplosion(k) {
   for (let r = 0; r < n; r++) {
     let e = exRays[base + r];
     if (e <= 0) continue;
-    const a = ph + r / n * 6.2832, dx = Math.cos(a), dy = Math.sin(a);
+    const a = ph + r / n * 6.2832, dx = dcos(a), dy = dsin(a);
     let lastJ = -1;
     for (let d = r0 < 0.8 ? 0.8 : r0; d < r1; d += 0.6) {
       const px = Math.round(cx + dx * d), py = Math.round(cy + dy * d);
@@ -1021,40 +1045,67 @@ let slowPhase = 0;
 
 function slowWet(x, y, i, t, w) {
   let exposed = false;
+  // 渗水：先往下（顺着重力）渗，下面吃不下了再随机往旁边匀
+  const bx = x + gx, by = y + gy;
+  let bottom = bx < 0 || bx >= W || by < 0 || by >= H;
+  if (!bottom) {
+    const j = bx + by * W, o = type[j], cap = M_ABSORB[o];
+    if (cap > 0 && o !== PLANT && !(flags[j] & F_BODY)) {
+      const wj = wet[j];
+      if (w > wj && wj < cap) {
+        const q = Math.min(w - wj > 4 ? (w - wj) >> 1 : w - wj, cap - wj);
+        if ((wj <= 60 && wj + q > 60) || (w > 60 && w - q <= 60)) { wake(x, y); wake(bx, by); }
+        wet[j] = wj + q; w -= q;
+      }
+    } else if (o !== 0 && M_STATE[o] !== S_LIQUID) bottom = true;      // 下面是不吸水的石头 / 金属：这是最底层
+  }
   const k0 = rndi(4);
   for (let k = 0; k < 4; k++) {
     const kk = (k0 + k) & 3, nx = x + DX4[kk], ny = y + DY4[kk];
     if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
     const j = nx + ny * W, o = type[j];
     if (o === 0) { exposed = true; continue; }
-    if (k !== 0 || o === PLANT) continue;
-    const cap = M_ABSORB[o], wj = wet[j];              // 渗水：往更干的吸水邻格匀一半
+    if (k !== 0 || o === PLANT || (nx === bx && ny === by)) continue;
+    const cap = M_ABSORB[o], wj = wet[j];
     if (cap > 0 && w - wj > 24 && wj < cap) {
       const q = Math.min((w - wj) >> 1, cap - wj);
       if ((wj <= 60 && wj + q > 60) || (w > 60 && w - q <= 60)) { wake(x, y); wake(nx, ny); }
       wet[j] = wj + q; w -= q;
     }
   }
-  if (t === SOIL && w > 110 && !exposed && rnd() < 0.5) {              // 深层的土吸饱了：多余的水渗到地下（外部输出，记在账上）
-    const ux = x - gx * 3, uy = y - gy * 3;
-    if (ux >= 0 && ux < W && uy >= 0 && uy < H && type[ux + uy * W] === SOIL) { w -= 12; env.waterOut += 0.12; }
-  }
-  if (exposed && rnd() < 0.12) {                       // 晾干：水分进入空气
-    const rate = 1 + ((env.sun * 3) | 0) + (temp[i] > 40 ? 3 : 0);
+  if (exposed && rnd() < (temp[i] < 0 ? 0.01 : 0.12)) {      // 晾干：按日照、温度、风速，水分进入空气（冻住的地面几乎不蒸发）
+    const wv = windX[(x >> 3) + (y >> 3) * GW];
+    const rate = 1 + ((env.sun * 3) | 0) + (temp[i] > 40 ? 3 : 0) + ((wv < 0 ? -wv : wv) > 0.4 ? 1 : 0);
     const d = w < rate ? w : rate;
     if (w > 60 && w - d <= 60) wake(x, y);
     w -= d;
-    vaporAdd(x, y, d / 100);
+    vaporAdd(x, y, d / 100); WL.evapWet += d / 100;
   }
   wet[i] = w;
 }
 
 function slowWater(x, y, i) {
+  // 下渗：积水下面是土 / 沙，没吸饱就渗进去；吸饱了也会慢慢渗进地下水
+  const bx = x + gx, by = y + gy;
+  if (bx >= 0 && bx < W && by >= 0 && by < H) {
+    const j = bx + by * W, o = type[j];
+    if ((o === SOIL || o === SAND) && !(flags[j] & F_BODY)) {
+      const cap = M_ABSORB[o];
+      if (cap - wet[j] >= 50) { wet[j] = Math.min(cap, wet[j] + 100); clearCell(i, x, y); wake(bx, by); return; }
+      // 薄薄一层的积水（上面没有别的水压着）在吸饱的地面上也会慢慢渗走；深水（湖、池塘）不会
+      const ux = x - gx, uy = y - gy;
+      const isW = (px, py) => px >= 0 && px < W && py >= 0 && py < H && (type[px + py * W] === WATER || type[px + py * W] === SALTWATER);
+      const thin = !isW(ux, uy) && !isW(x + lx, y + ly) && !isW(x - lx, y - ly);      // 孤立的一小摊水，不是湖边
+      if (thin && rnd() < 0.01) { env.waterOut += 1; WL.seep += 1; clearCell(i, x, y); return; }
+    }
+  }
   const ux = x - gx, uy = y - gy;
   if (ux < 0 || ux >= W || uy < 0 || uy >= H || type[ux + uy * W] !== 0) return;
+  // 水面蒸发：白天快、夜里慢，越热越快，有风更快
   let k = 1 + (env.ambient - 20) / 25;
   k = k < 0.2 ? 0.2 : k > 3 ? 3 : k;
-  if (rnd() < 0.0012 * (0.4 + 1.6 * env.sun) * k) { clearCell(i, x, y); vaporAdd(x, y, 1); }   // 水面蒸发
+  const wv = windX[(x >> 3) + (y >> 3) * GW];
+  if (rnd() < 0.0012 * (0.4 + 1.6 * env.sun) * k * (1 + (wv < 0 ? -wv : wv))) { clearCell(i, x, y); vaporAdd(x, y, 1); WL.evapSurface++; }
 }
 
 function slowPlant(x, y, i) {
@@ -1076,13 +1127,13 @@ function slowPlant(x, y, i) {
       wet[j] += q; w -= q;
     }
   }
-  if (w > 20 && rnd() < 0.12 * (0.3 + env.sun)) { w--; vaporAdd(x, y, 0.01); }  // 蒸腾
+  if (w > 20 && rnd() < 0.12 * (0.3 + env.sun)) { w--; vaporAdd(x, y, 0.01); WL.transpire += 0.01; }  // 蒸腾
   wet[i] = w;
   if (f & (F_TIP | F_BURN | F_BODY)) return;
   let age = life[i] + (w === 0 ? 2 : 1);               // 缺水老得快
   if (age > 60000) age = 60000;
   life[i] = age;
-  if (age > 520 + (g & 15) * 48 && rnd() < 0.15) {     // 寿终（约 9~21 分钟）：枯萎成枯枝
+  if (age > plantLifespan(g) && rnd() < 0.15) {        // 寿终（约 9~21 分钟）：枯萎成枯枝
     type[i] = DEADPLANT; life[i] = 0; flags[i] = (f & F_SCORCH) | parity; fuel[i] = initFuel(DEADPLANT);
     wake(x, y);
     return;
@@ -1096,7 +1147,7 @@ function slowPlant(x, y, i) {
   } else if (age > 30 && w >= 30 && rnd() < 0.006 && skyOpen(x, y)) {
     const j = ux + uy * W;                             // 成株开花
     put(j, FLOWER, ux, uy); seed[j] = rndi(5) * 51 + 8 + rndi(34);
-    wet[i] = w - 20; env.waterSink += 0.2;
+    wet[i] = w - 20; env.waterSink += 0.2; WL.plantUse += 0.2;
   }
 }
 
@@ -1128,7 +1179,7 @@ function slowSeed(x, y, i) {
   else if (b === SAND) { if (wet[bj] < 60) return; }
   else return;
   if (env.sun < 0.12 || !skyOpen(x, y) || biomass(x, y, 4) > 10 || rnd() > 0.25) return;
-  wet[bj] -= 30; env.waterSink += 0.3;
+  wet[bj] -= 30; env.waterSink += 0.3; WL.plantUse += 0.3;
   if (b === SOIL) aux[bj] -= 20;                        // 消耗养分
   sprout(i, x, y);
 }
@@ -1142,7 +1193,7 @@ function slowSoil(x, y, i) {
   const j = ux + uy * W;
   put(j, PLANT, ux, uy);
   flags[j] |= F_TIP; life[j] = geneHeight(seed[j]); wet[j] = 30;
-  wet[i] -= 30; aux[i] -= 20; env.waterSink += 0.3;
+  wet[i] -= 30; aux[i] -= 20; env.waterSink += 0.3; WL.plantUse += 0.3;
 }
 
 function slowAsh(x, y, i) {
@@ -1150,23 +1201,27 @@ function slowAsh(x, y, i) {
 }
 
 function slowDead(x, y, i) {
-  // 枯枝腐烂：潮湿时快，干燥时慢；大部分分解掉，只有一小部分变成肥土（否则土会越积越多）
-  if (rnd() < (wet[i] > 30 ? 0.03 : 0.01)) {
-    if (rnd() < 0.15) { morph(i, SOIL, x, y); aux[i] = 255; } else { env.waterOut += wet[i] / 100; clearCell(i, x, y); }
+  // 枯枝分解：越湿越快（干的约 4 分钟，湿透的约 25 秒）；一小部分变成肥土，其余分解掉
+  const w = wet[i];
+  if (rnd() < 0.004 + 0.036 * (w > 60 ? 1 : w / 60)) {
+    if (rnd() < 0.15) { morph(i, SOIL, x, y); aux[i] = 255; } else { env.waterOut += w / 100; WL.decayOut += w / 100; clearCell(i, x, y); }
   }
 }
 
 function slowIce(x, y, i) {
-  // 气温高于冰点时，露在空气里的冰雪慢慢融化；每融一格都从周围吸热
-  const amb = env.ambient;
-  if (amb <= 1) {                                      // 冰点以下：露天的雪慢慢升华回空气里（否则只进不出，越积越厚）
-    if (type[i] === SNOW && rnd() < 0.005) {
-      const ux = x - gx, uy = y - gy;
-      if (ux >= 0 && ux < W && uy >= 0 && uy < H && type[ux + uy * W] === 0) { clearCell(i, x, y); vaporAdd(x, y, 1); }
-    }
+  const amb = env.ambient, snow = type[i] === SNOW;
+  let open = false;                                    // 任何一面挨着空气就算露天（被风吹成的雪墙，侧面也会升华）
+  for (let k = 0; k < 4 && !open; k++) {
+    const nx = x + DX4[k], ny = y + DY4[k];
+    open = nx < 0 || nx >= W || ny < 0 || ny >= H || type[nx + ny * W] === 0;
+  }
+  if (amb <= 1) {
+    // 冰点以下：露天的积雪靠阳光升华（白天快、夜里很慢），所以夜里积得起来，白天又会变薄
+    if (snow && open && rnd() < 0.0006 + env.sun * 0.014) { clearCell(i, x, y); vaporAdd(x, y, 1); WL.sublimate++; }
     return;
   }
-  if (rnd() > amb * (type[i] === SNOW ? 0.006 : 0.0012)) return;
+  // 气温高于冰点：露在空气里的冰雪慢慢融化（日照加速），每融一格都从周围吸热
+  if (rnd() > amb * (snow ? 0.006 : 0.0012) * (1 + env.sun)) return;
   let exposed = false;
   for (let k = 0; k < 4; k++) {
     const nx = x + DX4[k], ny = y + DY4[k];
@@ -1248,31 +1303,36 @@ function sweepCells() {
   }
 }
 
+// 分析用的计时器由宿主注入（页面里是 performance.now）。模拟代码自己不读任何时钟
+let simClock = null;
+function setSimClock(fn) { simClock = fn; }
+
 function simStep() {
   parity ^= 1; tick++; simStepsTotal++;
-  const t0 = performance.now();
+  const clk = simClock;
+  const t0 = clk ? clk() : 0;
   let act = 0;
   for (let c = 0, n = chunkTTL.length; c < n; c++) {
     const v = chunkTTL[c];
     if (v > 0) { chunkTTL[c] = v - 1; if (v > 1) act++; }
   }
   perf.activeChunks = act;
-  if (sceneScript) sceneScript();
+  stepScene();
   stepWeather();
-  const t1 = performance.now();
+  const t1 = clk ? clk() : 0;
   stepExplosions();
   stepElectric();
-  const t2 = performance.now();
+  const t2 = clk ? clk() : 0;
   stepStructure();
-  const t3 = performance.now();
+  const t3 = clk ? clk() : 0;
   sweepCells();
-  const t4 = performance.now();
+  const t4 = clk ? clk() : 0;
   stepThermal();
-  const t5 = performance.now();
+  const t5 = clk ? clk() : 0;
   stepFree();
-  const t6 = performance.now();
+  const t6 = clk ? clk() : 0;
   slowTick();
-  const t7 = performance.now();
+  const t7 = clk ? clk() : 0;
   perf.weather += t1 - t0; perf.misc += (t2 - t1) + (t6 - t5); perf.struct += t3 - t2;
   perf.cells += t4 - t3; perf.thermal += t5 - t4; perf.slow += t7 - t6; perf.steps++;
 }

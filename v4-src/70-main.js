@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------- */
 // 性能场景：全部新系统一起上 —— 约 5 万粒子（沙 + 水）+ 埋在里面的 10 个 TNT + 上面一栋会被炸塌的楼 + 雷暴天气
 function buildPerfScene() {
-  env.dayNight = true; env.time = 0.9; env.timeScale = 1; env.structure = true; env.temp = AMBIENT; sceneScript = null;
+  env.dayNight = true; env.time = 0.9; env.timeScale = 1; env.structure = true; env.temp = AMBIENT; sceneState = null;
   setWeather('storm'); env.wind = 0.6;
   clearGrid(); setGravity('down'); seedRng(4242); updateSun();
   const rows = Math.max(20, Math.min(Math.floor(H * 0.45), Math.ceil(50000 / W)));
