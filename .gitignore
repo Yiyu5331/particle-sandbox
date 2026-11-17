@@ -1,0 +1,7 @@
+.claude/
+node_modules/
+v3-src/
+v4-src/soak-log.txt
+v4-src/soak-result.json
+*.log
+.DS_Store

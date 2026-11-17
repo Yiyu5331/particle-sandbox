@@ -1,0 +1,3823 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>粒子沙盘 v3</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --panel: rgba(255, 255, 255, 0.05);
+    --panel-strong: rgba(22, 22, 32, 0.82);
+    --line: rgba(255, 255, 255, 0.09);
+    --line-strong: rgba(255, 255, 255, 0.18);
+    --text: #d8d8e4;
+    --text-strong: #ffffff;
+    --muted: #8a8aa2;
+    --accent: #8fa8ff;
+    --warn: #ffc14a;
+    --danger: #ff5a5a;
+    --ok: #5fd08a;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --pill: 999px;
+    --gap: 8px;
+    --gap-sm: 4px;
+    --blur: blur(16px) saturate(140%);
+    --side: 172px;
+    --ctl-h: 28px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font: 12.5px/1.35 system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(900px 420px at 12% -10%, rgba(90, 60, 200, 0.22), transparent 70%),
+      radial-gradient(800px 380px at 92% -6%, rgba(255, 90, 30, 0.13), transparent 70%),
+      var(--bg);
+    -webkit-user-select: none; user-select: none;
+  }
+  #app { display: grid; grid-template-columns: var(--side) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+  .glass { background: var(--panel); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+
+  button, select, input { font: inherit; color: inherit; }
+  button, select {
+    height: var(--ctl-h); padding: 0 10px; cursor: pointer; white-space: nowrap;
+    border: 1px solid var(--line); border-radius: var(--pill); background: var(--panel);
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s;
+  }
+  select { padding: 0 6px; -webkit-appearance: none; appearance: none; text-align: center; }
+  select option { background: #1a1a24; color: var(--text); }
+  button:hover, select:hover { background: rgba(255, 255, 255, 0.11); }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.on { color: var(--text-strong); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 12px -2px var(--accent); }
+  button.sq { width: var(--ctl-h); padding: 0; }
+  button.danger { border-color: rgba(255, 90, 90, 0.5); color: #ff9c9c; background: rgba(255, 60, 60, 0.1); }
+  button.danger:hover, button.danger.armed { background: rgba(255, 60, 60, 0.3); color: #fff; box-shadow: 0 0 14px -2px var(--danger); }
+  button.warn { border-color: var(--warn); color: #ffd98a; box-shadow: 0 0 12px -3px var(--warn); }
+  input[type=range] { accent-color: var(--accent); cursor: pointer; height: var(--ctl-h); }
+  input[type=text] { height: var(--ctl-h); padding: 0 10px; border: 1px solid var(--line); border-radius: var(--pill); background: rgba(0, 0, 0, 0.3); min-width: 0; }
+
+  /* ---------- 顶部控制条 ---------- */
+  #topbar {
+    grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap);
+    padding: 6px 10px; border-bottom: 1px solid var(--line); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35); z-index: 5;
+  }
+  .grp { display: flex; align-items: center; gap: var(--gap-sm); padding: 3px 5px; border: 1px solid var(--line); border-radius: var(--pill); background: rgba(255, 255, 255, 0.03); }
+  .grp > .lbl { font-size: 11px; color: var(--muted); letter-spacing: 0.06em; padding: 0 3px 0 5px; white-space: nowrap; }
+  .grp .val { min-width: 1.8em; text-align: right; color: var(--text-strong); font-variant-numeric: tabular-nums; padding-right: 4px; }
+  #brand { font-weight: 650; color: var(--text-strong); letter-spacing: 0.04em; padding: 0 6px 0 2px; white-space: nowrap; }
+  #brand small { font-weight: 400; color: var(--muted); margin-left: 4px; }
+  #rngSize { width: 86px; }
+  #rngVol { width: 62px; }
+
+  /* ---------- 左侧元素面板 ---------- */
+  #palette { grid-row: 2; overflow-y: auto; padding: 8px; border-right: 1px solid var(--line); scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  .cat { margin-bottom: 10px; }
+  .cat h3 { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.1em; margin: 0 2px 5px; }
+  .cat .items { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-sm); }
+  .el {
+    --c1: #888; --c2: #aaa; --c3: #666;
+    display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 6px 0 5px; border-radius: var(--radius-sm);
+    position: relative; overflow: hidden; text-align: left;
+  }
+  .el .sw {
+    width: 16px; height: 16px; border-radius: 5px; flex: none;
+    background: linear-gradient(115deg, var(--c1), var(--c2), var(--c3), var(--c1), var(--c2));
+    background-size: 400% 100%; animation: swatch 3.2s linear infinite;
+    box-shadow: 0 0 7px -1px var(--c1), inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  }
+  .el.glow .sw { animation-duration: 1.3s; box-shadow: 0 0 10px 0 var(--c1), inset 0 0 0 1px rgba(255, 255, 255, 0.25); }
+  .el .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .el kbd { font: 10px ui-monospace, monospace; color: var(--muted); }
+  .el.on { color: var(--text-strong); border-color: var(--c1); background: rgba(255, 255, 255, 0.1); box-shadow: 0 0 0 1px var(--c1), 0 0 14px -2px var(--c1); }
+  @keyframes swatch { from { background-position: 0% 0; } to { background-position: 100% 0; } }
+  @media (prefers-reduced-motion: reduce) { .el .sw { animation: none; } }
+
+  /* ---------- 画布区 ---------- */
+  #stage { grid-row: 2; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; }
+  #viewport { position: relative; line-height: 0; }
+  #canvas { display: block; background: var(--bg); cursor: none; touch-action: none; }
+  #cursor { position: absolute; pointer-events: none; border: 1px solid rgba(255, 255, 255, 0.75); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45); display: none; }
+  #cursor.round { border-radius: 50%; }
+  #cursor.spray { border-radius: 50%; border-style: dashed; }
+  #lineprev { position: absolute; pointer-events: none; height: 0; border-top: 1px dashed rgba(255, 255, 255, 0.8); transform-origin: 0 0; display: none; }
+  .float { position: absolute; padding: 8px 10px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel-strong); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+  #debug { left: 10px; top: 10px; font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; display: none; pointer-events: none; color: #c8d4ff; }
+  #testbox { right: 10px; top: 10px; width: min(460px, 70%); max-height: calc(100% - 20px); overflow: auto; display: none; font-size: 11.5px; line-height: 1.55; -webkit-user-select: text; user-select: text; }
+  #testbox h4 { font-size: 13px; margin-bottom: 4px; color: var(--text-strong); }
+  #testbox .ok { color: var(--ok); } #testbox .bad { color: var(--danger); } #testbox .dim { color: var(--muted); }
+  #toast { left: 50%; bottom: 14px; transform: translateX(-50%); opacity: 0; transition: opacity 0.25s; pointer-events: none; white-space: nowrap; }
+  #toast.show { opacity: 1; }
+  #recdot { right: 10px; bottom: 10px; display: none; color: #ff9c9c; font-variant-numeric: tabular-nums; }
+  #recdot::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); margin-right: 6px; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0.2; } }
+
+  /* ---------- 底部状态栏 ---------- */
+  #status {
+    grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding: 4px 12px; font-size: 12px;
+    font-variant-numeric: tabular-nums; color: var(--muted); border-top: 1px solid var(--line); white-space: nowrap; overflow: hidden;
+  }
+  #status b { color: var(--text-strong); font-weight: 600; }
+  #stInspect { flex: 1; text-align: center; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  .chip { padding: 1px 8px; border-radius: var(--pill); border: 1px solid var(--line); }
+  .chip.warn { border-color: var(--warn); color: #ffd98a; }
+  .chip.hide { display: none; }
+
+  /* ---------- 弹层与提示 ---------- */
+  .pop { position: fixed; z-index: 20; display: none; min-width: 220px; max-width: 320px; padding: 10px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--panel-strong); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); }
+  .pop.show { display: block; }
+  .pop h4 { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.1em; margin: 2px 2px 8px; }
+  .pop .col { display: flex; flex-direction: column; gap: var(--gap-sm); }
+  .pop .row { display: flex; gap: var(--gap-sm); align-items: center; }
+  .pop .row > * { flex: 1; }
+  .pop button { border-radius: var(--radius-sm); text-align: left; }
+  .pop button small { color: var(--muted); margin-left: 6px; }
+  .pop label { display: flex; align-items: center; gap: 8px; height: 26px; cursor: pointer; }
+  .pop label input { accent-color: var(--accent); }
+  .pop .note { color: var(--muted); font-size: 11px; margin-top: 8px; line-height: 1.5; white-space: normal; }
+  .slot { display: flex; gap: var(--gap-sm); align-items: center; }
+  .slot .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .slot button { flex: none; text-align: center; }
+  #tip { position: fixed; z-index: 30; display: none; width: 250px; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--panel-strong); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); pointer-events: none; line-height: 1.55; }
+  #tip h4 { font-size: 13px; color: var(--text-strong); margin-bottom: 2px; }
+  #tip .sub { color: var(--muted); margin-bottom: 6px; }
+  #tip dl { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; }
+  #tip dt { color: var(--muted); } #tip dd { color: var(--text); font-variant-numeric: tabular-nums; }
+  #tip ul { list-style: none; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+  #tip li { color: var(--text); } #tip li::before { content: '· '; color: var(--muted); }
+
+  @media (max-width: 760px) {
+    :root { --side: 104px; --ctl-h: 26px; }
+    .cat .items { grid-template-columns: 1fr; }
+    #brand small, .grp > .lbl { display: none; }
+    #topbar { gap: 5px; padding: 5px; }
+    #rngSize { width: 60px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="topbar" class="glass">
+    <span id="brand">粒子沙盘<small>v3</small></span>
+    <div class="grp">
+      <button id="btnPause" title="暂停 / 继续（空格）">❚❚ 暂停</button>
+      <button id="btnStep" class="sq" title="单步（.）" aria-label="单步">▸|</button>
+      <select id="selSpeed" title="模拟速度" aria-label="模拟速度">
+        <option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1" selected>1x</option>
+        <option value="2">2x</option><option value="4">4x</option>
+      </select>
+    </div>
+    <div class="grp" id="gravGrp">
+      <span class="lbl">重力</span>
+      <button class="sq" data-g="up" title="重力向上" aria-label="重力向上">↑</button>
+      <button class="sq on" data-g="down" title="重力向下" aria-label="重力向下">↓</button>
+      <button class="sq" data-g="left" title="重力向左" aria-label="重力向左">←</button>
+      <button class="sq" data-g="right" title="重力向右" aria-label="重力向右">→</button>
+    </div>
+    <div class="grp">
+      <span class="lbl">笔刷</span>
+      <button class="sq on" data-shape="circle" title="圆形" aria-label="圆形笔刷">●</button>
+      <button class="sq" data-shape="square" title="方形" aria-label="方形笔刷">■</button>
+      <button class="sq" data-shape="spray" title="喷雾（随机稀疏）" aria-label="喷雾笔刷">∴</button>
+      <button id="btnMode" title="切换：只填空位 / 覆盖替换">填空</button>
+      <input type="range" id="rngSize" min="1" max="30" value="4" aria-label="笔刷大小" title="笔刷大小（[ 和 ]）">
+      <span class="val" id="lblSize">4</span>
+    </div>
+    <div class="grp">
+      <button id="btnView" title="切换视图（V）">视图：正常</button>
+      <button id="btnUndo" title="撤销（Ctrl/Cmd+Z）">撤销</button>
+      <button id="btnClear" class="danger" title="清空（C，需再按一次确认）">清空</button>
+    </div>
+    <div class="grp">
+      <button id="btnScenes" data-pop="popScenes">场景 ▾</button>
+      <button id="btnSave" data-pop="popSave">存档 ▾</button>
+      <button id="btnShot" title="保存 PNG 截图">截图</button>
+      <select id="selRec" title="录制时长" aria-label="录制时长">
+        <option value="5">5秒</option><option value="10" selected>10秒</option><option value="15">15秒</option><option value="30">30秒</option>
+      </select>
+      <button id="btnRec" title="录制 WebM 视频">录制</button>
+    </div>
+    <div class="grp">
+      <button id="btnMute" title="静音">声音</button>
+      <input type="range" id="rngVol" min="0" max="100" value="60" aria-label="总音量" title="总音量">
+      <button id="btnSettings" data-pop="popSettings">设置 ▾</button>
+    </div>
+  </header>
+
+  <aside id="palette" class="glass" aria-label="元素面板"></aside>
+
+  <main id="stage">
+    <div id="viewport">
+      <div id="cursor"></div>
+      <div id="lineprev"></div>
+    </div>
+    <div id="debug" class="float"></div>
+    <div id="testbox" class="float"></div>
+    <div id="toast" class="float"></div>
+    <div id="recdot" class="float">录制中</div>
+  </main>
+
+  <footer id="status" class="glass">
+    <span>FPS <b id="stFps">--</b></span>
+    <span>模拟 <b id="stSim">--</b> 步/秒</span>
+    <span id="stThrottle" class="chip warn hide" title="页面在后台、被遮挡或浏览器省电时，requestAnimationFrame 会被降频。这不是性能问题。">rAF 被降频</span>
+    <span id="stInspect">—</span>
+    <span id="stMode" class="chip"></span>
+    <span>粒子 <b id="stCount">0</b></span>
+  </footer>
+</div>
+
+<div id="popScenes" class="pop"><h4>预设场景</h4><div class="col" id="sceneList"></div></div>
+<div id="popSave" class="pop">
+  <h4>存档槽位（浏览器本地）</h4>
+  <div class="row"><input type="text" id="slotName" placeholder="存档名称" maxlength="24"><button id="btnSlotSave" style="flex:none;text-align:center">保存</button></div>
+  <div class="col" id="slotList" style="margin-top:8px"></div>
+  <h4 style="margin-top:12px">文件</h4>
+  <div class="row"><button id="btnExport" style="text-align:center">导出 JSON</button><button id="btnImport" style="text-align:center">导入 JSON</button></div>
+  <input type="file" id="fileImport" accept=".json,application/json" hidden>
+</div>
+<div id="popSettings" class="pop"><h4>画面效果</h4><div class="col" id="settingList"></div><div class="note" id="renderInfo"></div></div>
+<div id="tip"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+ * 粒子沙盘 v3
+ * 模块顺序：1 核心（常量/随机数/材料表/规则表/网格/分块）
+ *           2 模拟（运动/燃烧/钩子/爆炸/电/温度/飞行粒子/主步进）
+ *           3 渲染（WebGL2 管线 + Canvas2D 退路）
+ *           4 音效（WebAudio 程序合成）
+ *           5 UI（面板/笔刷/撤销/存档/预设/录制）
+ *           6 自测（?test=1）与主循环
+ * ===================================================================== */
+
+/* ---------------------------------------------------------------------
+ * 1.1 常量与随机数
+ * ------------------------------------------------------------------- */
+const CELL = 3;            // 每格 3x3 CSS 像素
+const CHUNK = 32;          // 分块边长
+const AMBIENT = 20;        // 环境温度 °C
+const WAKE_TTL = 3;        // 被唤醒后至少再模拟几帧
+const SIM_HZ = 60;
+const QS = new URLSearchParams(location.search);
+
+// xorshift32：热循环里只用它，不用 Math.random
+let _rs = ((Date.now() ^ 0x9e3779b9) | 0) || 1;
+function rnd() {
+  _rs ^= _rs << 13; _rs ^= _rs >>> 17; _rs ^= _rs << 5;
+  return (_rs >>> 0) * 2.3283064365386963e-10;
+}
+function rndi(n) { return (rnd() * n) | 0; }
+function seedRng(s) { _rs = (s | 0) || 1; }
+
+/* ---------------------------------------------------------------------
+ * 1.2 材料表（声明式；所有通用行为都从这张表读）
+ * ------------------------------------------------------------------- */
+const S_EMPTY = 0, S_SOLID = 1, S_POWDER = 2, S_LIQUID = 3, S_GAS = 4, S_ENERGY = 5;
+const STATE_NAMES = ['空', '固体', '粉末', '液体', '气体', '能量'];
+
+const EMPTY = 0, SAND = 1, WATER = 2, FIRE = 3, WOOD = 4, STONE = 5, LAVA = 6, PLANT = 7,
+      ICE = 8, ACID = 9, SMOKE = 10, STEAM = 11, EMBER = 12, TNT = 13, METAL = 14, CLONE = 15,
+      VOID = 16, OIL = 17, GUNPOWDER = 18, GLASS = 19, ASH = 20, CHARCOAL = 21, SALT = 22,
+      SALTWATER = 23, SPARK = 24, SEED = 25, FLOWER = 26, SOIL = 27;
+const NT = 28;
+// 工具（不是材料）
+const TOOL_ERASE = 100, TOOL_HEAT = 101, TOOL_COOL = 102;
+
+const MAT_DEFAULTS = {
+  state: S_SOLID, cat: 'solid', density: 1000, viscosity: 0, dispersion: 0,
+  flammability: 0, ignitionTemp: Infinity, burnInto: EMPTY, burnTime: 0, burnTemp: 0,
+  flame: 0, residue: 1,
+  meltTemp: Infinity, meltInto: EMPTY, latent: 0,
+  boilTemp: Infinity, boilInto: EMPTY,
+  freezeTemp: -Infinity, freezeInto: EMPTY,
+  conductivity: 0.15, heatCapacity: 1.5, relax: 0.001,
+  hardness: 0.2, emissive: 0, alpha: 1, palette: ['#ff00ff'],
+  spawnTemp: AMBIENT, life: null, decayInto: EMPTY, decayChance: 0,
+  blastRadius: 0, blastPower: 0, electric: false, note: '',
+};
+
+const MATERIALS = [];
+function defMat(id, key, name, props) {
+  MATERIALS[id] = Object.assign({ id, key, name }, MAT_DEFAULTS, props);
+}
+
+defMat(EMPTY, 'EMPTY', '空气', { state: S_EMPTY, cat: 'none', density: 1.2, conductivity: 0.08, heatCapacity: 1,
+  relax: 0.03, hardness: 0, palette: ['#0a0a0f'] });
+
+// ---- 粉末 ----
+defMat(SAND, 'SAND', '沙', { state: S_POWDER, cat: 'powder', density: 1600, hardness: 0.10,
+  meltTemp: 1450, meltInto: GLASS,
+  palette: ['#c8a85a', '#d4b56a', '#bd9c50', '#cfae5e'], note: '高温（约1500°C）会熔成玻璃' });
+defMat(SOIL, 'SOIL', '土', { state: S_POWDER, cat: 'powder', density: 1400, conductivity: 0.12, heatCapacity: 1.6,
+  hardness: 0.12, palette: ['#5b4030', '#664a36', '#50382a', '#6f5240'], note: '种子落在上面会发芽' });
+defMat(SALT, 'SALT', '盐', { state: S_POWDER, cat: 'powder', density: 2100, conductivity: 0.2, hardness: 0.15,
+  palette: ['#e8e8ee', '#d8dbe6', '#f4f4f8'], note: '溶于水成盐水，能融冰' });
+defMat(GUNPOWDER, 'GUNPOWDER', '火药', { state: S_POWDER, cat: 'powder', density: 1700, hardness: 0.08,
+  flammability: 1, ignitionTemp: 170, burnTime: 2, burnInto: SMOKE, blastRadius: 4, blastPower: 0.6,
+  palette: ['#3a3a40', '#2e2e34', '#45454c'], note: '遇火瞬间燃爆并连锁' });
+defMat(ASH, 'ASH', '灰', { state: S_POWDER, cat: 'powder', density: 500, conductivity: 0.05, hardness: 0.02,
+  palette: ['#8a8a8e', '#77777c', '#9a9a9e'], note: '燃烧的最终产物，比水轻' });
+defMat(SEED, 'SEED', '种子', { state: S_POWDER, cat: 'powder', density: 1150, hardness: 0.05,
+  flammability: 0.5, ignitionTemp: 250, burnTime: 20, burnTemp: 600, flame: 0.1, burnInto: ASH, residue: 0.5,
+  palette: ['#b89a4a', '#9c8038', '#c8ab5c'], note: '落到土上，或水边的湿沙上，长成植物' });
+
+// ---- 液体（密度：熔岩 > 酸 > 盐水 > 水 > 油）----
+defMat(WATER, 'WATER', '水', { state: S_LIQUID, cat: 'liquid', density: 1000, dispersion: 5,
+  conductivity: 0.6, heatCapacity: 4, relax: 0.002, hardness: 0.03, alpha: 0.82, electric: true,
+  boilTemp: 100, boilInto: STEAM, freezeTemp: 0, freezeInto: ICE,
+  palette: ['#3a7bd5', '#3574cc', '#4082da'] });
+defMat(SALTWATER, 'SALTWATER', '盐水', { state: S_LIQUID, cat: 'liquid', density: 1100, dispersion: 5,
+  conductivity: 0.6, heatCapacity: 4, relax: 0.002, hardness: 0.03, alpha: 0.85, electric: true,
+  boilTemp: 104, boilInto: STEAM, freezeTemp: -18, freezeInto: ICE,
+  palette: ['#3f9aa8', '#3a90a0', '#46a3b0'], note: '比水重，冰点更低，导电' });
+defMat(OIL, 'OIL', '油', { state: S_LIQUID, cat: 'liquid', density: 850, viscosity: 0.25, dispersion: 3,
+  heatCapacity: 2, hardness: 0.03, alpha: 0.92,
+  flammability: 0.9, ignitionTemp: 220, burnTime: 70, burnTemp: 950, flame: 0.45, burnInto: SMOKE, residue: 0.3,
+  palette: ['#4a3518', '#55401e', '#3e2c12'], note: '浮在水上，易燃，火焰更大' });
+defMat(ACID, 'ACID', '酸液', { state: S_LIQUID, cat: 'liquid', density: 1500, viscosity: 0.1, dispersion: 3,
+  conductivity: 0.4, heatCapacity: 3, hardness: 0.03, emissive: 0.35, alpha: 0.9,
+  palette: ['#a050ff', '#7be04a', '#8f6cf0'], note: '溶解大多数东西；玻璃和金属除外' });
+defMat(LAVA, 'LAVA', '熔岩', { state: S_LIQUID, cat: 'liquid', density: 2800, viscosity: 0.85, dispersion: 1,
+  conductivity: 0.05, heatCapacity: 4, relax: 0.0003, hardness: 0.05, emissive: 1,
+  freezeTemp: 850, freezeInto: STONE, spawnTemp: 1500,
+  palette: ['#ff4500', '#ff6a10', '#e03800', '#ffb030'], note: '冷却到850°C以下凝成石头' });
+
+// ---- 固体 ----
+defMat(STONE, 'STONE', '石头', { cat: 'solid', density: 2600, conductivity: 0.2, heatCapacity: 2, hardness: 0.75,
+  meltTemp: 1250, meltInto: LAVA,
+  palette: ['#828287', '#77777c', '#8c8c92', '#6e6e74'], note: '1250°C熔成熔岩，能挡住爆炸' });
+defMat(WOOD, 'WOOD', '木头', { cat: 'solid', density: 700, conductivity: 0.1, heatCapacity: 1.6, hardness: 0.35,
+  flammability: 0.5, ignitionTemp: 300, burnTime: 160, burnTemp: 800, flame: 0.12, burnInto: CHARCOAL,
+  palette: ['#8b5e3c', '#7a5133', '#996a45', '#6e4a2e'], note: '烧成炭，炭再阴燃成灰' });
+defMat(METAL, 'METAL', '金属', { cat: 'solid', density: 7800, conductivity: 1, heatCapacity: 1.2, hardness: 0.97,
+  electric: true, palette: ['#9090a0', '#868696', '#9a9aaa'], note: '导热快、导电，受热发出黑体辐射光' });
+defMat(GLASS, 'GLASS', '玻璃', { cat: 'solid', density: 2500, conductivity: 0.12, hardness: 0.3, alpha: 0.3,
+  palette: ['#bfe6f2', '#d0eef7', '#a8d8e8'], note: '耐酸，透明' });
+defMat(ICE, 'ICE', '冰', { cat: 'solid', density: 917, conductivity: 0.5, heatCapacity: 2.5, relax: 0, hardness: 0.3,
+  meltTemp: 0, meltInto: WATER, latent: 1500, spawnTemp: -30,
+  palette: ['#a0c4ff', '#b4d2ff', '#8eb6f5'], note: '吸够热量才融化；冷的冰能冻住贴着它的水' });
+defMat(PLANT, 'PLANT', '植物', { cat: 'solid', density: 600, hardness: 0.1,
+  flammability: 0.7, ignitionTemp: 230, burnTime: 35, burnTemp: 700, flame: 0.25, burnInto: ASH, residue: 0.35,
+  palette: ['#3cb450', '#2f9a42', '#4cc862', '#267a35'], note: '吸水生长、分叉、长叶、开花' });
+defMat(FLOWER, 'FLOWER', '花', { cat: 'solid', density: 500, hardness: 0.05,
+  flammability: 0.8, ignitionTemp: 220, burnTime: 20, burnTemp: 650, flame: 0.2, burnInto: ASH, residue: 0.2,
+  palette: ['#ff6fa8', '#ffd23f', '#b06cff', '#ff5a4a', '#f4f4ff'] });
+defMat(CHARCOAL, 'CHARCOAL', '炭', { cat: 'solid', density: 800, conductivity: 0.12, hardness: 0.25,
+  flammability: 0.4, ignitionTemp: 380, burnTime: 320, burnTemp: 620, flame: 0.015, burnInto: ASH, residue: 0.7,
+  palette: ['#26221f', '#1e1b19', '#302b27'], note: '阴燃发光，最后变成灰' });
+defMat(TNT, 'TNT', 'TNT', { cat: 'solid', density: 1600, hardness: 0.2,
+  flammability: 1, ignitionTemp: 240, burnTime: 60, burnInto: EMPTY, blastRadius: 15, blastPower: 1,
+  palette: ['#e03030', '#c82828', '#f0e6e6'], note: '点燃后引信约1秒，爆炸半径15格' });
+defMat(CLONE, 'CLONE', '克隆体', { cat: 'tool', density: 9000, hardness: 2,
+  palette: ['#c060c0', '#d070d0'], note: '锁定第一个碰到的材料，每帧10%概率在旁边空位复制一个' });
+defMat(VOID, 'VOID', '黑洞', { cat: 'tool', density: 9000, hardness: 2, relax: 0.05,
+  palette: ['#200030'], note: '把半径5格内的粒子吸进来吞掉' });
+
+// ---- 气体 ----
+defMat(SMOKE, 'SMOKE', '烟', { state: S_GAS, cat: 'gas', density: 0.6, conductivity: 0.1, heatCapacity: 1, relax: 0.02,
+  hardness: 0, life: [80, 150], palette: ['#505055', '#5c5c62', '#44444a'] });
+defMat(STEAM, 'STEAM', '蒸汽', { state: S_GAS, cat: 'gas', density: 0.5, conductivity: 0.02, heatCapacity: 1, relax: 0.002,
+  hardness: 0, spawnTemp: 160, freezeTemp: 85, freezeInto: WATER,
+  palette: ['#b4c3d7', '#c4d0e0'], note: '上升冷却到85°C以下凝结成水滴' });
+
+// ---- 能量 ----
+defMat(FIRE, 'FIRE', '火', { state: S_GAS, cat: 'energy', density: 0.3, conductivity: 0.5, heatCapacity: 1, relax: 0,
+  hardness: 0, emissive: 1, spawnTemp: 900, life: [18, 40], decayInto: SMOKE, decayChance: 0.2,
+  palette: ['#ff6414', '#ffb030', '#ff3b0a'], note: '没有燃料很快熄灭' });
+defMat(EMBER, 'EMBER', '余烬', { state: S_GAS, cat: 'energy', density: 0.4, conductivity: 0.3, heatCapacity: 1, relax: 0,
+  hardness: 0, emissive: 0.9, spawnTemp: 650, life: [30, 70], decayInto: SMOKE, decayChance: 0.2,
+  palette: ['#ffb41e', '#ff8a10'] });
+defMat(SPARK, 'SPARK', '电火花', { state: S_ENERGY, cat: 'energy', density: 0.1, conductivity: 0.05, heatCapacity: 1,
+  relax: 0.05, hardness: 0, emissive: 1, life: [7, 11],
+  palette: ['#bfe8ff', '#ffffff', '#7fc8ff'], note: '沿金属和水传导，点燃火药、油、TNT' });
+
+// ---- 由材料表生成的并行数组（热循环只读这些）----
+const M_STATE = new Uint8Array(NT), M_DENS = new Float32Array(NT), M_VISC = new Float32Array(NT),
+      M_DISP = new Uint8Array(NT), M_FLAM = new Float32Array(NT), M_IGN = new Float32Array(NT),
+      M_BURNINTO = new Uint8Array(NT), M_BURNTIME = new Uint16Array(NT), M_BURNTEMP = new Float32Array(NT),
+      M_FLAME = new Float32Array(NT), M_RESIDUE = new Float32Array(NT),
+      M_MELT = new Float32Array(NT), M_MELTINTO = new Uint8Array(NT), M_LATENT = new Uint16Array(NT),
+      M_BOIL = new Float32Array(NT), M_BOILINTO = new Uint8Array(NT),
+      M_FREEZE = new Float32Array(NT), M_FREEZEINTO = new Uint8Array(NT),
+      M_IHC = new Float32Array(NT), M_RELAX = new Float32Array(NT), M_HARD = new Float32Array(NT),
+      M_SPAWN = new Float32Array(NT), M_LIFE0 = new Uint16Array(NT), M_LIFE1 = new Uint16Array(NT),
+      M_DECAY = new Uint8Array(NT), M_DECAYP = new Float32Array(NT),
+      M_BLAST = new Uint8Array(NT), M_BPOW = new Float32Array(NT), M_ELEC = new Uint8Array(NT);
+const KTAB = new Float32Array(NT * NT);     // 两种材料之间的导热系数
+
+function hexToRgb(h) {
+  const n = parseInt(h.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+(function buildMaterialArrays() {
+  for (let t = 0; t < NT; t++) {
+    const m = MATERIALS[t];
+    M_STATE[t] = m.state; M_DENS[t] = m.density; M_VISC[t] = m.viscosity; M_DISP[t] = m.dispersion;
+    M_FLAM[t] = m.flammability; M_IGN[t] = m.ignitionTemp; M_BURNINTO[t] = m.burnInto;
+    M_BURNTIME[t] = m.burnTime; M_BURNTEMP[t] = m.burnTemp; M_FLAME[t] = m.flame; M_RESIDUE[t] = m.residue;
+    M_MELT[t] = m.meltTemp; M_MELTINTO[t] = m.meltInto; M_LATENT[t] = m.latent;
+    M_BOIL[t] = m.boilTemp; M_BOILINTO[t] = m.boilInto;
+    M_FREEZE[t] = m.freezeTemp; M_FREEZEINTO[t] = m.freezeInto;
+    M_IHC[t] = 1 / m.heatCapacity; M_RELAX[t] = m.relax; M_HARD[t] = m.hardness;
+    M_SPAWN[t] = m.spawnTemp;
+    if (m.life) { M_LIFE0[t] = m.life[0]; M_LIFE1[t] = m.life[1]; }
+    M_DECAY[t] = m.decayInto; M_DECAYP[t] = m.decayChance;
+    M_BLAST[t] = m.blastRadius; M_BPOW[t] = m.blastPower; M_ELEC[t] = m.electric ? 1 : 0;
+    m.rgb = m.palette.map(hexToRgb);
+  }
+  for (let a = 0; a < NT; a++) for (let b = 0; b < NT; b++) {
+    KTAB[a * NT + b] = 0.2 * Math.min(MATERIALS[a].conductivity, MATERIALS[b].conductivity);
+  }
+})();
+
+/* ---------------------------------------------------------------------
+ * 1.3 反应矩阵（规则的唯一来源）
+ *
+ * 【接触反应】行 = 主动方，列 = 被接触方；格式「主动方变成 + 对方变成 (每帧每邻格概率)」
+ *
+ *            │ 熔岩            │ 火/余烬          │ 盐           │ 冰                    │ 可溶物*        │ 石头
+ *  ──────────┼─────────────────┼──────────────────┼──────────────┼───────────────────────┼────────────────┼──────────────
+ *  水        │ 蒸汽+石头 (1)   │ 蒸汽+空 (.5/1)   │ 盐水+空(.04) │ 冰+冰 (.02，水<4°C时) │ 植物吸水生长** │ —
+ *  盐水      │ 蒸汽+石头 (1)   │ 蒸汽+空 (.5/1)   │ —            │ 盐水+水 (.012)        │ —              │ —
+ *  盐        │ —               │ —                │ —            │ 空+盐水 (.03)         │ —              │ —
+ *  酸液      │ 火+熔岩 (1)     │ —                │ 溶解 (.02)   │ 溶解 (.02)            │ 溶解 (.02)     │ 溶解 (.0015)
+ *
+ *  * 可溶物 = 沙、土、盐、火药、灰、种子、木头、植物、花、炭、冰、TNT；每次溶解酸液自身有 50% 被消耗。
+ *    玻璃、金属、克隆体、黑洞不溶。
+ *  ** 植物 × 水：植物以 0.6% 概率吸掉这格水并获得生长能量。
+ *
+ * 【温度相变】（由温度场触发，不需要接触规则）
+ *    冰 ──>0°C 且吸够潜热──> 水 ──>100°C──> 蒸汽 ──<85°C──> 水 ──<0°C──> 冰
+ *    盐水 ──>104°C──> 蒸汽          盐水 ──<-18°C──> 冰
+ *    沙 ──>1450°C──> 玻璃           石头 ──>1250°C──> 熔岩 ──<850°C──> 石头
+ *
+ * 【燃烧链】（温度达到燃点后按可燃度概率点燃；燃烧放热；贴着水会被浇灭）
+ *    木头(300°C) → 火 + 炭 → 炭(380°C)阴燃 → 灰
+ *    植物(230°C)/花(220°C)/种子(250°C) → 火 + 灰
+ *    油(220°C) → 大火 + 烟
+ *    火药(170°C) → 2帧后小爆炸(半径4)        TNT(240°C) → 60帧引信后爆炸(半径15)
+ *
+ * 【其他】
+ *    电火花/带电导体 × 可燃物：给对方加热 250~300°C（足以点燃火药、油、TNT）
+ *    电火花 × 金属/水/盐水：注入电荷，沿导体逐格传导
+ *    克隆体 × 任意材料：记住并复制          黑洞 × 任意材料：吸入并吞掉
+ * ------------------------------------------------------------------- */
+const ACID_SOLUBLE = [SAND, SOIL, SALT, GUNPOWDER, ASH, SEED, WOOD, PLANT, FLOWER, CHARCOAL, ICE, TNT];
+
+// { a, b, p, a2, b2, use(主动方被消耗概率), maxT(主动方温度上限), aT/bT(产物温度), tag }
+const RULES = [
+  { a: WATER, b: LAVA, p: 1, a2: STEAM, b2: STONE, aT: 160, bT: 500, tag: 'hiss' },
+  { a: SALTWATER, b: LAVA, p: 1, a2: STEAM, b2: STONE, aT: 160, bT: 500, tag: 'hiss' },
+  { a: WATER, b: FIRE, p: 0.5, a2: STEAM, b2: EMPTY, aT: 150, tag: 'hiss' },
+  { a: SALTWATER, b: FIRE, p: 0.5, a2: STEAM, b2: EMPTY, aT: 150, tag: 'hiss' },
+  { a: WATER, b: EMBER, p: 1, a2: WATER, b2: EMPTY },
+  { a: SALTWATER, b: EMBER, p: 1, a2: SALTWATER, b2: EMPTY },
+  { a: WATER, b: SALT, p: 0.04, a2: SALTWATER, b2: EMPTY },
+  { a: WATER, b: ICE, p: 0.02, a2: ICE, b2: ICE, maxT: 4, aT: -4 },
+  { a: SALT, b: ICE, p: 0.03, a2: EMPTY, b2: SALTWATER, bT: 1 },
+  { a: SALTWATER, b: ICE, p: 0.012, a2: SALTWATER, b2: WATER, bT: 1 },
+  { a: ACID, b: LAVA, p: 1, a2: FIRE, b2: LAVA, aT: 900 },
+  { a: ACID, b: STONE, p: 0.0015, a2: ACID, b2: EMPTY, use: 0.5 },
+  { a: PLANT, b: WATER, p: 0.006, a2: PLANT, b2: EMPTY, tag: 'grow' },
+];
+for (const s of ACID_SOLUBLE) RULES.push({ a: ACID, b: s, p: 0.02, a2: ACID, b2: EMPTY, use: 0.5 });
+
+const RX = new Array(NT * NT).fill(null);
+const HASRX = new Uint8Array(NT);
+for (const r of RULES) { RX[r.a * NT + r.b] = r; HASRX[r.a] = 1; }
+
+/* ---------------------------------------------------------------------
+ * 1.4 网格与分块
+ * ------------------------------------------------------------------- */
+const F_PAR = 1, F_BURN = 2, F_SCORCH = 4, F_TIP = 8, F_FALL = 0xC0;   // flags 位
+const F_SAVE = F_BURN | F_SCORCH | F_TIP;
+
+let W = 0, H = 0, N = 0;
+let type, seed, flags, charge, chargeE, life, temp;
+let CW = 0, CHN = 0, chunkTTL, chunkCount;
+let parity = 0, tick = 0;
+let gravity = 'down', gx = 0, gy = 1, lx = 1, ly = 0;
+let sceneDirty = true;     // 渲染端需要整张重传
+
+function allocGrid(w, h) {
+  W = w; H = h; N = w * h;
+  type = new Uint8Array(N); seed = new Uint8Array(N); flags = new Uint8Array(N);
+  charge = new Uint8Array(N); chargeE = new Uint8Array(N);
+  life = new Uint16Array(N); temp = new Float32Array(N).fill(AMBIENT);
+  CW = Math.ceil(w / CHUNK); CHN = Math.ceil(h / CHUNK);
+  chunkTTL = new Uint8Array(CW * CHN); chunkCount = new Uint16Array(CW * CHN);
+  elecCount = 0; fpClear(); exClear();
+  wakeAll();
+}
+
+function clearGrid() {
+  type.fill(0); seed.fill(0); flags.fill(0); charge.fill(0); chargeE.fill(0); life.fill(0); temp.fill(AMBIENT);
+  elecCount = 0; fpClear(); exClear();
+  wakeAll();
+}
+
+function wakeAll() { chunkTTL.fill(WAKE_TTL); sceneDirty = true; }
+
+function inb(x, y) { return x >= 0 && x < W && y >= 0 && y < H; }
+
+function wake(x, y) {
+  const cx = x >> 5, cy = y >> 5, c = cx + cy * CW, ax = x & 31, ay = y & 31;
+  chunkTTL[c] = WAKE_TTL;
+  if (ax === 0) { if (cx > 0) chunkTTL[c - 1] = WAKE_TTL; }
+  else if (ax === 31) { if (cx < CW - 1) chunkTTL[c + 1] = WAKE_TTL; }
+  if (ay === 0) { if (cy > 0) chunkTTL[c - CW] = WAKE_TTL; }
+  else if (ay === 31) { if (cy < CHN - 1) chunkTTL[c + CW] = WAKE_TTL; }
+}
+
+function initLife(t) {
+  const a = M_LIFE0[t];
+  return a ? a + rndi(M_LIFE1[t] - a + 1) : 0;
+}
+
+// 新生成一个粒子（笔刷、克隆、喷发等）
+function put(i, t, x, y) {
+  type[i] = t; seed[i] = rndi(256); temp[i] = M_SPAWN[t]; life[i] = initLife(t);
+  flags[i] = parity | (t === SPARK ? F_TIP : 0); charge[i] = 0;
+  wake(x, y);
+}
+
+// 清成空气，保留该格温度
+function clearCell(i, x, y) {
+  type[i] = 0; life[i] = 0; flags[i] = parity; charge[i] = 0;
+  wake(x, y);
+}
+
+// 原地变成另一种材料，保留 seed 和温度
+function morph(i, t, x, y) {
+  if (t === EMPTY) { clearCell(i, x, y); return; }
+  type[i] = t; life[i] = initLife(t); flags[i] = (flags[i] & F_SCORCH) | parity;
+  wake(x, y);
+}
+
+function swapCells(i, j, x, y, nx, ny) {
+  let a = type[i]; type[i] = type[j]; type[j] = a;
+  a = seed[i]; seed[i] = seed[j]; seed[j] = a;
+  a = life[i]; life[i] = life[j]; life[j] = a;
+  const fi = flags[i], fj = flags[j];
+  flags[i] = (fj & ~F_PAR) | parity; flags[j] = (fi & ~F_PAR) | parity;
+  const tf = temp[i]; temp[i] = temp[j]; temp[j] = tf;
+  wake(x, y); wake(nx, ny);
+}
+
+function setGravity(dir) {
+  gravity = dir;
+  if (dir === 'down') { gx = 0; gy = 1; lx = 1; ly = 0; }
+  else if (dir === 'up') { gx = 0; gy = -1; lx = 1; ly = 0; }
+  else if (dir === 'left') { gx = -1; gy = 0; lx = 0; ly = 1; }
+  else { gx = 1; gy = 0; lx = 0; ly = 1; }
+  if (chunkTTL) wakeAll();
+}
+
+// 每步统计，供音效和调试面板使用
+const st = { powder: 0, liquid: 0, fire: 0, hiss: 0, elec: 0, boom: 0, boil: 0 };
+// 模拟 → 表现层的回调（爆炸闪光、震动、音效）
+let onBoom = null;
+
+/* =====================================================================
+ * 2. 模拟
+ * ===================================================================== */
+const DX4 = [1, -1, 0, 0], DY4 = [0, 0, 1, -1];
+const DX8 = [1, -1, 0, 0, 1, 1, -1, -1], DY8 = [0, 0, 1, -1, 1, -1, 1, -1];
+
+/* ---------------------------------------------------------------------
+ * 2.1 运动：粉末 / 液体 / 气体（方向全部用重力向量 g 和侧向向量 l 表达，
+ *     所以四个重力方向共用同一份代码，休止角也自然一致）
+ * ------------------------------------------------------------------- */
+function movePowder(x, y, i, t) {
+  const sp = flags[i] >> 6;                  // 连续下落帧数 → 每步多走几格（重力加速）
+  let cx = x, cy = y, ci = i, moved = 0;
+  for (let s = 0; s <= sp; s++) {
+    const nx = cx + gx, ny = cy + gy;
+    if (nx < 0 || nx >= W || ny < 0 || ny >= H) break;
+    const j = nx + ny * W, o = type[j];
+    if (o !== 0) {
+      const so = M_STATE[o];
+      if (so < S_LIQUID) break;
+      if (so === S_LIQUID) {                 // 只沉进比自己轻的液体，且进了液体就不再加速
+        if (M_DENS[t] > M_DENS[o] && rnd() < 0.75) { swapCells(ci, j, cx, cy, nx, ny); ci = j; cx = nx; cy = ny; moved = 2; }
+        break;
+      }
+    }
+    swapCells(ci, j, cx, cy, nx, ny); ci = j; cx = nx; cy = ny; moved = 1;
+  }
+  if (moved) {
+    flags[ci] = (flags[ci] & ~F_FALL) | (moved === 1 ? (sp < 3 ? sp + 1 : 3) << 6 : 0);
+    st.powder++;
+    return;
+  }
+  if (sp) flags[i] &= ~F_FALL;
+  const d = rnd() < 0.5 ? 1 : -1;
+  for (let s = 0; s < 2; s++) {
+    const dd = s ? -d : d;
+    const nx = x + gx + lx * dd, ny = y + gy + ly * dd;
+    if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+    const j = nx + ny * W, o = type[j];
+    if (o === 0 || M_STATE[o] >= S_GAS || (M_STATE[o] === S_LIQUID && M_DENS[t] > M_DENS[o] && rnd() < 0.5)) {
+      swapCells(i, j, x, y, nx, ny); st.powder++;
+      return;
+    }
+  }
+}
+
+// 液体能否沿重力方向挤进 o：空气、气体、更轻的液体、更轻的粉末（让灰浮上来）
+function liquidCanSink(t, o) {
+  if (o === 0) return true;
+  const so = M_STATE[o];
+  if (so >= S_GAS) return true;
+  if (so === S_LIQUID) return M_DENS[t] > M_DENS[o] && rnd() < 0.6;
+  if (so === S_POWDER) return M_DENS[t] > M_DENS[o] && rnd() < 0.3;
+  return false;
+}
+
+function moveLiquid(x, y, i, t) {
+  const sp = flags[i] >> 6;
+  let cx = x, cy = y, ci = i, moved = 0;
+  for (let s = 0; s <= sp; s++) {
+    const nx = cx + gx, ny = cy + gy;
+    if (nx < 0 || nx >= W || ny < 0 || ny >= H) break;
+    const j = nx + ny * W, o = type[j];
+    if (!liquidCanSink(t, o)) break;
+    const dense = o !== 0 && M_STATE[o] < S_GAS;
+    swapCells(ci, j, cx, cy, nx, ny); ci = j; cx = nx; cy = ny;
+    if (dense) { moved = 2; break; }
+    moved = 1;
+  }
+  if (moved) {
+    flags[ci] = (flags[ci] & ~F_FALL) | (moved === 1 ? (sp < 3 ? sp + 1 : 3) << 6 : 0);
+    st.liquid++;
+    return;
+  }
+  if (sp) flags[i] &= ~F_FALL;
+  const visc = M_VISC[t];
+  if (visc > 0 && rnd() < visc) return;      // 黏：这一帧不侧流
+
+  const d = rnd() < 0.5 ? 1 : -1;
+  for (let s = 0; s < 2; s++) {              // 斜下
+    const dd = s ? -d : d;
+    const nx = x + gx + lx * dd, ny = y + gy + ly * dd;
+    if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+    const j = nx + ny * W;
+    if (liquidCanSink(t, type[j])) { swapCells(i, j, x, y, nx, ny); st.liquid++; return; }
+  }
+  const disp = M_DISP[t];
+  for (let s = 0; s < 2; s++) {              // 侧向扩散：找得到落差才一定流，否则只是偶尔漂一下（水面能静下来）
+    const dd = s ? -d : d;
+    let best = -1, bx = 0, by = 0, drop = false;
+    for (let k = 1; k <= disp; k++) {
+      const nx = x + lx * dd * k, ny = y + ly * dd * k;
+      if (nx < 0 || nx >= W || ny < 0 || ny >= H) break;
+      const j = nx + ny * W, o = type[j];
+      if (o !== 0 && M_STATE[o] < S_GAS) break;
+      best = j; bx = nx; by = ny;
+      const ux = nx + gx, uy = ny + gy;
+      if (ux >= 0 && ux < W && uy >= 0 && uy < H) {
+        const u = type[ux + uy * W];
+        if (u === 0 || M_STATE[u] >= S_GAS || (M_STATE[u] === S_LIQUID && M_DENS[u] < M_DENS[t])) { drop = true; break; }
+      }
+    }
+    if (best >= 0 && (drop || rnd() < 0.2)) { swapCells(i, best, x, y, bx, by); st.liquid++; return; }
+  }
+}
+
+// 气体永远逆着重力走
+function moveGas(x, y, i, t) {
+  if (t === SMOKE && rnd() < 0.3) return;
+  const r = rndi(3) - 1;
+  let nx = x - gx + lx * r, ny = y - gy + ly * r;
+  if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+    const j = nx + ny * W, o = type[j];
+    if (o === 0 || (M_STATE[o] === S_LIQUID && rnd() < 0.3) ||
+        (M_STATE[o] === S_GAS && M_DENS[o] > M_DENS[t] && rnd() < 0.3)) {
+      swapCells(i, j, x, y, nx, ny);
+      return;
+    }
+  }
+  const d = rnd() < 0.5 ? 1 : -1;
+  nx = x + lx * d; ny = y + ly * d;
+  if (nx >= 0 && nx < W && ny >= 0 && ny < H && type[nx + ny * W] === 0) swapCells(i, nx + ny * W, x, y, nx, ny);
+}
+
+/* ---------------------------------------------------------------------
+ * 2.2 燃烧
+ * ------------------------------------------------------------------- */
+function ignite(i, t, x, y) {
+  flags[i] = (flags[i] | F_BURN) & ~F_TIP;
+  const bt = M_BURNTIME[t];
+  life[i] = M_BLAST[t] ? bt : Math.max(1, (bt * (0.7 + rnd() * 0.6)) | 0);
+  wake(x, y);
+}
+
+function emitFlame(x, y, t) {
+  const r = rndi(3) - 1;
+  let nx = x - gx + lx * r, ny = y - gy + ly * r;
+  if (!(inb(nx, ny) && type[nx + ny * W] === 0)) {
+    const k = rndi(4);
+    nx = x + DX4[k]; ny = y + DY4[k];
+    if (!(inb(nx, ny) && type[nx + ny * W] === 0)) return;
+  }
+  const j = nx + ny * W;
+  put(j, FIRE, nx, ny);
+  if (M_FLAME[t] > 0.3) life[j] += 18;       // 油：火焰更大
+}
+
+// 返回 true 表示这一格已经变成别的东西
+function burnStep(x, y, i, t, T) {
+  wake(x, y);
+  const blast = M_BLAST[t];
+  if (!blast) {
+    let air = 0, wet = -1, wx = 0, wy = 0;
+    for (let k = 0; k < 4; k++) {
+      const nx = x + DX4[k], ny = y + DY4[k];
+      if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+      const j = nx + ny * W, o = type[j];
+      if (o === 0 || M_STATE[o] >= S_GAS) air++;
+      else if (o === WATER || o === SALTWATER) { wet = j; wx = nx; wy = ny; }
+    }
+    if (wet >= 0) {                          // 被水浇灭
+      flags[i] &= ~F_BURN; life[i] = 0; temp[i] = T < 90 ? T : 90;
+      if (rnd() < 0.3) { morph(wet, STEAM, wx, wy); temp[wet] = 150; st.hiss++; }
+      return false;
+    }
+    const bt = M_BURNTEMP[t];
+    if (T < bt) temp[i] = T + (bt - T) * 0.25;      // 燃烧放热
+    if (air > 0) { if (rnd() < M_FLAME[t]) emitFlame(x, y, t); }
+    else if (rnd() < 0.75) return false;            // 没有空气：闷烧，烧得慢
+  }
+  const L = life[i];
+  if (L > 1) { life[i] = L - 1; return false; }
+  if (blast) { clearCell(i, x, y); startExplosion(x, y, blast, M_BPOW[t]); return true; }
+  if (rnd() < M_RESIDUE[t]) morph(i, M_BURNINTO[t], x, y);
+  else put(i, FIRE, x, y);
+  return true;
+}
+
+/* ---------------------------------------------------------------------
+ * 2.3 特殊材料钩子（返回 true 表示这一格已经处理完）
+ * ------------------------------------------------------------------- */
+function hookFire(x, y, i) { if (temp[i] < 700) temp[i] = 700; st.fire++; return false; }
+function hookEmber(x, y, i) { if (temp[i] < 600) temp[i] = 600; return false; }
+
+function hookLava(x, y, i) {
+  if (rnd() < 0.002) {                               // 偶尔迸出余烬
+    const nx = x - gx, ny = y - gy;
+    if (inb(nx, ny) && type[nx + ny * W] === 0) put(nx + ny * W, EMBER, nx, ny);
+  }
+  return false;
+}
+
+function growable(o) { return o === 0 || o === WATER || M_STATE[o] === S_GAS; }
+
+function bloom(x, y, i) {
+  flags[i] &= ~F_TIP;
+  for (let k = 0; k < 8; k++) {                      // 叶子
+    const nx = x + DX8[k], ny = y + DY8[k];
+    if (inb(nx, ny) && type[nx + ny * W] === 0 && rnd() < 0.55) put(nx + ny * W, PLANT, nx, ny);
+  }
+  if (rnd() < 0.18) {                                // 偶尔开花，花色随机
+    const fx = x - gx, fy = y - gy;
+    if (!inb(fx, fy)) return;
+    const c = rndi(5) * 51 + 8;
+    const fj = fx + fy * W;
+    if (type[fj] === 0 || type[fj] === PLANT) { put(fj, FLOWER, fx, fy); seed[fj] = c + rndi(34); }
+    for (let k = 0; k < 4; k++) {
+      const nx = fx + DX4[k], ny = fy + DY4[k];
+      if (inb(nx, ny) && type[nx + ny * W] === 0 && rnd() < 0.75) { put(nx + ny * W, FLOWER, nx, ny); seed[nx + ny * W] = c + rndi(34); }
+    }
+  }
+}
+
+function growTip(x, y, i) {
+  const e = life[i];
+  if (e <= 0) { bloom(x, y, i); return; }
+  const side = rnd() < 0.3 ? (rnd() < 0.5 ? 1 : -1) : 0;
+  const alt = rnd() < 0.5 ? 1 : -1;
+  for (let a = 0; a < 3; a++) {
+    const sd = a === 0 ? side : a === 1 ? (side === 0 ? alt : 0) : (side === 0 ? -alt : -side);
+    const nx = x - gx + lx * sd, ny = y - gy + ly * sd;
+    if (!inb(nx, ny)) continue;
+    const j = nx + ny * W;
+    if (!growable(type[j])) continue;
+    put(j, PLANT, nx, ny); flags[j] |= F_TIP; life[j] = e - 1;
+    flags[i] &= ~F_TIP; life[i] = 0;
+    if (e > 4 && rnd() < 0.16) {                     // 分叉
+      const bs = rnd() < 0.5 ? 1 : -1;
+      const bx = x + lx * bs - gx, by = y + ly * bs - gy;
+      if (inb(bx, by) && type[bx + by * W] === 0) {
+        const bj = bx + by * W;
+        put(bj, PLANT, bx, by); flags[bj] |= F_TIP; life[bj] = (e >> 1) + 1;
+      }
+    }
+    return;
+  }
+  life[i] = 0;                                       // 被挡住：直接展叶
+}
+
+function hookPlant(x, y, i) {
+  if (flags[i] & F_TIP) { wake(x, y); if (rnd() < 0.07) growTip(x, y, i); return false; }
+  const bx = x + gx, by = y + gy;
+  if (bx >= 0 && bx < W && by >= 0 && by < H && type[bx + by * W] === 0) {
+    for (let k = 0; k < 8; k++) {                    // 周围没有任何支撑才会落下
+      const nx = x + DX8[k], ny = y + DY8[k];
+      if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+      const o = type[nx + ny * W];
+      if (o !== 0 && M_STATE[o] < S_LIQUID) return false;
+    }
+    swapCells(i, bx + by * W, x, y, bx, by);
+    return true;
+  }
+  return false;
+}
+
+function sprout(i, x, y) {
+  type[i] = PLANT; flags[i] = parity | F_TIP; life[i] = 12 + rndi(22);
+  wake(x, y);
+}
+
+function hookSeed(x, y, i) {
+  const bx = x + gx, by = y + gy;
+  if (bx < 0 || bx >= W || by < 0 || by >= H) return false;
+  const b = type[bx + by * W];
+  if (b === SOIL) {
+    wake(x, y);
+    if (rnd() < 0.02) { sprout(i, x, y); return true; }
+  } else if (b === SAND) {                           // 沙子要够湿：两格内有水
+    wake(x, y);
+    if (rnd() < 0.02) {
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (inb(nx, ny) && type[nx + ny * W] === WATER) { sprout(i, x, y); return true; }
+      }
+    }
+  }
+  return false;
+}
+
+function hookClone(x, y, i) {
+  let src = life[i];
+  const k0 = rndi(4);
+  if (!src) {                                          // 还没记住任何材料：锁定第一个碰到的
+    for (let k = 0; k < 4; k++) {
+      const kk = (k0 + k) & 3, nx = x + DX4[kk], ny = y + DY4[kk];
+      if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+      const o = type[nx + ny * W];
+      if (o !== 0 && o !== CLONE && o !== VOID) { src = o; break; }
+    }
+    if (!src) return false;
+    life[i] = src;
+  }
+  wake(x, y);
+  if (rnd() >= 0.1) return false;
+  for (let k = 0; k < 4; k++) {
+    const kk = (k0 + k) & 3, nx = x + DX4[kk], ny = y + DY4[kk];
+    if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+    if (type[nx + ny * W] === 0) { put(nx + ny * W, src, nx, ny); return false; }
+  }
+  return false;
+}
+
+function hookVoid(x, y, i) {
+  wake(x, y);
+  for (let n = 0; n < 10; n++) {
+    const dx = rndi(11) - 5, dy = rndi(11) - 5, d2 = dx * dx + dy * dy;
+    if (d2 === 0 || d2 > 25) continue;
+    const px = x + dx, py = y + dy;
+    if (px < 0 || px >= W || py < 0 || py >= H) continue;
+    const j = px + py * W, o = type[j];
+    if (o === 0 || o === VOID) continue;
+    if (d2 <= 2) { clearCell(j, px, py); continue; }
+    if (rnd() < 0.6) {
+      let sx = dx > 0 ? -1 : dx < 0 ? 1 : 0, sy = dy > 0 ? -1 : dy < 0 ? 1 : 0;
+      const adx = dx < 0 ? -dx : dx, ady = dy < 0 ? -dy : dy;
+      if (adx > 2 * ady) sy = 0; else if (ady > 2 * adx) sx = 0;
+      const qx = px + sx, qy = py + sy, q = qx + qy * W, qt = type[q];
+      if (qt === 0) swapCells(j, q, px, py, qx, qy);
+      else if (qt === VOID) clearCell(j, px, py);
+    }
+  }
+  return false;
+}
+
+function hookSpark(x, y, i) {
+  st.elec++;
+  for (let k = 0; k < 4; k++) {
+    const nx = x + DX4[k], ny = y + DY4[k];
+    if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+    const j = nx + ny * W, o = type[j];
+    if (o === 0) continue;
+    if (M_ELEC[o]) addCharge(j, 255);
+    else if (M_FLAM[o] > 0) { temp[j] += 260; wake(nx, ny); }
+  }
+  const f = flags[i];
+  if (f & F_TIP) {                                   // 只有「头」会继续向前窜并分叉，后面的留下来当亮线
+    flags[i] = f & ~F_TIP;
+    const L = life[i];
+    if (L > 3) {
+      const n = rnd() < 0.3 ? 2 : 1;
+      for (let b = 0; b < n; b++) {
+        const k = rndi(8), nx = x + DX8[k], ny = y + DY8[k];
+        if (inb(nx, ny) && type[nx + ny * W] === 0) {
+          const j = nx + ny * W;
+          put(j, SPARK, nx, ny);
+          life[j] = L - 1 - rndi(2);
+        }
+      }
+    }
+  }
+  return false;
+}
+
+const HOOK = new Array(NT).fill(null);
+HOOK[FIRE] = hookFire; HOOK[EMBER] = hookEmber; HOOK[LAVA] = hookLava; HOOK[PLANT] = hookPlant;
+HOOK[SEED] = hookSeed; HOOK[CLONE] = hookClone; HOOK[VOID] = hookVoid; HOOK[SPARK] = hookSpark;
+
+/* ---------------------------------------------------------------------
+ * 2.4 接触规则执行（规则本身在 1.3 的 RULES 表里）
+ * ------------------------------------------------------------------- */
+function applyRule(r, i, j, x, y, nx, ny) {
+  if (r.tag === 'hiss') st.hiss++;
+  if (r.tag === 'grow') {
+    clearCell(j, nx, ny);
+    if (!(flags[i] & (F_TIP | F_BURN))) { flags[i] |= F_TIP; life[i] = 3 + rndi(6); }
+    return false;
+  }
+  if (r.b2 !== r.b) {
+    morph(j, r.b2, nx, ny);
+    if (r.bT !== undefined) temp[j] = r.bT;
+  }
+  if (r.use && rnd() < r.use) { clearCell(i, x, y); return true; }
+  if (r.a2 !== r.a) {
+    morph(i, r.a2, x, y);
+    if (r.aT !== undefined) temp[i] = r.aT;
+    return true;
+  }
+  return false;
+}
+
+/* ---------------------------------------------------------------------
+ * 2.5 单格更新：相变 → 燃烧 → 寿命 → 钩子 → 接触规则 → 运动
+ * ------------------------------------------------------------------- */
+function updateCell(x, y, i) {
+  const t = type[i];
+  let f = flags[i];
+  if ((f & F_PAR) === parity) return;        // 本帧已经处理过（刚移动进来的）
+  f ^= F_PAR; flags[i] = f;
+  const T = temp[i];
+
+  // 温度相变
+  if (T > M_MELT[t]) {
+    const lat = M_LATENT[t];
+    if (lat > 0) {                           // 有潜热的（冰）：多出来的热量先攒着，攒够才融化
+      const add = ((T - M_MELT[t]) * 4) | 0;
+      temp[i] = M_MELT[t];
+      if (add > 0) {
+        const L = life[i] + add;
+        if (L >= lat) { morph(i, M_MELTINTO[t], x, y); return; }
+        life[i] = L; wake(x, y);
+      }
+    } else { morph(i, M_MELTINTO[t], x, y); return; }
+  } else if (T > M_BOIL[t]) {
+    morph(i, M_BOILINTO[t], x, y); temp[i] = T < 135 ? 160 : T + 25; st.boil++;
+    return;
+  } else if (T < M_FREEZE[t]) {
+    morph(i, M_FREEZEINTO[t], x, y);
+    return;
+  }
+
+  // 燃烧
+  if (M_FLAM[t] > 0) {
+    if (f & F_BURN) { if (burnStep(x, y, i, t, T)) return; }
+    else if (T >= M_IGN[t]) { if (rnd() < M_FLAM[t]) ignite(i, t, x, y); else wake(x, y); }
+  }
+
+  // 有寿命的（火、烟、余烬、电火花）
+  if (M_LIFE0[t] > 0) {
+    const L = life[i];
+    if (L <= 1) {
+      if (rnd() < M_DECAYP[t]) { morph(i, M_DECAY[t], x, y); if (temp[i] > 200) temp[i] = 200; }
+      else clearCell(i, x, y);
+      return;
+    }
+    life[i] = L - 1;
+    wake(x, y);
+  }
+
+  const hk = HOOK[t];
+  if (hk !== null && hk(x, y, i)) return;
+
+  if (HASRX[t]) {
+    const base = t * NT;
+    for (let k = 0; k < 4; k++) {
+      const nx = x + DX4[k], ny = y + DY4[k];
+      if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+      const j = nx + ny * W, o = type[j];
+      if (o === 0) continue;
+      const r = RX[base + o];
+      if (r === null) continue;
+      wake(x, y);                            // 只要身边有能反应的对象，这一块就保持清醒
+      if ((r.maxT === undefined || temp[i] < r.maxT) && rnd() < r.p) {
+        if (applyRule(r, i, j, x, y, nx, ny)) return;
+      }
+    }
+  }
+
+  switch (M_STATE[t]) {
+    case S_POWDER: movePowder(x, y, i, t); break;
+    case S_LIQUID: moveLiquid(x, y, i, t); break;
+    case S_GAS: moveGas(x, y, i, t); break;
+  }
+}
+
+/* ---------------------------------------------------------------------
+ * 2.6 爆炸：从爆心放出一圈射线，分 3 帧由内向外推进。
+ *     每条射线带能量，随距离衰减；碰到硬度低于能量的材料就炸碎并继续，
+ *     碰到更硬的就被挡住 → 石头和金属后面是安全的，弹坑边缘天然不规则。
+ * ------------------------------------------------------------------- */
+const EX_MAX = 48, EX_RAYS = 200;
+const exA = new Uint8Array(EX_MAX), exX = new Float32Array(EX_MAX), exY = new Float32Array(EX_MAX),
+      exR = new Float32Array(EX_MAX), exP = new Float32Array(EX_MAX), exCur = new Float32Array(EX_MAX),
+      exN = new Uint16Array(EX_MAX), exPhase = new Float32Array(EX_MAX),
+      exRays = new Float32Array(EX_MAX * EX_RAYS);
+let exActive = 0;
+
+function exClear() { exA.fill(0); exActive = 0; }
+
+function startExplosion(x, y, R, P) {
+  let k = -1;
+  for (let q = 0; q < EX_MAX; q++) if (!exA[q]) { k = q; break; }
+  if (k < 0) {                               // 池满：把进度最靠前的那个立刻算完，腾出位置
+    let bv = -1;
+    for (let q = 0; q < EX_MAX; q++) { const v = exCur[q] / exR[q]; if (v > bv) { bv = v; k = q; } }
+    while (exA[k]) stepExplosion(k);
+  }
+  exA[k] = 1; exActive++;
+  exX[k] = x; exY[k] = y; exR[k] = R; exP[k] = P; exCur[k] = 0;
+  const n = Math.min(EX_RAYS, Math.ceil(6.2832 * R * 1.5));
+  exN[k] = n; exPhase[k] = rnd() * 6.2832;
+  for (let r = 0; r < n; r++) exRays[k * EX_RAYS + r] = P * (0.65 + rnd() * 0.7);
+  st.boom++;
+  if (onBoom) onBoom(x, y, R, P);
+}
+
+function stepExplosion(k) {
+  const cx = exX[k], cy = exY[k], R = exR[k], P = exP[k], n = exN[k], base = k * EX_RAYS, ph = exPhase[k];
+  const r0 = exCur[k], r1 = Math.min(R, r0 + Math.max(1.5, R / 3));
+  const fall = P / R * 0.6;
+  for (let r = 0; r < n; r++) {
+    let e = exRays[base + r];
+    if (e <= 0) continue;
+    const a = ph + r / n * 6.2832, dx = Math.cos(a), dy = Math.sin(a);
+    let lastJ = -1;
+    for (let d = r0 < 0.8 ? 0.8 : r0; d < r1; d += 0.6) {
+      const px = Math.round(cx + dx * d), py = Math.round(cy + dy * d);
+      if (px < 0 || px >= W || py < 0 || py >= H) { e = 0; break; }
+      e -= fall;
+      if (e <= 0) break;
+      const j = px + py * W;
+      if (j === lastJ) continue;
+      lastJ = j;
+      const o = type[j];
+      const Tn = temp[j] + e * 140;                  // 瞬间升温
+      temp[j] = Tn > 1000 ? (temp[j] > 1000 ? temp[j] : 1000) : Tn;   // 封顶 1000°C：能点燃东西，但不至于把石墙熔穿
+      if (o === 0) {
+        const q = rnd();
+        if (q < 0.05 * e) put(j, SMOKE, px, py);
+        else if (q < 0.05 * e + 0.012) {
+          const sp = 1 + e * 4;
+          spawnFree(EMBER, px + 0.5, py + 0.5, dx * sp + rnd() - 0.5, dy * sp + rnd() - 0.5, 650, rndi(256));
+        } else wake(px, py);
+        continue;
+      }
+      if (M_BLAST[o] > 0) {                          // 连锁：错开引爆时间，不在同一帧全炸
+        const fz = 3 + ((d * 0.4) | 0) + rndi(9);
+        if (!(flags[j] & F_BURN)) { flags[j] |= F_BURN; life[j] = fz; }
+        else if (life[j] > fz + 6) life[j] = fz;
+        e -= 0.03; wake(px, py);
+        continue;
+      }
+      const h = M_HARD[o];
+      if (e > h) {                                   // 炸碎
+        const so = M_STATE[o], q = rnd();
+        if (so < S_GAS && q < 0.6) {                 // 变成飞行粒子抛出去
+          const sp = (1.2 + e * 4.5) * (0.6 + rnd() * 0.8);
+          spawnFree(o, px + 0.5, py + 0.5, dx * sp - gx * 1.2 * e + rnd() - 0.5, dy * sp - gy * 1.2 * e + rnd() - 0.5,
+                    temp[j] > 400 ? 400 : temp[j], seed[j]);
+          clearCell(j, px, py);
+        } else if (so < S_GAS && q < 0.75) {
+          put(j, q < 0.68 ? FIRE : SMOKE, px, py);
+        } else clearCell(j, px, py);
+        e -= h * 0.6 + 0.01;
+      } else {                                       // 挡住了：熏黑
+        if (h <= 1) flags[j] |= F_SCORCH;
+        wake(px, py);
+        e = 0;
+        break;
+      }
+    }
+    exRays[base + r] = e;
+  }
+  exCur[k] = r1;
+  if (r1 >= R) { exA[k] = 0; exActive--; }
+}
+
+function stepExplosions() {
+  if (exActive === 0) return;
+  for (let k = 0; k < EX_MAX; k++) if (exA[k]) stepExplosion(k);
+}
+
+/* ---------------------------------------------------------------------
+ * 2.7 飞行粒子：对象池（上限 4000，满了覆盖最旧的），不占网格，落地后写回
+ * ------------------------------------------------------------------- */
+const FP_MAX = 4000;
+const fpAlive = new Uint8Array(FP_MAX), fpType = new Uint8Array(FP_MAX), fpSeed = new Uint8Array(FP_MAX),
+      fpAge = new Uint16Array(FP_MAX), fpTemp = new Float32Array(FP_MAX),
+      fpX = new Float32Array(FP_MAX), fpY = new Float32Array(FP_MAX),
+      fpVX = new Float32Array(FP_MAX), fpVY = new Float32Array(FP_MAX),
+      fpPX = new Float32Array(FP_MAX), fpPY = new Float32Array(FP_MAX),     // 上一帧位置（拖尾）
+      fpQX = new Float32Array(FP_MAX), fpQY = new Float32Array(FP_MAX);     // 上上帧位置
+let fpHead = 0, fpCount = 0;
+
+function fpClear() { fpAlive.fill(0); fpCount = 0; fpHead = 0; }
+
+function spawnFree(t, x, y, vx, vy, T, sd) {
+  const k = fpHead;
+  fpHead = (k + 1) % FP_MAX;
+  if (!fpAlive[k]) fpCount++;
+  fpAlive[k] = 1; fpType[k] = t; fpSeed[k] = sd; fpAge[k] = 0; fpTemp[k] = T;
+  fpX[k] = fpPX[k] = fpQX[k] = x; fpY[k] = fpPY[k] = fpQY[k] = y;
+  fpVX[k] = vx; fpVY[k] = vy;
+}
+
+function fpSolidAt(cx, cy) {
+  if (cx < 0 || cx >= W || cy < 0 || cy >= H) return true;
+  const o = type[cx + cy * W];
+  return o !== 0 && M_STATE[o] < S_GAS;
+}
+
+function landFree(k, x, y) {
+  fpAlive[k] = 0; fpCount--;
+  let cx = Math.floor(x), cy = Math.floor(y);
+  cx = cx < 0 ? 0 : cx >= W ? W - 1 : cx; cy = cy < 0 ? 0 : cy >= H ? H - 1 : cy;
+  if (fpSolidAt(cx, cy)) {
+    let found = false;
+    for (let q = 0; q < 8; q++) {
+      const nx = cx + DX8[q], ny = cy + DY8[q];
+      if (!fpSolidAt(nx, ny)) { cx = nx; cy = ny; found = true; break; }
+    }
+    if (!found) return;                      // 没地方放：丢弃
+  }
+  const j = cx + cy * W, t = fpType[k];
+  type[j] = t; seed[j] = fpSeed[k]; temp[j] = fpTemp[k]; life[j] = initLife(t);
+  flags[j] = parity | (t === SAND || t === SOIL || t === STONE || t === WOOD ? F_SCORCH : 0); charge[j] = 0;
+  wake(cx, cy);
+}
+
+function stepFree() {
+  if (fpCount === 0) return;
+  for (let k = 0; k < FP_MAX; k++) {
+    if (!fpAlive[k]) continue;
+    let x = fpX[k], y = fpY[k];
+    let vx = (fpVX[k] + gx * 0.22) * 0.992, vy = (fpVY[k] + gy * 0.22) * 0.992;
+    fpQX[k] = fpPX[k]; fpQY[k] = fpPY[k]; fpPX[k] = x; fpPY[k] = y;
+    const age = ++fpAge[k];
+    if (fpType[k] === EMBER && age > 60 + (fpSeed[k] & 63)) { fpAlive[k] = 0; fpCount--; continue; }
+    const m = Math.max(vx < 0 ? -vx : vx, vy < 0 ? -vy : vy);
+    const n = m < 1 ? 1 : Math.ceil(m), sx = vx / n, sy = vy / n;
+    let hit = false;
+    for (let s = 0; s < n; s++) {
+      const nx = x + sx, ny = y + sy;
+      if (fpSolidAt(Math.floor(nx), Math.floor(ny))) { hit = true; break; }
+      x = nx; y = ny;
+    }
+    if (hit) {
+      // 脚下有支撑才算落地；撞墙或撞天花板就弹回来接着飞，避免碎块挂在半空
+      if (age > 600 || fpSolidAt(Math.floor(x) + gx, Math.floor(y) + gy)) { landFree(k, x, y); continue; }
+      vx = -vx * 0.3; vy = -vy * 0.3;
+    } else if (age > 900) { landFree(k, x, y); continue; }
+    fpX[k] = x; fpY[k] = y; fpVX[k] = vx; fpVY[k] = vy;
+  }
+}
+
+/* ---------------------------------------------------------------------
+ * 2.8 电：带电格子列表逐帧向相邻导体传导（金属几乎无损，水衰减快）
+ * ------------------------------------------------------------------- */
+let elecCur = null, elecNext = null, elecCount = 0;
+
+function addCharge(j, e) {
+  if (charge[j] !== 0) return;
+  if (elecCur === null || elecCur.length !== N) { elecCur = new Int32Array(N); elecNext = new Int32Array(N); elecCount = 0; }
+  charge[j] = 6; chargeE[j] = e;
+  elecCur[elecCount++] = j;
+}
+
+function stepElectric() {
+  const cnt = elecCount;
+  if (cnt === 0) return;
+  let nn = 0;
+  const cur = elecCur, next = elecNext;
+  for (let q = 0; q < cnt; q++) {
+    const i = cur[q];
+    let c = charge[i];
+    if (c === 0) continue;
+    const t = type[i];
+    if (!M_ELEC[t]) { charge[i] = 0; continue; }
+    const x = i % W, y = (i / W) | 0;
+    wake(x, y);
+    if (c === 6) {                           // 刚带上电：这一帧向四周传
+      st.elec++;
+      const e = chargeE[i], loss = t === METAL ? 1 : 6;
+      for (let k = 0; k < 4; k++) {
+        const nx = x + DX4[k], ny = y + DY4[k];
+        if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+        const j = nx + ny * W, o = type[j];
+        if (o === 0) continue;
+        if (M_ELEC[o]) {
+          if (e > loss && charge[j] === 0 && (o === METAL || rnd() < 0.8)) {
+            charge[j] = 6; chargeE[j] = e - loss; next[nn++] = j;
+          }
+        } else if (M_FLAM[o] > 0) { temp[j] += 300; wake(nx, ny); }
+      }
+    }
+    c--;
+    charge[i] = c;
+    if (c > 0) next[nn++] = i;               // 余下几帧是不应期，防止电往回传
+  }
+  elecCur = next; elecNext = cur; elecCount = nn;
+}
+
+/* ---------------------------------------------------------------------
+ * 2.9 温度场：只在清醒的块里做成对热交换（守恒、原地、不需要第二张缓冲），
+ *     再向环境温度缓慢回落。热流够大时让这一块保持清醒。
+ * ------------------------------------------------------------------- */
+function stepThermal() {
+  const NTn = NT, K = KTAB, IHC = M_IHC, RLX = M_RELAX;
+  for (let cy = 0; cy < CHN; cy++) {
+    for (let cx = 0; cx < CW; cx++) {
+      const c = cx + cy * CW;
+      if (chunkTTL[c] === 0) continue;
+      const x0 = cx << 5, x1 = Math.min(W, x0 + CHUNK), y0 = cy << 5, y1 = Math.min(H, y0 + CHUNK);
+      let active = false, right = false, down = false;
+      for (let y = y0; y < y1; y++) {
+        const hasDown = y + 1 < H;
+        for (let x = x0, i = y * W + x0; x < x1; x++, i++) {
+          const a = type[i];
+          let Ti = temp[i];
+          if (x + 1 < W) {
+            const d = temp[i + 1] - Ti;
+            if (d > 0.5 || d < -0.5) {
+              const b = type[i + 1], fl = d * K[a * NTn + b];
+              Ti += fl * IHC[a]; temp[i + 1] -= fl * IHC[b];
+              if (fl > 0.3 || fl < -0.3) { active = true; if (x + 1 === x1) right = true; }
+            }
+          }
+          if (hasDown) {
+            const j = i + W, d = temp[j] - Ti;
+            if (d > 0.5 || d < -0.5) {
+              const b = type[j], fl = d * K[a * NTn + b];
+              Ti += fl * IHC[a]; temp[j] -= fl * IHC[b];
+              if (fl > 0.3 || fl < -0.3) { active = true; if (y + 1 === y1) down = true; }
+            }
+          }
+          const r = RLX[a];
+          if (r > 0) {
+            const d = (AMBIENT - Ti) * r;
+            Ti += d;
+            if (d > 0.08 || d < -0.08) active = true;
+          }
+          temp[i] = Ti;
+        }
+      }
+      if (active) chunkTTL[c] = WAKE_TTL;
+      if (right && cx + 1 < CW) chunkTTL[c + 1] = WAKE_TTL;
+      if (down && cy + 1 < CHN) chunkTTL[c + CW] = WAKE_TTL;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------
+ * 2.10 主步进：60Hz 固定步长。扫描顺序从「重力下游」开始，逐行（或逐列）
+ *      跳过休眠的块，每行随机左右方向。
+ * ------------------------------------------------------------------- */
+const perf = { cells: 0, thermal: 0, misc: 0, pack: 0, draw: 0, post: 0, gpu: 0, steps: 0, activeChunks: 0 };
+let simStepsTotal = 0;
+
+function sweepCells() {
+  if (gy !== 0) {
+    const start = gy > 0 ? H - 1 : 0, end = gy > 0 ? -1 : H, inc = gy > 0 ? -1 : 1;
+    for (let y = start; y !== end; y += inc) {
+      const crow = (y >> 5) * CW, row = y * W;
+      if (rnd() < 0.5) {
+        for (let cx = 0; cx < CW; cx++) {
+          if (chunkTTL[crow + cx] === 0) continue;
+          const x0 = cx << 5, x1 = Math.min(W, x0 + CHUNK);
+          for (let x = x0; x < x1; x++) if (type[row + x] !== 0) updateCell(x, y, row + x);
+        }
+      } else {
+        for (let cx = CW - 1; cx >= 0; cx--) {
+          if (chunkTTL[crow + cx] === 0) continue;
+          const x0 = cx << 5, x1 = Math.min(W, x0 + CHUNK);
+          for (let x = x1 - 1; x >= x0; x--) if (type[row + x] !== 0) updateCell(x, y, row + x);
+        }
+      }
+    }
+  } else {
+    const start = gx > 0 ? W - 1 : 0, end = gx > 0 ? -1 : W, inc = gx > 0 ? -1 : 1;
+    for (let x = start; x !== end; x += inc) {
+      const ccol = x >> 5;
+      if (rnd() < 0.5) {
+        for (let cy = 0; cy < CHN; cy++) {
+          if (chunkTTL[ccol + cy * CW] === 0) continue;
+          const y0 = cy << 5, y1 = Math.min(H, y0 + CHUNK);
+          for (let y = y0; y < y1; y++) if (type[x + y * W] !== 0) updateCell(x, y, x + y * W);
+        }
+      } else {
+        for (let cy = CHN - 1; cy >= 0; cy--) {
+          if (chunkTTL[ccol + cy * CW] === 0) continue;
+          const y0 = cy << 5, y1 = Math.min(H, y0 + CHUNK);
+          for (let y = y1 - 1; y >= y0; y--) if (type[x + y * W] !== 0) updateCell(x, y, x + y * W);
+        }
+      }
+    }
+  }
+}
+
+function simStep() {
+  parity ^= 1; tick++; simStepsTotal++;
+  const t0 = performance.now();
+  let act = 0;
+  for (let c = 0, n = chunkTTL.length; c < n; c++) {
+    const v = chunkTTL[c];
+    if (v > 0) { chunkTTL[c] = v - 1; if (v > 1) act++; }
+  }
+  perf.activeChunks = act;
+  stepExplosions();
+  stepElectric();
+  const t1 = performance.now();
+  sweepCells();
+  const t2 = performance.now();
+  stepThermal();
+  const t3 = performance.now();
+  stepFree();
+  const t4 = performance.now();
+  perf.misc += (t1 - t0) + (t4 - t3); perf.cells += t2 - t1; perf.thermal += t3 - t2; perf.steps++;
+}
+
+/* ---------------------------------------------------------------------
+ * 2.11 绘制到网格（笔刷、预设、测试共用）
+ * ------------------------------------------------------------------- */
+function paintCell(x, y, t, replace) {
+  if (x < 0 || x >= W || y < 0 || y >= H) return;
+  const i = x + y * W;
+  if (t === TOOL_ERASE) { if (type[i] !== 0) clearCell(i, x, y); return; }
+  if (t === TOOL_HEAT) { temp[i] = Math.min(2500, temp[i] + 60); wake(x, y); return; }
+  if (t === TOOL_COOL) { temp[i] = Math.max(-200, temp[i] - 60); wake(x, y); return; }
+  const o = type[i];
+  if (o === t) return;
+  if (o !== 0 && !replace) return;
+  put(i, t, x, y);
+}
+
+function fillRect(t, x0, y0, x1, y1) {
+  x0 = Math.max(0, x0 | 0); y0 = Math.max(0, y0 | 0); x1 = Math.min(W - 1, x1 | 0); y1 = Math.min(H - 1, y1 | 0);
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const i = x + y * W;
+    if (t === EMPTY) clearCell(i, x, y); else put(i, t, x, y);
+  }
+}
+
+function fillCircle(t, cx, cy, r, chance) {
+  const r2 = r * r;
+  for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++) {
+    if (!inb(x, y)) continue;
+    const dx = x - cx, dy = y - cy;
+    if (dx * dx + dy * dy > r2) continue;
+    if (chance !== undefined && rnd() > chance) continue;
+    if (t === EMPTY) clearCell(x + y * W, x, y); else put(x + y * W, t, x, y);
+  }
+}
+
+function countType(t, x0, y0, x1, y1) {
+  if (x0 === undefined) { x0 = 0; y0 = 0; x1 = W - 1; y1 = H - 1; }
+  let n = 0;
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (type[x + y * W] === t) n++;
+  return n;
+}
+
+/* =====================================================================
+ * 2.12 场景编解码（撤销快照、存档、导入导出共用；RLE 压缩）
+ * ===================================================================== */
+function rleEncode(src) {
+  const n = src.length, out = new Uint8Array(n * 2 + 2);
+  let p = 0, i = 0;
+  while (i < n) {
+    const v = src[i];
+    let run = 1;
+    while (run < 255 && i + run < n && src[i + run] === v) run++;
+    out[p++] = run; out[p++] = v;
+    i += run;
+  }
+  return out.slice(0, p);
+}
+
+function rleDecode(buf, n) {
+  const out = new Uint8Array(n);
+  let p = 0;
+  for (let q = 0; q + 1 < buf.length && p < n; q += 2) {
+    const run = buf[q];
+    out.fill(buf[q + 1], p, Math.min(n, p + run));
+    p += run;
+  }
+  return out;
+}
+
+// 快照：类型整张 RLE；其余属性只存非空格子，按字节平面分别 RLE
+function captureScene() {
+  let cnt = 0;
+  for (let i = 0; i < N; i++) if (type[i] !== 0) cnt++;
+  const sd = new Uint8Array(cnt), tl = new Uint8Array(cnt), th = new Uint8Array(cnt),
+        ll = new Uint8Array(cnt), lh = new Uint8Array(cnt), fl = new Uint8Array(cnt);
+  for (let i = 0, k = 0; i < N; i++) {
+    if (type[i] === 0) continue;
+    let T = Math.round(temp[i]);
+    T = (T < -32768 ? -32768 : T > 32767 ? 32767 : T) & 0xffff;
+    sd[k] = seed[i]; tl[k] = T & 255; th[k] = T >> 8;
+    ll[k] = life[i] & 255; lh[k] = life[i] >> 8; fl[k] = flags[i] & F_SAVE;
+    k++;
+  }
+  return { w: W, h: H, g: gravity, n: cnt, t: rleEncode(type), s: sd,
+           tl: rleEncode(tl), th: rleEncode(th), ll: rleEncode(ll), lh: rleEncode(lh), f: rleEncode(fl) };
+}
+
+// 还原到当前网格；尺寸不同的话按「底边居中」对齐，超出部分裁掉
+function restoreScene(s) {
+  const src = rleDecode(s.t, s.w * s.h), n = s.n;
+  const tl = rleDecode(s.tl, n), th = rleDecode(s.th, n), ll = rleDecode(s.ll, n), lh = rleDecode(s.lh, n), fl = rleDecode(s.f, n);
+  clearGrid();
+  setGravity(s.g || 'down');
+  const ox = ((W - s.w) / 2) | 0, oy = H - s.h;
+  let k = 0;
+  for (let y = 0; y < s.h; y++) {
+    for (let x = 0; x < s.w; x++) {
+      const t = src[x + y * s.w];
+      if (t === 0) continue;
+      const kk = k++;
+      const X = x + ox, Y = y + oy;
+      if (X < 0 || X >= W || Y < 0 || Y >= H || t >= NT) continue;
+      const i = X + Y * W;
+      let T = tl[kk] | (th[kk] << 8);
+      if (T > 32767) T -= 65536;
+      type[i] = t; seed[i] = s.s[kk]; temp[i] = T; life[i] = ll[kk] | (lh[kk] << 8); flags[i] = fl[kk] | (parity ^ 1);
+    }
+  }
+  wakeAll();
+}
+
+function bytesToB64(u8) {
+  let s = '';
+  for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+function b64ToBytes(b) {
+  const s = atob(b), u8 = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i);
+  return u8;
+}
+
+const SCENE_STREAMS = ['t', 's', 'tl', 'th', 'll', 'lh', 'f'];
+
+function sceneToJSON(s) {
+  const o = { app: 'particle-sandbox', v: 3, w: s.w, h: s.h, g: s.g, n: s.n };
+  for (const k of SCENE_STREAMS) o[k] = bytesToB64(s[k]);
+  return JSON.stringify(o);
+}
+
+function sceneFromJSON(str) {
+  const o = JSON.parse(str);
+  if (!o || o.app !== 'particle-sandbox' || !(o.w > 0) || !(o.h > 0)) throw new Error('不是粒子沙盘的存档文件');
+  const s = { w: o.w | 0, h: o.h | 0, g: o.g, n: o.n | 0 };
+  for (const k of SCENE_STREAMS) s[k] = b64ToBytes(o[k]);
+  return s;
+}
+
+/* =====================================================================
+ * 3. 渲染
+ *    WebGL2 管线：状态纹理 → 场景着色（双输出：底色 + 自发光）
+ *                → 辉光时间累积（拖尾）→ 5 级降采样/升采样（bloom + 大范围光照）
+ *                → 光照合成 → 后处理（震动/冲击波/色差/闪白/色调映射/暗角/颗粒）
+ *    不支持 WebGL2（或加 ?nogl=1）时退回 Canvas2D：同一套调色板，逐格上色。
+ * ===================================================================== */
+const settings = { bloom: true, light: true, distort: true, shake: true, aberration: true,
+                   vignette: true, grain: true, tonemap: true, gridLines: false, hd: true };
+const VIEW_NAMES = ['正常', '温度', '密度', '活跃块'];
+let viewMode = 0;
+let canvas = null, gl = null, ctx2d = null, renderMode = 'none';
+let particleCount = 0;
+let pixelRatio = 1;
+
+const fx = { flash: 0, shake: 0, ca: 0, boomX: 0.5, boomY: 0.5,
+             shocks: [0, 1, 2, 3].map(() => ({ x: 0, y: 0, age: 0, power: 0 })), next: 0 };
+
+function fxBoom(x, y, R, P) {
+  const s = P * R / 15;
+  if (s > 0.3) {
+    fx.flash = Math.max(fx.flash, Math.min(0.85, 0.25 + 0.55 * s));
+    fx.ca = Math.max(fx.ca, 0.008 * s);
+    const k = fx.shocks[fx.next]; fx.next = (fx.next + 1) & 3;
+    k.x = x / W; k.y = y / H; k.age = 0; k.power = s;
+  } else fx.flash = Math.max(fx.flash, 0.04);
+  fx.shake = Math.min(14, fx.shake + 9 * s);
+  fx.boomX = x / W; fx.boomY = y / H;
+}
+
+function encTemp(T) {
+  if (T <= 0) { const v = (T + 60) * (16 / 60); return v < 0 ? 0 : v; }
+  return 16 + Math.sqrt((T > 2500 ? 2500 : T) / 2500) * 239;
+}
+
+/* ---------------------------------------------------------------------
+ * 3.1 着色器
+ * ------------------------------------------------------------------- */
+const VS_QUAD = `#version 300 es
+in vec2 aPos; out vec2 vUv;
+void main(){ vUv = aPos*0.5+0.5; gl_Position = vec4(aPos,0.0,1.0); }`;
+
+function matDefines() {
+  let s = '';
+  for (const m of MATERIALS) s += '#define T_' + m.key + ' ' + m.id + '.0\n';
+  return s;
+}
+
+const FS_SCENE = `#version 300 es
+precision highp float; precision highp int;
+${matDefines()}
+uniform sampler2D uState, uPal, uHeat, uChunk;
+uniform vec2 uGrid, uGrav;
+uniform float uTime, uDistort, uGridLines;
+uniform int uView;
+in vec2 vUv;
+layout(location=0) out vec4 oCol;
+layout(location=1) out vec4 oEmis;
+
+float h21(vec2 p){ p = fract(p*vec2(123.34,456.21)); p += dot(p,p+45.32); return fract(p.x*p.y); }
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+  return mix(mix(h21(i),h21(i+vec2(1,0)),f.x), mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x), f.y);
+}
+vec4 cell(ivec2 c){
+  if(c.x<0||c.y<0||c.x>=int(uGrid.x)||c.y>=int(uGrid.y)) return vec4(0.0,0.0,37.0,0.0);
+  return floor(texelFetch(uState,c,0)*255.0+0.5);
+}
+vec4 pal(float t,int k){ return texelFetch(uPal, ivec2(k,int(t)), 0); }
+float kindOf(float t){ return floor(pal(t,6).r*255.0+0.5); }
+float decT(float v){ return v<16.0 ? v*3.75-60.0 : pow((v-16.0)/239.0,2.0)*2500.0; }
+vec3 blackbody(float T){
+  float x = clamp((T-450.0)/1350.0,0.0,1.0);
+  return vec3(smoothstep(0.0,0.3,x), smoothstep(0.18,0.8,x)*0.8, smoothstep(0.55,1.0,x)*0.65)*(0.35+1.6*x);
+}
+vec3 heatRamp(float T){
+  if(T<20.0) return mix(vec3(0.15,0.5,1.0), vec3(0.03,0.03,0.07), clamp((T+40.0)/60.0,0.0,1.0));
+  float x = sqrt(clamp((T-20.0)/1700.0,0.0,1.0));
+  vec3 c = mix(vec3(0.03,0.03,0.07), vec3(0.55,0.05,0.35), smoothstep(0.0,0.25,x));
+  c = mix(c, vec3(1.0,0.25,0.05), smoothstep(0.2,0.5,x));
+  c = mix(c, vec3(1.0,0.85,0.2), smoothstep(0.45,0.8,x));
+  return mix(c, vec3(1.0), smoothstep(0.8,1.0,x));
+}
+
+vec3 background(vec2 uv){
+  vec3 col = mix(vec3(0.052,0.058,0.100), vec3(0.016,0.016,0.030), smoothstep(0.0,1.0,uv.y));
+  col += vec3(0.030,0.020,0.055)*(1.0-smoothstep(0.0,0.9,length(uv-vec2(0.5,0.08))));
+  float asp = uGrid.x/uGrid.y;
+  for(int l=0;l<2;l++){                                  // 缓慢漂浮的微尘
+    float fl = float(l);
+    vec2 p = vec2(uv.x*asp,uv.y)*mix(13.0,25.0,fl) + vec2(uTime*(0.035+0.02*fl), -uTime*0.02*(fl+1.0)) + fl*17.3;
+    vec2 id = floor(p), f = fract(p)-0.5;
+    float r = h21(id);
+    vec2 o = (vec2(h21(id+3.1),h21(id+7.7))-0.5)*0.7;
+    float tw = 0.5+0.5*sin(uTime*(0.5+r)+r*40.0);
+    col += vec3(0.55,0.62,0.85)*smoothstep(0.07,0.0,length(f-o))*step(0.6,r)*tw*0.22;
+  }
+  if(uGridLines>0.5){
+    vec2 gg = uv*uGrid/8.0;
+    vec2 dl = abs(fract(gg-0.5)-0.5);
+    col += vec3(0.5,0.6,1.0)*step(min(dl.x,dl.y),1.0/48.0)*0.05;
+  }
+  return col;
+}
+
+void main(){
+  vec2 uv = vec2(vUv.x, 1.0-vUv.y);
+  vec2 g = uv*uGrid;
+  if(uView==0 && uDistort>0.0){
+    // 热扭曲：用上一帧模糊后的自发光当热量估计，往重力方向取样，热浪就出现在热源上方
+    vec3 hs = texture(uHeat, vUv + vec2(uGrav.x,-uGrav.y)*5.0/uGrid).rgb;
+    float heat = smoothstep(0.03,0.45,dot(hs,vec3(0.45,0.4,0.15)));
+    vec2 np = g*0.33 + uGrav*uTime*4.0;
+    g += (vec2(vnoise(np),vnoise(np+31.7))-0.5)*heat*2.4*uDistort;
+    // 水下折射：隔着液体看过去的东西轻微晃动
+    vec4 s0 = cell(ivec2(floor(uv*uGrid)));
+    if(kindOf(s0.r)==3.0 && s0.r!=T_LAVA)
+      g += vec2(sin(uv.y*uGrid.y*0.9+uTime*1.7), cos(uv.x*uGrid.x*0.8+uTime*1.3))*0.2*uDistort;
+  }
+  ivec2 c = ivec2(floor(g));
+  vec2 f = fract(g);
+  vec4 s = cell(c);
+  float t = s.r, sd = s.g, T = decT(s.b);
+  int aux = int(s.a);
+  float kind = kindOf(t);
+  vec3 back = background(uv);
+  vec3 col = back, em = vec3(0.0);
+  float ncol = max(1.0, floor(pal(t,7).r*255.0+0.5));
+
+  if(kind==1.0 || kind==2.0){                             // ---------- 固体 / 粉末 ----------
+    float idx = mod(sd, ncol);
+    if(t==T_FLOWER) idx = min(floor(sd/51.0), ncol-1.0);
+    vec3 base = pal(t,int(idx)).rgb;
+    base *= 1.0 + (fract(sd*0.6180339)-0.5)*0.14;
+    if(t==T_WOOD) base *= 0.86+0.26*vnoise(vec2(g.x*1.3,g.y*0.22)+dot(uGrav,uGrav)*0.0);
+    else if(t==T_STONE) base *= 0.84+0.3*vnoise(g*0.42);
+    else if(t==T_METAL){
+      base *= 0.9+0.22*vnoise(vec2(g.x*0.15+g.y*0.6,g.y*0.12));
+      base += 0.10*smoothstep(0.6,1.0,sin((g.x+g.y)*0.35));
+    }
+    else if(t==T_TNT){
+      base = mix(vec3(0.88,0.19,0.19), vec3(0.95,0.91,0.9), step(0.66,fract(float(c.y)/3.0+0.01)));
+      base *= 0.9+0.1*step(0.5,fract(float(c.x)/4.0));
+    }
+    else if(t==T_ICE){
+      base += 0.16*smoothstep(0.7,1.0,vnoise(g*0.5));
+      base += step(0.997,h21(vec2(c)+floor(uTime*4.0)))*0.6;
+      base = mix(back, base, 0.88);
+    }
+    else if(t==T_SALT) base += step(0.99,h21(vec2(c)+floor(uTime*3.0)))*0.3;
+    else if(t==T_CLONE){
+      float p = 0.5+0.5*sin(uTime*4.0+float(c.x+c.y)*0.7);
+      base *= 0.8+0.4*p; em = base*0.3*p;
+    }
+    else if(t==T_VOID){
+      bool rim = cell(c+ivec2(1,0)).r!=t || cell(c-ivec2(1,0)).r!=t || cell(c+ivec2(0,1)).r!=t || cell(c-ivec2(0,1)).r!=t;
+      float p = 0.6+0.4*sin(uTime*3.0+float(c.x-c.y)*0.9);
+      base = rim ? vec3(0.22,0.04,0.42)*p : vec3(0.008,0.0,0.016);
+      if(rim) em = vec3(0.4,0.1,0.85)*0.7*p;
+    }
+    col = base;
+    if(t==T_GLASS){                                       // 玻璃：半透明 + 斜向高光 + 边缘亮线
+      float streak = smoothstep(0.84,1.0,sin((g.x-g.y)*0.55+sd*0.02));
+      col = mix(back*1.15, base, 0.3) + vec3(0.9,0.97,1.0)*streak*0.24;
+      float e = 0.0;
+      if(cell(c+ivec2(1,0)).r!=t) e = max(e, smoothstep(0.62,1.0,f.x));
+      if(cell(c-ivec2(1,0)).r!=t) e = max(e, smoothstep(0.38,0.0,f.x));
+      if(cell(c+ivec2(0,1)).r!=t) e = max(e, smoothstep(0.62,1.0,f.y));
+      if(cell(c-ivec2(0,1)).r!=t) e = max(e, smoothstep(0.38,0.0,f.y));
+      col += vec3(0.75,0.9,1.0)*e*0.3;
+    }
+    if((aux&2)!=0) col *= 0.38;                           // 焦黑
+    if((aux&1)!=0){                                       // 正在燃烧 / 引信已点
+      if(t==T_TNT){
+        float b = step(0.5,fract(uTime*6.0));
+        col = mix(col, vec3(1.0,0.9,0.7), b*0.7); em += vec3(1.0,0.5,0.2)*b*0.7;
+      } else {
+        float fl = 0.5+0.5*vnoise(g*0.9+uTime*vec2(1.3,-2.1));
+        col = mix(col, vec3(0.28,0.07,0.02), 0.5);
+        em += vec3(1.0,0.36,0.07)*fl*(t==T_CHARCOAL ? 1.1 : 0.85);
+      }
+    }
+    if(T>450.0) em += blackbody(T)*(t==T_METAL ? 1.3 : 0.8);   // 黑体辐射
+  }
+  else if(kind==3.0){                                     // ---------- 液体 ----------
+    ivec2 up = -ivec2(uGrav);
+    float depth = 0.0;
+    for(int k=1;k<=6;k++){ if(kindOf(cell(c+up*k).r)==3.0) depth += 1.0; else break; }
+    float dk = depth/6.0;
+    float edge = dot(f-0.5,-uGrav)+0.5;
+    vec3 base = pal(t,int(mod(sd,ncol))).rgb;
+    if(t==T_LAVA){
+      float nz = vnoise(g*0.35+vec2(uTime*0.25,-uTime*0.15));
+      float hot = clamp((T-800.0)/650.0,0.0,1.0);
+      vec3 glow = mix(vec3(1.0,0.27,0.0), vec3(1.0,0.78,0.22), nz*nz);
+      col = mix(vec3(0.20,0.035,0.01), glow, clamp(hot*0.75+nz*0.55,0.0,1.0));
+      em = col*(0.55+0.95*hot);
+    } else if(t==T_ACID){
+      float p = 0.5+0.5*sin(uTime*2.5+g.x*0.3+g.y*0.3);
+      col = mix(vec3(0.63,0.31,1.0), vec3(0.45,0.95,0.3), p*0.7)*(1.0-0.35*dk);
+      em = vec3(0.3,0.9,0.25)*(0.07+0.11*p);
+      if(depth==0.0) col += vec3(0.6,1.0,0.6)*smoothstep(0.55,1.0,edge)*0.3;
+    } else {
+      // 深度渐变 + 水面亮边 + 缓慢波纹；alpha<1 让背景透出来一点
+      vec3 wc = mix(base*1.3+0.05, base*0.62, dk);
+      wc += 0.07*(vnoise(g*0.22+vec2(uTime*0.35,uTime*0.2))-0.5);
+      col = mix(back, wc, pal(t,6).b);
+      if(depth==0.0){
+        float rip = 0.5+0.5*sin(dot(g,abs(uGrav.yx))*0.7+uTime*2.2+sd*0.02);
+        col += vec3(0.55,0.72,0.92)*smoothstep(0.5,1.0,edge)*(0.3+0.45*rip)*(t==T_OIL ? 0.35 : 1.0);
+      }
+      if(t==T_OIL && depth<2.0) col += 0.10*(0.5+0.5*cos(vec3(0.0,2.0,4.0)+g.x*0.25+uTime*0.5));
+      if(T>80.0 && t!=T_OIL) col += 0.08*step(0.93,h21(vec2(c)+floor(uTime*8.0)));      // 快烧开了冒泡
+    }
+    if((aux&1)!=0){ float fl = 0.5+0.5*vnoise(g*0.9+uTime*vec2(1.3,-2.1)); em += vec3(1.0,0.4,0.08)*fl*0.9; }
+    if(T>450.0 && t!=T_LAVA) em += blackbody(T)*0.6;
+  }
+  else if(kind==5.0){                                     // ---------- 电火花 ----------
+    float fl = 0.6+0.4*h21(vec2(c)+floor(uTime*40.0));
+    col = vec3(0.85,0.95,1.0);
+    em = vec3(0.6,0.85,1.0)*2.6*fl;
+  }
+
+  if((aux&4)!=0 && kind!=4.0 && kind!=5.0 && kind!=0.0){  // 带电的导体
+    float fl = 0.4+0.6*h21(vec2(c)+floor(uTime*30.0));
+    col = mix(col, vec3(0.8,0.93,1.0), 0.45*fl);
+    em += vec3(0.45,0.75,1.0)*(1.0+1.2*fl);
+  }
+
+  if(kind==0.0 || kind==4.0){                             // ---------- 气体：按密度累积的软边 ----------
+    float smoke=0.0, steam=0.0, fire=0.0, fireLife=0.0, ember=0.0;
+    for(int j=-1;j<=1;j++) for(int i=-1;i<=1;i++){
+      ivec2 cc = c+ivec2(i,j);
+      vec4 q = cell(cc);
+      if(q.r==0.0) continue;
+      float l = length((vec2(cc)+0.5)-g);
+      float w = smoothstep(1.4,0.15,l);
+      if(q.r==T_SMOKE) smoke += w*min(1.0,q.a/40.0)*(0.7+0.3*fract(q.g*0.37));
+      else if(q.r==T_STEAM) steam += w*(0.75+0.25*fract(q.g*0.53));
+      else if(q.r==T_FIRE){ fire += w; fireLife += w*q.a; }
+      else if(q.r==T_EMBER) ember += smoothstep(0.8,0.1,l);
+    }
+    col = mix(col, vec3(0.33,0.33,0.36), clamp(smoke*0.5,0.0,0.88));
+    col = mix(col, vec3(0.74,0.80,0.88), clamp(steam*0.42,0.0,0.8));
+    if(fire>0.0){
+      float lf = clamp(fireLife/fire/38.0,0.0,1.0);
+      float fl = 0.75+0.5*vnoise(g*0.8-uGrav*uTime*7.0);
+      vec3 fc = mix(vec3(1.0,0.2,0.03), vec3(1.0,0.82,0.36), lf);
+      float a = clamp(fire*0.72,0.0,1.0);
+      col = mix(col, fc, a);
+      em += fc*a*fl*1.35;
+    }
+    if(ember>0.0){
+      vec3 ec = vec3(1.0,0.62,0.15);
+      col = mix(col, ec, clamp(ember,0.0,1.0));
+      em += ec*min(ember,1.0)*1.7;
+    }
+  }
+
+  if(uView==1){ col = heatRamp(T); em = vec3(0.0); }
+  else if(uView==2){
+    col = t==0.0 ? vec3(0.015,0.015,0.03) : mix(vec3(0.08,0.2,0.55), vec3(1.0,0.9,0.3), pal(t,6).a);
+    if(kind==4.0||kind==5.0) col = vec3(0.3,0.12,0.4);
+    em = vec3(0.0);
+  }
+  else if(uView==3){
+    vec2 cuv = uv*uGrid/32.0;
+    float act = texelFetch(uChunk, ivec2(floor(cuv)), 0).r;
+    vec2 dl = abs(fract(cuv)-0.5);
+    col = col*0.6 + (act>0.5 ? vec3(0.08,0.42,0.16) : vec3(0.16,0.03,0.03))*0.6 + step(0.482,max(dl.x,dl.y))*0.12;
+    em = vec3(0.0);
+  }
+  oCol = vec4(col,1.0);
+  oEmis = vec4(em,1.0);
+}`;
+
+const VS_POINT = `#version 300 es
+in vec2 aPos; in vec4 aCol; in float aSize;
+uniform vec2 uGrid; out vec4 vCol;
+void main(){
+  vec2 p = aPos/uGrid;
+  gl_Position = vec4(p.x*2.0-1.0, 1.0-p.y*2.0, 0.0, 1.0);
+  gl_PointSize = aSize; vCol = aCol;
+}`;
+const FS_POINT = `#version 300 es
+precision highp float;
+in vec4 vCol;
+layout(location=0) out vec4 oCol;
+layout(location=1) out vec4 oEmis;
+void main(){ oCol = vec4(vCol.rgb,1.0); oEmis = vec4(vCol.rgb*vCol.a,1.0); }`;
+
+const FS_GLOW = `#version 300 es
+precision highp float;
+uniform sampler2D uEmis, uPrev; uniform float uDecay;
+in vec2 vUv; out vec4 o;
+void main(){ o = max(texture(uEmis,vUv), texture(uPrev,vUv)*uDecay); }`;
+
+const FS_DOWN = `#version 300 es
+precision highp float;
+uniform sampler2D uTex; uniform vec2 uTexel;
+in vec2 vUv; out vec4 o;
+void main(){
+  vec2 h = uTexel;
+  vec3 s = texture(uTex,vUv).rgb*4.0;
+  s += texture(uTex,vUv-h).rgb + texture(uTex,vUv+h).rgb;
+  s += texture(uTex,vUv+vec2(h.x,-h.y)).rgb + texture(uTex,vUv-vec2(h.x,-h.y)).rgb;
+  o = vec4(s/8.0,1.0);
+}`;
+
+const FS_UP = `#version 300 es
+precision highp float;
+uniform sampler2D uTex; uniform vec2 uTexel; uniform float uW;
+in vec2 vUv; out vec4 o;
+void main(){
+  vec2 h = uTexel*0.5;
+  vec3 s = texture(uTex,vUv+vec2(-h.x*2.0,0.0)).rgb + texture(uTex,vUv+vec2(h.x*2.0,0.0)).rgb
+         + texture(uTex,vUv+vec2(0.0,h.y*2.0)).rgb + texture(uTex,vUv+vec2(0.0,-h.y*2.0)).rgb;
+  s += (texture(uTex,vUv+vec2(-h.x,h.y)).rgb + texture(uTex,vUv+vec2(h.x,h.y)).rgb
+      + texture(uTex,vUv+vec2(h.x,-h.y)).rgb + texture(uTex,vUv+vec2(-h.x,-h.y)).rgb)*2.0;
+  o = vec4(s/12.0*uW,1.0);
+}`;
+
+const FS_COMPOSITE = `#version 300 es
+precision highp float;
+uniform sampler2D uCol, uEmis, uBloom, uLight;
+uniform vec4 uK;                                           // 环境光、光照强度、bloom 强度、是否调试视图
+in vec2 vUv; out vec4 o;
+void main(){
+  vec3 c = texture(uCol,vUv).rgb;
+  if(uK.w>0.5){ o = vec4(c,1.0); return; }
+  vec3 e = texture(uEmis,vUv).rgb, l = texture(uLight,vUv).rgb, b = texture(uBloom,vUv).rgb;
+  // 发光体照亮周围：物体表面按光色加亮（暖光下偏暖），空气里也留一点辉光
+  o = vec4(c*(uK.x + l*uK.y) + l*uK.y*0.03 + e + b*uK.z, 1.0);
+}`;
+
+const FS_POST = `#version 300 es
+precision highp float;
+uniform sampler2D uTex;
+uniform float uTime, uFlash, uCA, uAspect;
+uniform vec2 uShake, uBoom;
+uniform vec4 uShock[4];
+uniform vec4 uOpts;                                        // 暗角、颗粒、色调映射、是否调试视图
+in vec2 vUv; out vec4 o;
+vec3 aces(vec3 x){ return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0); }
+void main(){
+  vec2 uv = vUv;
+  vec2 asp = vec2(uAspect,1.0);
+  uv += uShake*(0.3+0.7*exp(-length((uv-uBoom)*asp)*2.5));          // 震动：离爆心越远越弱
+  for(int i=0;i<4;i++){                                             // 冲击波圆环扭曲
+    vec4 s = uShock[i];
+    if(s.w<=0.0) continue;
+    vec2 d = (uv-s.xy)*asp;
+    float l = length(d);
+    uv += normalize(d+1e-5)/asp*smoothstep(0.07,0.0,abs(l-s.z))*s.w*0.022;
+  }
+  vec3 c;
+  if(uCA>0.0005){                                                   // 短暂色差
+    vec2 dir = uv-0.5;
+    c = vec3(texture(uTex,uv+dir*uCA).r, texture(uTex,uv).g, texture(uTex,uv-dir*uCA).b);
+  } else c = texture(uTex,uv).rgb;
+  c += uFlash;                                                      // 闪白
+  if(uOpts.w<0.5){
+    if(uOpts.z>0.5){ c = pow(max(c,0.0),vec3(2.2)); c = aces(c*1.25); c = pow(c,vec3(1.0/2.2)); }
+    if(uOpts.x>0.5){ float v = smoothstep(1.05,0.35,length((vUv-0.5)*vec2(1.1,1.25))); c *= mix(0.6,1.0,v); }
+    if(uOpts.y>0.5){
+      float n = fract(sin(dot(gl_FragCoord.xy+fract(uTime)*91.7,vec2(12.9898,78.233)))*43758.5453);
+      c += (n-0.5)*0.035;
+    }
+  }
+  o = vec4(clamp(c,0.0,1.0),1.0);
+}`;
+
+/* ---------------------------------------------------------------------
+ * 3.2 WebGL2 初始化
+ * ------------------------------------------------------------------- */
+const R = { hdr: false, prog: {}, quad: null, stateTex: null, stateBuf: null, palTex: null, chunkTex: null,
+            chunkBuf: null, scene: null, post: null, glow: [null, null], glowIdx: 0, levels: [],
+            ptVao: null, ptBuf: null, ptData: null, cw: 0, ch: 0 };
+
+function glProgram(vs, fs) {
+  const mk = (type, src) => {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, src); gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error('着色器编译失败：' + gl.getShaderInfoLog(sh));
+    return sh;
+  };
+  const p = gl.createProgram();
+  gl.attachShader(p, mk(gl.VERTEX_SHADER, vs)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs));
+  gl.bindAttribLocation(p, 0, 'aPos'); gl.bindAttribLocation(p, 1, 'aCol'); gl.bindAttribLocation(p, 2, 'aSize');
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error('着色器链接失败：' + gl.getProgramInfoLog(p));
+  const u = {};
+  const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) {
+    const name = gl.getActiveUniform(p, i).name.replace(/\[0\]$/, '');
+    u[name] = gl.getUniformLocation(p, name);
+  }
+  return { p, u };
+}
+
+function glTexture(w, h, internal, format, typ, filter, data) {
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, internal, w, h, 0, format, typ, data || null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return t;
+}
+
+function glTarget(w, h, count) {
+  w = Math.max(2, w | 0); h = Math.max(2, h | 0);
+  const fbo = gl.createFramebuffer(), tex = [];
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  const bufs = [];
+  for (let i = 0; i < count; i++) {
+    const t = R.hdr ? glTexture(w, h, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, gl.LINEAR)
+                    : glTexture(w, h, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, t, 0);
+    tex.push(t); bufs.push(gl.COLOR_ATTACHMENT0 + i);
+  }
+  gl.drawBuffers(bufs);
+  if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('帧缓冲不完整');
+  gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+  return { fbo, tex, w, h };
+}
+
+function glFreeTarget(t) {
+  if (!t) return;
+  gl.deleteFramebuffer(t.fbo);
+  for (const x of t.tex) gl.deleteTexture(x);
+}
+
+function glInit(cv) {
+  gl = cv.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false,
+                                 powerPreference: 'high-performance', preserveDrawingBuffer: false });
+  if (!gl) return false;
+  R.hdr = !!gl.getExtension('EXT_color_buffer_float');
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  R.prog.scene = glProgram(VS_QUAD, FS_SCENE);
+  R.prog.point = glProgram(VS_POINT, FS_POINT);
+  R.prog.glow = glProgram(VS_QUAD, FS_GLOW);
+  R.prog.down = glProgram(VS_QUAD, FS_DOWN);
+  R.prog.up = glProgram(VS_QUAD, FS_UP);
+  R.prog.comp = glProgram(VS_QUAD, FS_COMPOSITE);
+  R.prog.post = glProgram(VS_QUAD, FS_POST);
+
+  R.quad = gl.createVertexArray();
+  gl.bindVertexArray(R.quad);
+  const qb = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, qb);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+  // 飞行粒子：每个粒子 3 个点（本体 + 两段拖尾），每点 7 个 float
+  R.ptData = new Float32Array(FP_MAX * 3 * 7);
+  R.ptVao = gl.createVertexArray();
+  gl.bindVertexArray(R.ptVao);
+  R.ptBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, R.ptBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, R.ptData.byteLength, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 28, 0);
+  gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 28, 8);
+  gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 1, gl.FLOAT, false, 28, 24);
+  gl.bindVertexArray(null);
+
+  // 调色板纹理：每种材料一行；0-4 列颜色，6 列 (状态, 发光, 透明度, 密度)，7 列 (颜色数)
+  const pd = new Uint8Array(8 * NT * 4);
+  for (let t = 0; t < NT; t++) {
+    const m = MATERIALS[t];
+    for (let k = 0; k < 5; k++) {
+      const c = m.rgb[Math.min(k, m.rgb.length - 1)], o = (t * 8 + k) * 4;
+      pd[o] = c[0]; pd[o + 1] = c[1]; pd[o + 2] = c[2]; pd[o + 3] = 255;
+    }
+    let o = (t * 8 + 6) * 4;
+    pd[o] = m.state; pd[o + 1] = Math.round(m.emissive * 255); pd[o + 2] = Math.round(m.alpha * 255);
+    pd[o + 3] = Math.round(Math.min(1, Math.log(Math.max(1, m.density)) / Math.log(8000)) * 255);
+    o = (t * 8 + 7) * 4;
+    pd[o] = m.rgb.length;
+  }
+  R.palTex = glTexture(8, NT, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.NEAREST, pd);
+  return true;
+}
+
+function glResize() {
+  // 网格尺寸变了：重建状态纹理和所有渲染目标
+  R.stateBuf = new Uint8Array(N * 4);
+  if (R.stateTex) gl.deleteTexture(R.stateTex);
+  R.stateTex = glTexture(W, H, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.NEAREST);
+  R.chunkBuf = new Uint8Array(CW * CHN);
+  if (R.chunkTex) gl.deleteTexture(R.chunkTex);
+  R.chunkTex = glTexture(CW, CHN, gl.R8, gl.RED, gl.UNSIGNED_BYTE, gl.NEAREST);
+  const cw = canvas.width, ch = canvas.height;
+  R.cw = cw; R.ch = ch;
+  glFreeTarget(R.scene); glFreeTarget(R.post); glFreeTarget(R.glow[0]); glFreeTarget(R.glow[1]);
+  for (const l of R.levels) glFreeTarget(l);
+  R.scene = glTarget(cw, ch, 2);
+  R.post = glTarget(cw, ch, 1);
+  R.glow = [glTarget(cw >> 1, ch >> 1, 1), glTarget(cw >> 1, ch >> 1, 1)];
+  R.levels = [];
+  for (let i = 2; i <= 6; i++) R.levels.push(glTarget(cw >> i, ch >> i, 1));
+  sceneDirty = true;
+}
+
+/* ---------------------------------------------------------------------
+ * 3.3 状态打包：只重写清醒的块（休眠的块内容没变），顺便统计粒子数
+ * ------------------------------------------------------------------- */
+function packState() {
+  const buf = R.stateBuf, all = sceneDirty;
+  let changed = all;
+  for (let cy = 0; cy < CHN; cy++) for (let cx = 0; cx < CW; cx++) {
+    const c = cx + cy * CW;
+    if (!all && chunkTTL[c] === 0) continue;
+    changed = true;
+    const x0 = cx << 5, x1 = Math.min(W, x0 + CHUNK), y0 = cy << 5, y1 = Math.min(H, y0 + CHUNK);
+    let cnt = 0;
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0, i = y * W + x0, o = i * 4; x < x1; x++, i++, o += 4) {
+        const t = type[i];
+        buf[o] = t; buf[o + 1] = seed[i]; buf[o + 2] = encTemp(temp[i]);
+        if (t === 0) { buf[o + 3] = 0; continue; }
+        cnt++;
+        if (M_LIFE0[t] > 0) { const L = life[i]; buf[o + 3] = L > 255 ? 255 : L; }
+        else { const f = flags[i]; buf[o + 3] = ((f & F_BURN) ? 1 : 0) | ((f & F_SCORCH) ? 2 : 0) | (charge[i] ? 4 : 0) | ((f & F_TIP) ? 8 : 0); }
+      }
+    }
+    chunkCount[c] = cnt;
+  }
+  if (changed) {
+    let total = 0;
+    for (let c = 0; c < chunkCount.length; c++) total += chunkCount[c];
+    particleCount = total;
+  }
+  return changed;
+}
+
+function packPoints() {
+  if (fpCount === 0) return 0;
+  const d = R.ptData, size = CELL * pixelRatio;
+  let n = 0;
+  for (let pass = 0; pass < 3; pass++) {                 // 先画最淡的拖尾，本体最后画在上面
+    for (let k = 0; k < FP_MAX; k++) {
+      if (!fpAlive[k]) continue;
+      const m = MATERIALS[fpType[k]], c = m.rgb[fpSeed[k] % m.rgb.length];
+      const isEmber = fpType[k] === EMBER;
+      let x, y, a, s;
+      if (pass === 0) { x = fpQX[k]; y = fpQY[k]; a = 0.3; s = size * 0.5; }
+      else if (pass === 1) { x = fpPX[k]; y = fpPY[k]; a = 0.55; s = size * 0.75; }
+      else { x = fpX[k]; y = fpY[k]; a = 1; s = size; }
+      const o = n * 7;
+      d[o] = x; d[o + 1] = y; d[o + 2] = c[0] / 255 * a; d[o + 3] = c[1] / 255 * a; d[o + 4] = c[2] / 255 * a;
+      d[o + 5] = isEmber ? 1.8 : (fpTemp[k] > 300 ? 0.5 : 0); d[o + 6] = s;
+      n++;
+    }
+  }
+  return n;
+}
+
+/* ---------------------------------------------------------------------
+ * 3.4 WebGL2 一帧
+ * ------------------------------------------------------------------- */
+function glBind(unit, tex) { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex); }
+function glPass(target, prog) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, target ? target.fbo : null);
+  gl.viewport(0, 0, target ? target.w : R.cw, target ? target.h : R.ch);
+  gl.useProgram(prog.p);
+}
+function glQuad() { gl.bindVertexArray(R.quad); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+
+function renderGL(timeMs, dt) {
+  const t0 = performance.now();
+  if (packState()) {
+    glBind(0, R.stateTex);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, R.stateBuf);
+  }
+  sceneDirty = false;
+  if (viewMode === 3) {
+    for (let c = 0; c < R.chunkBuf.length; c++) R.chunkBuf[c] = chunkTTL[c] > 0 ? 255 : 0;
+    glBind(3, R.chunkTex);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, CW, CHN, gl.RED, gl.UNSIGNED_BYTE, R.chunkBuf);
+  }
+  const npts = packPoints();
+  const t1 = performance.now();
+  const time = (timeMs / 1000) % 3600;
+  const debugView = viewMode !== 0;
+  gl.disable(gl.BLEND);
+
+  // 1) 场景
+  let P = R.prog.scene;
+  glPass(R.scene, P);
+  glBind(0, R.stateTex); glBind(1, R.palTex); glBind(2, R.levels[1].tex[0]); glBind(3, R.chunkTex);
+  gl.uniform1i(P.u.uState, 0); gl.uniform1i(P.u.uPal, 1); gl.uniform1i(P.u.uHeat, 2); gl.uniform1i(P.u.uChunk, 3);
+  gl.uniform2f(P.u.uGrid, W, H); gl.uniform2f(P.u.uGrav, gx, gy);
+  gl.uniform1f(P.u.uTime, time); gl.uniform1f(P.u.uDistort, settings.distort ? 1 : 0);
+  gl.uniform1f(P.u.uGridLines, settings.gridLines ? 1 : 0); gl.uniform1i(P.u.uView, viewMode);
+  glQuad();
+  if (npts > 0 && !debugView) {
+    P = R.prog.point;
+    gl.useProgram(P.p);
+    gl.uniform2f(P.u.uGrid, W, H);
+    gl.bindVertexArray(R.ptVao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, R.ptBuf);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, R.ptData, 0, npts * 7);
+    gl.drawArrays(gl.POINTS, 0, npts);
+  }
+
+  const useGlow = !debugView && (settings.bloom || settings.light || settings.distort);
+  if (useGlow) {
+    // 2) 辉光时间累积：上一帧的辉光乘衰减后和这一帧取最大值 → 余烬、火星、碎片自带拖尾
+    const src = R.glow[R.glowIdx], dst = R.glow[R.glowIdx ^ 1];
+    P = R.prog.glow;
+    glPass(dst, P);
+    glBind(0, R.scene.tex[1]); glBind(1, src.tex[0]);
+    gl.uniform1i(P.u.uEmis, 0); gl.uniform1i(P.u.uPrev, 1);
+    gl.uniform1f(P.u.uDecay, Math.pow(0.80, dt / 16.7));
+    glQuad();
+    R.glowIdx ^= 1;
+    // 3) 降采样
+    P = R.prog.down;
+    let prev = dst;
+    for (let i = 0; i < R.levels.length; i++) {
+      glPass(R.levels[i], P);
+      glBind(0, prev.tex[0]);
+      gl.uniform1i(P.u.uTex, 0); gl.uniform2f(P.u.uTexel, 1 / prev.w, 1 / prev.h);
+      glQuad();
+      prev = R.levels[i];
+    }
+    // 4) 升采样并逐级叠加
+    P = R.prog.up;
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+    for (let i = R.levels.length - 1; i > 0; i--) {
+      const s = R.levels[i];
+      glPass(R.levels[i - 1], P);
+      glBind(0, s.tex[0]);
+      gl.uniform1i(P.u.uTex, 0); gl.uniform2f(P.u.uTexel, 1 / s.w, 1 / s.h); gl.uniform1f(P.u.uW, 0.85);
+      glQuad();
+    }
+    gl.disable(gl.BLEND);
+  }
+  const t2 = performance.now();
+
+  // 5) 光照合成
+  P = R.prog.comp;
+  glPass(R.post, P);
+  glBind(0, R.scene.tex[0]); glBind(1, R.scene.tex[1]); glBind(2, R.levels[0].tex[0]); glBind(3, R.levels[2].tex[0]);
+  gl.uniform1i(P.u.uCol, 0); gl.uniform1i(P.u.uEmis, 1); gl.uniform1i(P.u.uBloom, 2); gl.uniform1i(P.u.uLight, 3);
+  gl.uniform4f(P.u.uK, settings.light ? 0.72 : 1.0, settings.light ? 1.9 : 0, settings.bloom ? 0.55 : 0, debugView ? 1 : 0);
+  glQuad();
+
+  // 6) 后处理
+  const k = Math.pow(0.5, dt / 16.7);
+  fx.flash *= Math.pow(0.45, dt / 16.7); fx.shake *= Math.pow(0.86, dt / 16.7); fx.ca *= Math.pow(0.84, dt / 16.7);
+  if (fx.flash < 0.002) fx.flash = 0;
+  P = R.prog.post;
+  glPass(null, P);
+  glBind(0, R.post.tex[0]);
+  gl.uniform1i(P.u.uTex, 0);
+  gl.uniform1f(P.u.uTime, time); gl.uniform1f(P.u.uAspect, R.cw / R.ch);
+  const on = settings.shake && !debugView, amp = on ? fx.shake * pixelRatio : 0, ang = Math.random() * 6.283;
+  gl.uniform2f(P.u.uShake, Math.cos(ang) * amp / R.cw, Math.sin(ang) * amp / R.ch);
+  gl.uniform2f(P.u.uBoom, fx.boomX, 1 - fx.boomY);
+  gl.uniform1f(P.u.uFlash, settings.aberration && !debugView ? fx.flash : 0);
+  gl.uniform1f(P.u.uCA, settings.aberration && !debugView ? fx.ca : 0);
+  const sh = new Float32Array(16);
+  for (let i = 0; i < 4; i++) {
+    const s = fx.shocks[i];
+    if (s.power > 0) {
+      s.age += dt;
+      const life = 520;
+      if (s.age > life) s.power = 0;
+      sh[i * 4] = s.x; sh[i * 4 + 1] = 1 - s.y; sh[i * 4 + 2] = s.age * 0.0011;
+      sh[i * 4 + 3] = settings.distort && !debugView ? s.power * (1 - s.age / life) : 0;
+    }
+  }
+  gl.uniform4fv(P.u.uShock, sh);
+  gl.uniform4f(P.u.uOpts, settings.vignette ? 1 : 0, settings.grain ? 1 : 0, settings.tonemap ? 1 : 0, debugView ? 1 : 0);
+  glQuad();
+  const t3 = performance.now();
+  perf.pack += t1 - t0; perf.draw += t2 - t1; perf.post += t3 - t2;
+  void k;
+}
+
+/* ---------------------------------------------------------------------
+ * 3.5 Canvas2D 退路：逐格上色，每格 1 像素，由 CSS 放大
+ * ------------------------------------------------------------------- */
+const R2 = { img: null, px: null };
+const BG32 = 0xff000000 | (15 << 16) | (10 << 8) | 10;
+
+function rgb32(r, g, b) {
+  r = r < 0 ? 0 : r > 255 ? 255 : r | 0; g = g < 0 ? 0 : g > 255 ? 255 : g | 0; b = b < 0 ? 0 : b > 255 ? 255 : b | 0;
+  return 0xff000000 | (b << 16) | (g << 8) | r;
+}
+
+function render2D(timeMs) {
+  const t0 = performance.now();
+  const px = R2.px, all = sceneDirty, fr = (timeMs / 60) | 0;
+  let changed = all;
+  for (let cy = 0; cy < CHN; cy++) for (let cx = 0; cx < CW; cx++) {
+    const c = cx + cy * CW;
+    if (!all && chunkTTL[c] === 0) continue;
+    changed = true;
+    const x0 = cx << 5, x1 = Math.min(W, x0 + CHUNK), y0 = cy << 5, y1 = Math.min(H, y0 + CHUNK);
+    let cnt = 0;
+    const act = chunkTTL[c] > 0;
+    for (let y = y0; y < y1; y++) for (let x = x0, i = y * W + x0; x < x1; x++, i++) {
+      const t = type[i], T = temp[i];
+      let r, g, b;
+      if (viewMode === 1) {                                // 温度
+        if (T < 20) { const k = Math.max(0, (T + 40) / 60); r = 38 - 30 * k; g = 128 - 120 * k; b = 255 - 237 * k; }
+        else { const k = Math.sqrt(Math.min(1, (T - 20) / 1700)); r = 8 + 247 * Math.min(1, k * 2.2); g = 8 + 230 * Math.max(0, k * 1.6 - 0.5); b = 18 + 200 * Math.max(0, k * 3 - 2.2); }
+        if (t !== 0) cnt++;
+        px[i] = rgb32(r, g, b);
+        continue;
+      }
+      if (t === 0) {
+        if (viewMode === 3) px[i] = act ? rgb32(10, 46, 22) : rgb32(30, 10, 12);
+        else px[i] = BG32;
+        continue;
+      }
+      cnt++;
+      const m = MATERIALS[t];
+      if (viewMode === 2) { const k = Math.min(1, Math.log(Math.max(1, m.density)) / Math.log(8000)); px[i] = rgb32(20 + 235 * k, 50 + 180 * k, 140 - 60 * k); continue; }
+      const sd = seed[i], col = t === FLOWER ? m.rgb[Math.min(m.rgb.length - 1, (sd / 51) | 0)] : m.rgb[sd % m.rgb.length];
+      const v = 1 + (((sd * 157) & 255) / 255 - 0.5) * 0.14;
+      r = col[0] * v; g = col[1] * v; b = col[2] * v;
+      const f = flags[i];
+      if (m.life) {                                        // 气体 / 能量：按寿命淡出，火焰闪烁
+        const a = t === SMOKE ? Math.min(1, life[i] / 40) * 0.8 : 1;
+        if (t === FIRE) { const k = ((sd + fr * 37 + x * 13 + y * 7) & 63) / 63; r = 255; g = 70 + 150 * k; b = 20 + 40 * k; }
+        r = 10 + (r - 10) * a; g = 10 + (g - 10) * a; b = 15 + (b - 15) * a;
+      } else if (t === LAVA) { const k = Math.min(1, Math.max(0, (T - 800) / 650)); r = 90 + 165 * k; g = 20 + 110 * k * (0.6 + 0.4 * (sd / 255)); b = 5; }
+      else if (t === TNT) { if (y % 3 === 0) { r = 240; g = 232; b = 230; } if ((f & F_BURN) && (fr & 4)) { r = 255; g = 220; b = 160; } }
+      else if (t === GLASS) { r = 10 + (r - 10) * 0.45; g = 10 + (g - 10) * 0.45; b = 15 + (b - 15) * 0.45; if (((x - y) & 7) === 0) { r += 40; g += 45; b += 50; } }
+      else if (t === WATER || t === SALTWATER) { const k = ((x * 3 + y * 5 + fr) & 31) === 0 ? 30 : 0; r += k; g += k; b += k; }
+      if (f & F_SCORCH) { r *= 0.4; g *= 0.4; b *= 0.4; }
+      if ((f & F_BURN) && t !== TNT) { const k = ((sd + fr * 29) & 31) / 31; r = r * 0.4 + 200 + 55 * k; g = g * 0.4 + 60 + 60 * k; b = b * 0.4; }
+      if (T > 450 && !m.life && t !== LAVA) { const k = Math.min(1, (T - 450) / 1350); r += 255 * Math.min(1, k * 3); g += 200 * Math.max(0, k * 1.6 - 0.3); b += 160 * Math.max(0, k * 2.5 - 1.4); }
+      if (charge[i]) { r = r * 0.5 + 140; g = g * 0.5 + 160; b = b * 0.5 + 180; }
+      if (viewMode === 3) { r = r * 0.6 + (act ? 10 : 40); g = g * 0.6 + (act ? 50 : 10); b = b * 0.6 + 10; }
+      px[i] = rgb32(r, g, b);
+    }
+    chunkCount[c] = cnt;
+  }
+  sceneDirty = false;
+  if (changed) {
+    let total = 0;
+    for (let c = 0; c < chunkCount.length; c++) total += chunkCount[c];
+    particleCount = total;
+  }
+  ctx2d.putImageData(R2.img, 0, 0);
+  if (fpCount > 0) {                                       // 飞行粒子直接画在上面
+    for (let k = 0; k < FP_MAX; k++) {
+      if (!fpAlive[k]) continue;
+      const m = MATERIALS[fpType[k]], c = m.rgb[fpSeed[k] % m.rgb.length];
+      ctx2d.fillStyle = 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',0.45)';
+      ctx2d.fillRect(fpPX[k] | 0, fpPY[k] | 0, 1, 1);
+      ctx2d.fillStyle = 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+      ctx2d.fillRect(fpX[k] | 0, fpY[k] | 0, 1, 1);
+    }
+  }
+  if (fx.flash > 0.01 && settings.aberration) {            // 爆炸闪白
+    ctx2d.fillStyle = 'rgba(255,255,255,' + Math.min(0.8, fx.flash).toFixed(3) + ')';
+    ctx2d.fillRect(0, 0, W, H);
+  }
+  fx.flash *= 0.5; fx.shake *= 0.86;
+  canvas.style.transform = settings.shake && fx.shake > 0.3 ?
+    'translate(' + ((Math.random() - 0.5) * fx.shake).toFixed(1) + 'px,' + ((Math.random() - 0.5) * fx.shake).toFixed(1) + 'px)' : '';
+  perf.draw += performance.now() - t0;
+}
+
+/* ---------------------------------------------------------------------
+ * 3.6 对外接口
+ * ------------------------------------------------------------------- */
+function createRenderer(host) {
+  canvas = document.createElement('canvas');
+  let ok = false;
+  if (!QS.has('nogl')) {
+    try { ok = glInit(canvas); } catch (e) { console.warn('WebGL2 初始化失败，退回 Canvas2D：', e.message); ok = false; gl = null; }
+  }
+  if (ok) renderMode = 'webgl2';
+  else {
+    canvas = document.createElement('canvas');
+    ctx2d = canvas.getContext('2d', { alpha: false });
+    renderMode = 'canvas2d';
+    canvas.style.imageRendering = 'pixelated';
+  }
+  canvas.id = 'canvas';
+  host.insertBefore(canvas, host.firstChild);
+  if (gl) {
+    canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); toast && toast('WebGL 上下文丢失，请刷新页面'); });
+  }
+}
+
+function resizeRenderer() {
+  canvas.style.width = W * CELL + 'px';
+  canvas.style.height = H * CELL + 'px';
+  if (gl) {
+    let pr = settings.hd ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+    if (W * CELL * pr * H * CELL * pr > 5.2e6) pr = 1;
+    pixelRatio = pr;
+    canvas.width = Math.round(W * CELL * pr); canvas.height = Math.round(H * CELL * pr);
+    glResize();
+  } else {
+    pixelRatio = 1;
+    canvas.width = W; canvas.height = H;
+    R2.img = ctx2d.createImageData(W, H);
+    R2.px = new Uint32Array(R2.img.data.buffer);
+    sceneDirty = true;
+  }
+}
+
+function renderFrame(timeMs, dt) {
+  if (gl) renderGL(timeMs, dt); else render2D(timeMs);
+}
+
+/* =====================================================================
+ * 4. 音效：全部用 WebAudio 程序合成，没有任何音频文件。
+ *    持续类（沙、水、火、嘶嘶、电）各用一条常驻的滤波噪声「声床」，
+ *    只调增益 → 同类声音天然合并；瞬时类（爆炸、噼啪）限制并发数。
+ *    所有增益变化都走 setTargetAtTime / 斜坡，避免爆音。
+ * ===================================================================== */
+const audio = { ctx: null, master: null, reverb: null, noise: null, beds: {}, volume: 0.6, muted: false,
+                booms: 0, crackles: 0, lastBoom: 0, hissEnv: 0, elecEnv: 0 };
+
+function audioStart() {
+  if (audio.ctx) { if (audio.ctx.state === 'suspended') audio.ctx.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  const ctx = audio.ctx = new AC();
+  const master = audio.master = ctx.createGain();
+  master.gain.value = audio.muted ? 0 : audio.volume;
+  const comp = ctx.createDynamicsCompressor();          // 总线压限，叠加再多也不削波
+  comp.threshold.value = -14; comp.knee.value = 12; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.2;
+  master.connect(comp); comp.connect(ctx.destination);
+
+  // 2 秒白噪声，循环播放
+  const nb = audio.noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  const nd = nb.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+
+  // 混响：指数衰减的噪声当脉冲响应
+  const len = Math.floor(ctx.sampleRate * 1.8);
+  const ir = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6);
+  }
+  const conv = ctx.createConvolver();
+  conv.buffer = ir;
+  const rg = ctx.createGain();
+  rg.gain.value = 0.4;
+  conv.connect(rg); rg.connect(master);
+  audio.reverb = conv;
+
+  const bed = (name, ftype, freq, q) => {
+    const src = ctx.createBufferSource();
+    src.buffer = nb; src.loop = true; src.playbackRate.value = 0.8 + Math.random() * 0.4;
+    const f = ctx.createBiquadFilter();
+    f.type = ftype; f.frequency.value = freq; f.Q.value = q;
+    const g = ctx.createGain();
+    g.gain.value = 0;
+    src.connect(f); f.connect(g); g.connect(master);
+    src.start();
+    audio.beds[name] = { gain: g, filter: f };
+    return audio.beds[name];
+  };
+  bed('sand', 'bandpass', 5200, 0.7);                   // 沙沙声
+  const water = bed('water', 'bandpass', 700, 1.1);     // 流水：带通中心频率被慢速 LFO 晃动
+  const lfo = ctx.createOscillator(), lg = ctx.createGain();
+  lfo.frequency.value = 0.9; lg.gain.value = 260;
+  lfo.connect(lg); lg.connect(water.filter.frequency); lfo.start();
+  bed('fire', 'lowpass', 420, 0.5);                     // 火焰的低频呼呼声
+  bed('hiss', 'highpass', 5500, 0.6);                   // 熔岩遇水的嘶嘶声
+  const elec = bed('elec', 'bandpass', 3200, 6);        // 电火花：窄带噪声被 55Hz 方波斩波 → 嗞嗞
+  const chop = ctx.createOscillator(), cg = ctx.createGain(), am = ctx.createGain();
+  chop.type = 'square'; chop.frequency.value = 55; cg.gain.value = 0.5; am.gain.value = 0.5;
+  elec.gain.disconnect(); elec.gain.connect(am); am.connect(master);
+  chop.connect(cg); cg.connect(am.gain); chop.start();
+}
+
+function audioSetVolume() {
+  if (!audio.ctx) return;
+  audio.master.gain.setTargetAtTime(audio.muted ? 0 : audio.volume, audio.ctx.currentTime, 0.03);
+}
+
+function audioCrackle() {
+  const ctx = audio.ctx;
+  if (audio.crackles >= 6) return;
+  audio.crackles++;
+  const now = ctx.currentTime, dur = 0.03 + Math.random() * 0.05;
+  const src = ctx.createBufferSource();
+  src.buffer = audio.noise;
+  const f = ctx.createBiquadFilter();
+  f.type = 'bandpass'; f.frequency.value = 1200 + Math.random() * 4200; f.Q.value = 1.5;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.exponentialRampToValueAtTime(0.06 + Math.random() * 0.14, now + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  src.connect(f); f.connect(g); g.connect(audio.master);
+  src.start(now, Math.random() * 1.5, dur + 0.02);
+  src.onended = () => { audio.crackles--; };
+}
+
+function audioBoom(scale) {
+  const ctx = audio.ctx;
+  if (!ctx || ctx.state !== 'running') return;
+  const now = ctx.currentTime;
+  if (now - audio.lastBoom < 0.05 || audio.booms >= 4) return;      // 同一瞬间的爆炸合并成一声
+  audio.lastBoom = now; audio.booms++;
+  const s = Math.min(1, Math.max(0.12, scale)), dur = 0.35 + 1.3 * s;
+  const src = ctx.createBufferSource();
+  src.buffer = audio.noise;
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass'; lp.Q.value = 0.8;
+  lp.frequency.setValueAtTime(300 + 1400 * s, now);
+  lp.frequency.exponentialRampToValueAtTime(45, now + dur * 0.8);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.exponentialRampToValueAtTime(0.9 * s, now + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  src.connect(lp); lp.connect(g); g.connect(audio.master); g.connect(audio.reverb);
+  src.start(now, Math.random(), dur + 0.05);
+  src.onended = () => { audio.booms--; };
+  const osc = ctx.createOscillator(), og = ctx.createGain();     // 低频轰鸣
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(90, now);
+  osc.frequency.exponentialRampToValueAtTime(28, now + 0.5 * dur);
+  og.gain.setValueAtTime(0.0001, now);
+  og.gain.exponentialRampToValueAtTime(0.8 * s, now + 0.01);
+  og.gain.exponentialRampToValueAtTime(0.0001, now + 0.7 * dur);
+  osc.connect(og); og.connect(audio.master);
+  osc.start(now); osc.stop(now + dur);
+}
+
+// 每个渲染帧调用一次：把模拟统计量映射成各声床的音量
+function audioFrame() {
+  const ctx = audio.ctx;
+  if (ctx && ctx.state === 'running') {
+    const now = ctx.currentTime, b = audio.beds;
+    b.sand.gain.gain.setTargetAtTime(Math.min(0.2, st.powder / 500 * 0.2), now, 0.07);
+    b.water.gain.gain.setTargetAtTime(Math.min(0.16, st.liquid / 900 * 0.16), now, 0.1);
+    b.fire.gain.gain.setTargetAtTime(Math.min(0.22, st.fire / 220 * 0.22), now, 0.12);
+    audio.hissEnv = Math.min(1, audio.hissEnv * 0.9 + st.hiss * 0.12);
+    b.hiss.gain.gain.setTargetAtTime(audio.hissEnv * 0.2, now, 0.04);
+    audio.elecEnv = Math.min(1, audio.elecEnv * 0.8 + st.elec * 0.08);
+    b.elec.gain.gain.setTargetAtTime(audio.elecEnv * 0.3, now, 0.02);
+    if (st.fire > 0 && Math.random() < Math.min(0.45, st.fire / 180)) audioCrackle();
+  }
+  st.powder = 0; st.liquid = 0; st.fire = 0; st.hiss = 0; st.elec = 0; st.boil = 0; st.boom = 0;
+}
+
+/* =====================================================================
+ * 5. UI
+ * ===================================================================== */
+const $ = id => document.getElementById(id);
+const stage = $('stage'), viewport = $('viewport'), cursorEl = $('cursor'), linePrev = $('lineprev');
+
+let tool = SAND;
+let paused = false, speed = 1, stepOnce = false;
+let testRunning = false;
+const brush = { size: 4, shape: 'circle', replace: false };
+const pointer = { down: false, erase: false, x: 0, y: 0, hx: -1, hy: -1, line: false, lx0: 0, ly0: 0, inside: false };
+
+let toastTimer = 0;
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* ---------------------------------------------------------------------
+ * 5.1 元素面板 + 悬停提示
+ * ------------------------------------------------------------------- */
+const TOOLS = {
+  [TOOL_ERASE]: { name: '橡皮', palette: ['#30303a', '#c8c8d8', '#50505c'], note: '擦除粒子（右键也是橡皮）' },
+  [TOOL_HEAT]: { name: '加热', palette: ['#ff5a1e', '#ffd23f', '#ff2d00'], note: '每帧给笔刷范围升温 60°C，上限 2500°C' },
+  [TOOL_COOL]: { name: '冷却', palette: ['#5ab4ff', '#d6f0ff', '#2a6cff'], note: '每帧给笔刷范围降温 60°C，下限 -200°C' },
+};
+const CATEGORIES = [
+  { name: '粉末', ids: [SAND, SOIL, SALT, GUNPOWDER, ASH, SEED] },
+  { name: '液体', ids: [WATER, SALTWATER, OIL, ACID, LAVA] },
+  { name: '固体', ids: [STONE, WOOD, METAL, GLASS, ICE, PLANT, FLOWER, CHARCOAL, TNT] },
+  { name: '气体', ids: [SMOKE, STEAM] },
+  { name: '能量', ids: [FIRE, EMBER, SPARK] },
+  { name: '工具', ids: [TOOL_ERASE, TOOL_HEAT, TOOL_COOL, CLONE, VOID] },
+];
+const HOTKEYS = { '1': SAND, '2': WATER, '3': STONE, '4': WOOD, '5': FIRE, '6': LAVA, '7': OIL, '8': TNT, '9': METAL, '0': TOOL_ERASE };
+const toolButtons = new Map();
+
+function toolInfo(id) { return id >= 100 ? TOOLS[id] : MATERIALS[id]; }
+
+function buildPalette() {
+  const host = $('palette');
+  const keyOf = {};
+  for (const k in HOTKEYS) keyOf[HOTKEYS[k]] = k;
+  for (const cat of CATEGORIES) {
+    const box = document.createElement('div');
+    box.className = 'cat';
+    const h = document.createElement('h3');
+    h.textContent = cat.name;
+    const items = document.createElement('div');
+    items.className = 'items';
+    for (const id of cat.ids) {
+      const info = toolInfo(id), p = info.palette;
+      const b = document.createElement('button');
+      b.className = 'el' + (id < 100 && (MATERIALS[id].emissive > 0 || id === SPARK) ? ' glow' : '');
+      b.style.setProperty('--c1', id === VOID ? '#7a35c8' : p[0]);
+      b.style.setProperty('--c2', p[1] || p[0]);
+      b.style.setProperty('--c3', p[2] || p[0]);
+      b.innerHTML = '<span class="sw"></span><span class="nm"></span>' + (keyOf[id] ? '<kbd>' + keyOf[id] + '</kbd>' : '');
+      b.querySelector('.nm').textContent = info.name;
+      b.addEventListener('click', () => selectTool(id));
+      b.addEventListener('mouseenter', () => showTip(id, b));
+      b.addEventListener('mouseleave', hideTip);
+      b.addEventListener('focus', () => showTip(id, b));
+      b.addEventListener('blur', hideTip);
+      items.appendChild(b);
+      toolButtons.set(id, b);
+    }
+    box.appendChild(h); box.appendChild(items);
+    host.appendChild(box);
+  }
+}
+
+function selectTool(id) {
+  tool = id;
+  for (const [k, b] of toolButtons) b.classList.toggle('on', k === id);
+}
+
+function fmtT(v) { return Math.round(v) + '°C'; }
+
+function showTip(id, anchor) {
+  const tip = $('tip');
+  let html;
+  if (id >= 100) {
+    html = '<h4>' + TOOLS[id].name + '</h4><div class="sub">工具</div><div>' + TOOLS[id].note + '</div>';
+  } else {
+    const m = MATERIALS[id], rows = [];
+    rows.push(['密度', m.density >= 10 ? Math.round(m.density) + ' kg/m³' : m.density + ' kg/m³']);
+    rows.push(['导热', m.conductivity.toFixed(2)]);
+    rows.push(['比热', m.heatCapacity.toFixed(1)]);
+    if (m.state !== S_GAS && m.state !== S_ENERGY) rows.push(['硬度', m.hardness > 1 ? '不可破坏' : m.hardness.toFixed(2)]);
+    if (m.spawnTemp !== AMBIENT) rows.push(['初始温度', fmtT(m.spawnTemp)]);
+    if (m.flammability > 0) rows.push(['燃点', fmtT(m.ignitionTemp) + '，烧成' + (m.blastRadius ? '爆炸' : MATERIALS[m.burnInto].name)]);
+    if (isFinite(m.meltTemp)) rows.push(['熔点', fmtT(m.meltTemp) + ' → ' + MATERIALS[m.meltInto].name]);
+    if (isFinite(m.boilTemp)) rows.push(['沸点', fmtT(m.boilTemp) + ' → ' + MATERIALS[m.boilInto].name]);
+    if (isFinite(m.freezeTemp)) rows.push([m.state === S_GAS ? '凝结' : '凝固', '低于 ' + fmtT(m.freezeTemp) + ' → ' + MATERIALS[m.freezeInto].name]);
+    if (m.blastRadius) rows.push(['爆炸', '半径 ' + m.blastRadius + ' 格，威力 ' + m.blastPower]);
+    if (m.life) rows.push(['寿命', m.life[0] + '–' + m.life[1] + ' 帧']);
+    if (m.electric) rows.push(['导电', '是']);
+    // 反应列表直接从规则表生成
+    const rx = [];
+    const nm = t => t === EMPTY ? '消失' : MATERIALS[t].name;
+    for (const r of RULES) {
+      if (r.a !== id && r.b !== id) continue;
+      const other = r.a === id ? r.b : r.a, self2 = r.a === id ? r.a2 : r.b2, other2 = r.a === id ? r.b2 : r.a2;
+      let s;
+      if (r.tag === 'grow') s = id === PLANT ? '吸水后生长' : '被植物吸收';
+      else if (r.use) s = r.a === id ? '溶解它' : '被溶解';
+      else {
+        const parts = [];
+        if (self2 !== id) parts.push('自己→' + nm(self2));
+        if (other2 !== other) parts.push('对方→' + nm(other2));
+        s = parts.join('，') || '无变化';
+      }
+      rx.push('<li>碰到<b>' + MATERIALS[other].name + '</b>：' + s + '</li>');
+    }
+    if (id === SPARK) rx.push('<li>碰到<b>金属 / 水</b>：注入电荷并传导</li><li>碰到<b>可燃物</b>：加热到燃点</li>');
+    html = '<h4>' + m.name + '</h4><div class="sub">' + STATE_NAMES[m.state] + (m.note ? ' · ' + m.note : '') + '</div><dl>' +
+      rows.map(r => '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>').join('') + '</dl>' +
+      (rx.length ? '<ul>' + rx.slice(0, 9).join('') + (rx.length > 9 ? '<li>……共 ' + rx.length + ' 条</li>' : '') + '</ul>' : '');
+  }
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+  const r = anchor.getBoundingClientRect(), th = tip.offsetHeight;
+  const side = $('palette').getBoundingClientRect().right + 8;
+  tip.style.left = Math.min(window.innerWidth - 260, side) + 'px';
+  tip.style.top = Math.max(8, Math.min(window.innerHeight - th - 8, r.top - 6)) + 'px';
+}
+function hideTip() { $('tip').style.display = 'none'; }
+
+/* ---------------------------------------------------------------------
+ * 5.2 笔刷
+ * ------------------------------------------------------------------- */
+function stamp(cx, cy, erase) {
+  const t = erase ? TOOL_ERASE : tool;
+  const r = brush.size - 1, r2 = r * r + r * 0.8;
+  const round = brush.shape !== 'square', spray = brush.shape === 'spray' && r > 0;
+  const replace = brush.replace;
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    if (round && dx * dx + dy * dy > r2) continue;
+    if (spray && rnd() > 0.1) continue;
+    paintCell(cx + dx, cy + dy, t, replace);
+  }
+}
+
+function stampLine(x0, y0, x1, y1, erase) {
+  const dx = x1 - x0, dy = y1 - y0, dist = Math.max(Math.abs(dx), Math.abs(dy));
+  const stepLen = Math.max(1, brush.size >> 1);
+  for (let s = 0; s <= dist; s += stepLen) {
+    const k = dist === 0 ? 0 : s / dist;
+    stamp(Math.round(x0 + dx * k), Math.round(y0 + dy * k), erase);
+  }
+  stamp(x1, y1, erase);
+}
+
+function toCell(e) {
+  const r = canvas.getBoundingClientRect();
+  return { x: Math.floor((e.clientX - r.left) / r.width * W), y: Math.floor((e.clientY - r.top) / r.height * H) };
+}
+
+function updateCursor() {
+  if (!pointer.inside || pointer.hx < 0) { cursorEl.style.display = 'none'; linePrev.style.display = 'none'; return; }
+  const r = brush.size - 1, d = (2 * r + 1) * CELL;
+  cursorEl.style.display = 'block';
+  cursorEl.className = brush.shape === 'circle' ? 'round' : brush.shape === 'spray' ? 'spray' : '';
+  cursorEl.style.width = cursorEl.style.height = d + 'px';
+  cursorEl.style.left = (pointer.hx - r) * CELL + 'px';
+  cursorEl.style.top = (pointer.hy - r) * CELL + 'px';
+  if (pointer.down && pointer.line) {
+    const ax = (pointer.lx0 + 0.5) * CELL, ay = (pointer.ly0 + 0.5) * CELL;
+    const bx = (pointer.hx + 0.5) * CELL, by = (pointer.hy + 0.5) * CELL;
+    linePrev.style.display = 'block';
+    linePrev.style.left = ax + 'px'; linePrev.style.top = ay + 'px';
+    linePrev.style.width = Math.hypot(bx - ax, by - ay) + 'px';
+    linePrev.style.transform = 'rotate(' + Math.atan2(by - ay, bx - ax) + 'rad)';
+  } else linePrev.style.display = 'none';
+}
+
+function bindPointer() {
+  canvas.addEventListener('pointerdown', e => {
+    if (e.button !== 0 && e.button !== 2) return;
+    e.preventDefault();
+    audioStart();
+    closePops();
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 合成事件没有活动指针 */ }
+    const p = toCell(e);
+    pushUndo();
+    pointer.down = true; pointer.erase = e.button === 2; pointer.inside = true;
+    pointer.x = pointer.hx = p.x; pointer.y = pointer.hy = p.y;
+    pointer.line = e.shiftKey; pointer.lx0 = p.x; pointer.ly0 = p.y;
+    if (!pointer.line) stamp(p.x, p.y, pointer.erase);
+    updateCursor();
+  });
+  canvas.addEventListener('pointermove', e => {
+    const p = toCell(e);
+    pointer.inside = true; pointer.hx = p.x; pointer.hy = p.y;
+    if (pointer.down && !pointer.line) {
+      stampLine(pointer.x, pointer.y, p.x, p.y, pointer.erase);
+      pointer.x = p.x; pointer.y = p.y;
+    }
+    updateCursor();
+  });
+  const end = e => {
+    if (pointer.down && pointer.line) stampLine(pointer.lx0, pointer.ly0, pointer.hx, pointer.hy, pointer.erase);   // Shift 直线：松手时落笔
+    pointer.down = false; pointer.line = false;
+    if (e.pointerType === 'touch') { pointer.inside = false; pointer.hx = -1; }
+    updateCursor();
+  };
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+  canvas.addEventListener('pointerleave', () => { if (!pointer.down) { pointer.inside = false; pointer.hx = -1; updateCursor(); } });
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  window.addEventListener('blur', () => { pointer.down = false; pointer.line = false; });
+}
+
+/* ---------------------------------------------------------------------
+ * 5.3 撤销：环形缓冲 20 个 RLE 快照，每次落笔（或清空/载入）前记一次
+ * ------------------------------------------------------------------- */
+const UNDO_MAX = 20;
+const undoRing = new Array(UNDO_MAX).fill(null);
+let undoHead = 0, undoLen = 0;
+
+function pushUndo() {
+  undoRing[undoHead] = captureScene();
+  undoHead = (undoHead + 1) % UNDO_MAX;
+  if (undoLen < UNDO_MAX) undoLen++;
+}
+
+function undo() {
+  if (undoLen === 0) { toast('没有可撤销的操作'); return; }
+  undoHead = (undoHead + UNDO_MAX - 1) % UNDO_MAX;
+  undoLen--;
+  const s = undoRing[undoHead];
+  undoRing[undoHead] = null;
+  restoreScene(s);
+  syncGravityUI();
+  toast('已撤销（还可撤销 ' + undoLen + ' 步）');
+}
+
+/* ---------------------------------------------------------------------
+ * 5.4 存档 / 导入导出 / 截图 / 录制
+ * ------------------------------------------------------------------- */
+const SLOT_KEY = 'particle-sandbox-v3-slots';
+
+function readSlots() {
+  try { return JSON.parse(localStorage.getItem(SLOT_KEY) || '{}') || {}; } catch (e) { return {}; }
+}
+
+function renderSlots() {
+  const host = $('slotList'), slots = readSlots(), names = Object.keys(slots);
+  host.textContent = '';
+  if (!names.length) { const d = document.createElement('div'); d.className = 'note'; d.style.marginTop = '0'; d.textContent = '还没有存档'; host.appendChild(d); return; }
+  for (const name of names) {
+    const row = document.createElement('div');
+    row.className = 'slot';
+    const nm = document.createElement('span');
+    nm.className = 'nm'; nm.textContent = name;
+    const load = document.createElement('button');
+    load.textContent = '读取';
+    load.addEventListener('click', () => {
+      try { pushUndo(); restoreScene(sceneFromJSON(slots[name])); syncGravityUI(); toast('已读取「' + name + '」'); closePops(); }
+      catch (e) { toast('读取失败：' + e.message); }
+    });
+    const del = document.createElement('button');
+    del.textContent = '删除'; del.className = 'danger';
+    del.addEventListener('click', () => {
+      const s = readSlots();
+      delete s[name];
+      localStorage.setItem(SLOT_KEY, JSON.stringify(s));
+      renderSlots();
+    });
+    row.appendChild(nm); row.appendChild(load); row.appendChild(del);
+    host.appendChild(row);
+  }
+}
+
+function saveSlot() {
+  const name = $('slotName').value.trim() || '存档 ' + new Date().toLocaleTimeString();
+  const slots = readSlots();
+  slots[name] = sceneToJSON(captureScene());
+  try { localStorage.setItem(SLOT_KEY, JSON.stringify(slots)); toast('已保存到「' + name + '」'); }
+  catch (e) { toast('保存失败：浏览器本地存储空间不足，请改用导出 JSON'); }
+  $('slotName').value = '';
+  renderSlots();
+}
+
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+function stampName(ext) {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return 'sandbox-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + '.' + ext;
+}
+
+function exportJSON() { downloadBlob(new Blob([sceneToJSON(captureScene())], { type: 'application/json' }), stampName('json')); }
+
+function importJSON(file) {
+  const fr = new FileReader();
+  fr.onload = () => {
+    try { const s = sceneFromJSON(String(fr.result)); pushUndo(); restoreScene(s); syncGravityUI(); toast('已导入 ' + file.name); }
+    catch (e) { toast('导入失败：' + e.message); }
+  };
+  fr.readAsText(file);
+}
+
+function screenshot() {
+  renderFrame(performance.now(), 16.7);                  // WebGL 画布必须在同一个任务里画完再读
+  if (gl) canvas.toBlob(b => b && downloadBlob(b, stampName('png')), 'image/png');
+  else {
+    const out = document.createElement('canvas');
+    out.width = W * CELL; out.height = H * CELL;
+    const c = out.getContext('2d');
+    c.imageSmoothingEnabled = false;
+    c.drawImage(canvas, 0, 0, out.width, out.height);
+    out.toBlob(b => b && downloadBlob(b, stampName('png')), 'image/png');
+  }
+}
+
+const rec = { mr: null, chunks: [], timer: 0, endAt: 0 };
+
+function toggleRecord() {
+  if (rec.mr) { rec.mr.stop(); return; }
+  if (!canvas.captureStream || !window.MediaRecorder) { toast('这个浏览器不支持录制'); return; }
+  const secs = Math.min(30, Math.max(5, +$('selRec').value));
+  const types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+  const mime = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+  let mr;
+  try { mr = new MediaRecorder(canvas.captureStream(60), mime ? { mimeType: mime, videoBitsPerSecond: 8e6 } : undefined); }
+  catch (e) { toast('无法开始录制：' + e.message); return; }
+  rec.mr = mr; rec.chunks = []; rec.endAt = performance.now() + secs * 1000;
+  mr.ondataavailable = e => { if (e.data && e.data.size) rec.chunks.push(e.data); };
+  mr.onstop = () => {
+    clearInterval(rec.timer);
+    rec.mr = null;
+    $('btnRec').textContent = '录制'; $('btnRec').classList.remove('warn'); $('recdot').style.display = 'none';
+    if (rec.chunks.length) { downloadBlob(new Blob(rec.chunks, { type: 'video/webm' }), stampName('webm')); toast('录制完成，已下载 WebM'); }
+  };
+  mr.start(250);
+  $('btnRec').textContent = '停止'; $('btnRec').classList.add('warn'); $('recdot').style.display = 'block';
+  rec.timer = setInterval(() => {
+    const left = Math.max(0, rec.endAt - performance.now());
+    $('recdot').textContent = '录制中 ' + (left / 1000).toFixed(1) + ' 秒';
+    if (left <= 0 && rec.mr) rec.mr.stop();
+  }, 100);
+}
+
+/* ---------------------------------------------------------------------
+ * 5.5 预设场景
+ * ------------------------------------------------------------------- */
+function setBurning(x, y) {
+  if (!inb(x, y)) return;
+  const i = x + y * W, t = type[i];
+  if (M_FLAM[t] > 0) { temp[i] = M_IGN[t] + 150; ignite(i, t, x, y); }
+}
+
+function sceneVolcano() {
+  const cx = W >> 1, base = H - 5, peak = Math.floor(H * 0.56), half = Math.floor(W * 0.3), sea = Math.floor(H * 0.74);
+  fillRect(STONE, 0, base, W - 1, H - 1);
+  const top = new Int32Array(W);
+  for (let x = 0; x < W; x++) {
+    const k = Math.max(0, 1 - Math.abs(x - cx) / half);
+    const h = Math.floor(Math.pow(k, 1.25) * peak + (k > 0 ? Math.sin(x * 0.31) * 2 + Math.sin(x * 0.11) * 3 : 0));
+    top[x] = base - Math.max(0, h);
+    for (let y = top[x]; y < base; y++) put(x + y * W, STONE, x, y);
+    if (top[x] > sea - 4 && top[x] < base) for (let y = top[x] - 2; y < top[x]; y++) if (inb(x, y)) put(x + y * W, SAND, x, y);   // 海滩
+  }
+  for (let y = sea; y < base; y++) for (let x = 0; x < W; x++) if (type[x + y * W] === 0) put(x + y * W, WATER, x, y);
+  // 火山口：竖井 + 岩浆房，房底埋两个克隆体当岩浆源
+  const mouth = top[cx], depth = Math.floor(peak * 0.42);
+  fillRect(LAVA, cx - 2, mouth + 4, cx + 2, mouth + depth);
+  fillCircle(LAVA, cx, mouth + depth, 7);
+  fillRect(EMPTY, cx - 2, mouth - 6, cx + 2, mouth + 3);
+  for (const dx of [-3, 3]) for (const dy of [2, 3]) {   // 熔岩源嵌在火山口内壁里，不断往井里吐熔岩
+    const x = cx + dx, y = mouth + dy, i = x + y * W;
+    put(i, CLONE, x, y); life[i] = LAVA;
+  }
+  // 山腰点几丛植物
+  for (let k = 0; k < 26; k++) {
+    const x = cx + (rnd() < 0.5 ? -1 : 1) * Math.floor(half * (0.45 + rnd() * 0.4));
+    if (x < 1 || x >= W - 1 || top[x] >= sea) continue;
+    for (let h = 1; h <= 2 + rndi(4); h++) if (inb(x, top[x] - h)) put(x + (top[x] - h) * W, PLANT, x, top[x] - h);
+  }
+}
+
+function drawTree(x, ground, h, r) {
+  for (let y = ground - h; y < ground; y++) for (let dx = 0; dx < 2; dx++) if (inb(x + dx, y)) put(x + dx + y * W, WOOD, x + dx, y);
+  for (let k = 0; k < 3; k++) {
+    const ox = x + rndi(7) - 3, oy = ground - h - rndi(4);
+    for (let y = Math.floor(oy - r); y <= oy + r; y++) for (let xx = Math.floor(ox - r); xx <= ox + r; xx++) {
+      const dx = xx - ox, dy = (y - oy) * 1.25;
+      if (!inb(xx, y) || dx * dx + dy * dy > r * r || type[xx + y * W] !== 0 || rnd() < 0.12) continue;
+      put(xx + y * W, PLANT, xx, y);
+    }
+  }
+}
+
+function groundLine(amp, k1, k2, baseY) {
+  const g = new Int32Array(W);
+  for (let x = 0; x < W; x++) g[x] = Math.floor(baseY + Math.sin(x * k1) * amp + Math.sin(x * k2 + 1.7) * amp * 0.6);
+  return g;
+}
+
+function sceneForest() {
+  const g = groundLine(3, 0.035, 0.09, H - 16);
+  for (let x = 0; x < W; x++) {
+    for (let y = g[x]; y < H; y++) put(x + y * W, y > H - 4 ? STONE : SOIL, x, y);
+    if (rnd() < 0.55) for (let h = 1; h <= 1 + rndi(3); h++) put(x + (g[x] - h) * W, PLANT, x, g[x] - h);      // 草
+  }
+  for (let x = 14; x < W - 12; x += 17 + rndi(10)) drawTree(x, g[x], 16 + rndi(Math.max(4, Math.floor(H * 0.16))), 6 + rndi(4));
+  for (let k = 0; k < W / 9; k++) {                       // 零星的花
+    const x = 2 + rndi(W - 4), y = g[x] - 2 - rndi(2), c = rndi(5) * 51 + 8;
+    if (inb(x, y) && type[x + y * W] === PLANT) { put(x + y * W, FLOWER, x, y); seed[x + y * W] = c + rndi(34); }
+  }
+  // 左边第一棵树的树根处点火
+  for (let x = 12; x < 20; x++) for (let y = g[14] - 6; y < g[14]; y++) setBurning(x, y);
+}
+
+function sceneHourglass() {
+  const cx = W >> 1, cy = H >> 1, b = Math.floor(H * 0.42), a = Math.floor(Math.min(W * 0.2, b * 0.75));
+  const inner = (x, y) => {
+    const dy = Math.abs(y - cy);
+    return dy <= b - 3 && Math.abs(x - cx) <= 1 + (a - 4) * dy / b;
+  };
+  for (let y = cy - b; y <= cy + b; y++) for (let x = cx - a - 3; x <= cx + a + 3; x++) {
+    if (!inb(x, y)) continue;
+    if (inner(x, y)) continue;
+    let near = false;
+    for (let dy = -2; dy <= 2 && !near; dy++) for (let dx = -2; dx <= 2; dx++) if (inner(x + dx, y + dy)) { near = true; break; }
+    if (near) put(x + y * W, GLASS, x, y);
+  }
+  for (let y = cy - b + 3 + Math.floor(b * 0.12); y < cy - 2; y++) for (let x = cx - a; x <= cx + a; x++) if (inner(x, y)) put(x + y * W, SAND, x, y);
+  fillRect(WOOD, cx - a - 6, cy - b - 3, cx + a + 6, cy - b - 1);
+  fillRect(WOOD, cx - a - 6, cy + b + 1, cx + a + 6, cy + b + 3);
+  for (const sx of [cx - a - 6, cx + a + 5]) fillRect(WOOD, sx, cy - b - 1, sx + 1, cy + b + 1);
+}
+
+function drawBeaker(x0, y1, w, h, liquid, fill) {
+  for (let y = y1 - h; y <= y1; y++) for (let x = x0; x <= x0 + w; x++) {
+    if (x <= x0 + 1 || x >= x0 + w - 1 || y >= y1 - 1) put(x + y * W, GLASS, x, y);
+    else if (liquid && y > y1 - 1 - h * fill) put(x + y * W, Array.isArray(liquid) ? liquid[rndi(liquid.length)] : liquid, x, y);
+  }
+}
+
+function sceneLab() {
+  const floor = H - 4, table = Math.floor(H * 0.74);
+  fillRect(STONE, 0, floor, W - 1, H - 1);
+  fillRect(WOOD, 6, table, W - 7, table + 2);
+  for (const lx0 of [10, W - 13]) fillRect(WOOD, lx0, table + 3, lx0 + 2, floor - 1);
+  const n = 5, gap = Math.floor((W - 24) / n), bw = Math.min(gap - 8, Math.floor(W * 0.13)), bh = Math.floor(H * 0.3);
+  const liquids = [OIL, WATER, ACID, SALTWATER, [OIL, WATER, SALTWATER]];
+  for (let k = 0; k < n; k++) {
+    const x0 = 14 + k * gap + ((gap - bw) >> 1);
+    drawBeaker(x0, table - 1, bw, k === 4 ? Math.floor(bh * 1.5) : bh, liquids[k], k === 4 ? 0.8 : 0.62);
+  }
+  // 电路：左侧的电火花源（克隆体记住了电火花）→ 顶部金属导线 → 插进水槽的电极
+  const wy = Math.floor(table - bh * 1.5 - 12), waterX = 14 + gap + (gap >> 1), srcX = 8;
+  fillRect(METAL, srcX + 2, wy, waterX, wy);
+  fillRect(METAL, waterX, wy, waterX, table - 1 - Math.floor(bh * 0.35));
+  put(srcX + wy * W, CLONE, srcX, wy); life[srcX + wy * W] = SPARK;
+  // 右侧：一小堆火药，导线故意留了 3 格缺口，补上金属就会引爆
+  const gpX = W - 26;
+  fillRect(METAL, waterX + 4, wy, gpX - 4, wy);
+  fillRect(EMPTY, waterX + 1, wy, waterX + 3, wy);
+  fillRect(GLASS, gpX - 8, wy + 11, gpX + 8, wy + 12);
+  fillCircle(GUNPOWDER, gpX - 1, wy + 8, 3.2);
+  fillRect(METAL, gpX - 4, wy, gpX - 4, wy + 10);
+}
+
+function sceneDemolition() {
+  const floor = H - 6;
+  fillRect(STONE, 0, floor, W - 1, H - 1);
+  const bw = Math.floor(W * 0.36), x0 = Math.floor(W * 0.46), storeys = Math.max(3, Math.min(6, Math.floor((floor - 12) / 22))), sh = 22;
+  for (let s = 0; s < storeys; s++) {
+    const yb = floor - s * sh, yt = yb - sh;
+    fillRect(WOOD, x0, yt, x0 + bw, yt + 1);                                  // 楼板
+    for (let c = 0; c <= 4; c++) {                                            // 金属立柱
+      const x = x0 + Math.floor(bw * c / 4);
+      fillRect(METAL, x, yt + 2, x + 1, yb - 1);
+    }
+    for (let c = 0; c < 4; c++) {                                             // 石墙 + 玻璃窗
+      const xa = x0 + Math.floor(bw * c / 4) + 2, xb = x0 + Math.floor(bw * (c + 1) / 4) - 1;
+      fillRect(STONE, xa, yt + 2, xb, yb - 1);
+      fillRect(GLASS, xa + 3, yt + 6, xb - 3, yb - 8);
+      if ((c + s) % 2 === 0) fillRect(TNT, xa + 1, yb - 4, xa + 3, yb - 2);   // 炸药包
+    }
+  }
+  // 导爆索：每层墙脚一条火药，再沿左墙内侧一条竖线把各层串起来
+  for (let s = 0; s < storeys; s++) fillRect(GUNPOWDER, x0 + 2, floor - s * sh - 1, x0 + bw - 1, floor - s * sh - 1);
+  fillRect(GUNPOWDER, x0 + 2, floor - storeys * sh + 2, x0 + 3, floor - 1);
+  fillRect(METAL, x0 - 1, floor - storeys * sh - 2, x0 + bw + 2, floor - storeys * sh - 1);
+  // 地面上的火药引线，从最左边点着
+  fillRect(GUNPOWDER, 6, floor - 1, x0 + 3, floor - 1);
+  fillRect(GUNPOWDER, x0 + 1, floor - 3, x0 + 3, floor - 1);
+  setBurning(6, floor - 1); setBurning(7, floor - 1);
+}
+
+function sceneRain() {
+  const g = groundLine(4, 0.03, 0.075, H - 20);
+  const pondX = Math.floor(W * 0.68), pondR = Math.floor(W * 0.09);
+  for (let x = 0; x < W; x++) {
+    const d = Math.abs(x - pondX);
+    if (d < pondR) g[x] += Math.floor(Math.cos(d / pondR * 1.5708) * 9);       // 挖一个池塘
+    for (let y = g[x]; y < H; y++) put(x + y * W, y > H - 4 ? STONE : SOIL, x, y);
+  }
+  const level = Math.min(g[Math.max(0, pondX - pondR)], g[Math.min(W - 1, pondX + pondR)]) + 1;
+  for (let x = pondX - pondR; x <= pondX + pondR; x++) for (let y = level; y < g[x]; y++) if (inb(x, y)) put(x + y * W, WATER, x, y);
+  const dv = pondX + (g[pondX] - 1) * W;                 // 池底放一个黑洞当排水口，免得越下越满
+  put(dv, VOID, pondX, g[pondX] - 1);
+  for (let x = 10; x < W - 8; x += 21 + rndi(12)) if (Math.abs(x - pondX) > pondR + 6) drawTree(x, g[x], 12 + rndi(12), 5 + rndi(3));
+  for (let x = 2; x < W - 2; x++) {
+    if (Math.abs(x - pondX) <= pondR) continue;
+    const q = rnd();
+    if (q < 0.5) for (let h = 1; h <= 1 + rndi(3); h++) put(x + (g[x] - h) * W, PLANT, x, g[x] - h);
+    else if (q < 0.62) put(x + (g[x] - 1) * W, SEED, x, g[x] - 1);
+    if (q < 0.07) { const y = g[x] - 3, c = rndi(5) * 51 + 8; if (type[x + y * W] === 0) { put(x + y * W, FLOWER, x, y); seed[x + y * W] = c + rndi(34); } }
+  }
+  // 顶部一排蒸汽源：蒸汽贴着顶棚聚成云，冷下来就变成雨
+  for (let x = 6; x < W - 6; x += 9 + rndi(6)) { const i = x + W; put(i, CLONE, x, 1); life[i] = STEAM; }
+  fillRect(STEAM, 2, 2, W - 3, 7);
+}
+
+const SCENES = [
+  { name: '火山岛', note: '熔岩流进海里', fn: sceneVolcano },
+  { name: '森林大火', note: '左边已经点着了', fn: sceneForest },
+  { name: '沙漏', note: '按 G 翻转重力', fn: sceneHourglass },
+  { name: '化学实验室', note: '分层、通电、火药', fn: sceneLab },
+  { name: '爆破拆除', note: '引线正在燃烧', fn: sceneDemolition },
+  { name: '雨夜', note: '蒸汽凝成雨', fn: sceneRain },
+];
+
+function loadScene(k) {
+  const s = SCENES[k];
+  pushUndo();
+  clearGrid();
+  setGravity('down'); syncGravityUI();
+  s.fn();
+  wakeAll();
+  if (paused) setPaused(false);
+  toast('场景：' + s.name + ' — ' + s.note);
+}
+
+/* ---------------------------------------------------------------------
+ * 5.6 控制条、弹层、快捷键
+ * ------------------------------------------------------------------- */
+function setPaused(v) {
+  paused = v;
+  $('btnPause').textContent = paused ? '▶ 继续' : '❚❚ 暂停';
+  $('btnPause').classList.toggle('warn', paused);
+}
+
+function syncGravityUI() {
+  document.querySelectorAll('#gravGrp button').forEach(b => b.classList.toggle('on', b.dataset.g === gravity));
+}
+
+function setBrushSize(v) {
+  brush.size = Math.max(1, Math.min(30, v | 0));
+  $('rngSize').value = brush.size; $('lblSize').textContent = brush.size;
+  updateCursor();
+}
+
+function setView(v) {
+  viewMode = v % VIEW_NAMES.length;
+  $('btnView').textContent = '视图：' + VIEW_NAMES[viewMode];
+  $('btnView').classList.toggle('on', viewMode !== 0);
+  sceneDirty = true;
+}
+
+let clearArmed = 0;
+function requestClear() {
+  const b = $('btnClear');
+  if (clearArmed) {
+    clearTimeout(clearArmed); clearArmed = 0;
+    b.textContent = '清空'; b.classList.remove('armed');
+    pushUndo(); clearGrid();
+    toast('已清空（可撤销）');
+    return;
+  }
+  b.textContent = '再按一次确认'; b.classList.add('armed');
+  clearArmed = setTimeout(() => { clearArmed = 0; b.textContent = '清空'; b.classList.remove('armed'); }, 2500);
+}
+
+function closePops() { document.querySelectorAll('.pop.show').forEach(p => p.classList.remove('show')); }
+
+function togglePop(btn) {
+  const pop = $(btn.dataset.pop), was = pop.classList.contains('show');
+  closePops();
+  if (was) return;
+  if (pop.id === 'popSave') renderSlots();
+  pop.classList.add('show');
+  const r = btn.getBoundingClientRect();
+  pop.style.top = r.bottom + 8 + 'px';
+  pop.style.left = Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, r.left)) + 'px';
+}
+
+const SETTING_LABELS = [
+  ['bloom', '发光（Bloom）'], ['light', '动态光照'], ['distort', '热扭曲 / 折射 / 冲击波'], ['shake', '屏幕震动'],
+  ['aberration', '爆炸闪白与色差'], ['tonemap', '色调映射（ACES）'], ['vignette', '暗角'], ['grain', '胶片颗粒'],
+  ['gridLines', '背景网格'], ['hd', '高清渲染（按屏幕像素比）'],
+];
+
+function buildControls() {
+  $('btnPause').addEventListener('click', () => setPaused(!paused));
+  $('btnStep').addEventListener('click', () => { setPaused(true); stepOnce = true; });
+  $('selSpeed').addEventListener('change', e => { speed = +e.target.value; });
+  document.querySelectorAll('#gravGrp button').forEach(b => b.addEventListener('click', () => { setGravity(b.dataset.g); syncGravityUI(); }));
+  document.querySelectorAll('[data-shape]').forEach(b => b.addEventListener('click', () => {
+    brush.shape = b.dataset.shape;
+    document.querySelectorAll('[data-shape]').forEach(o => o.classList.toggle('on', o === b));
+    updateCursor();
+  }));
+  $('btnMode').addEventListener('click', () => {
+    brush.replace = !brush.replace;
+    $('btnMode').textContent = brush.replace ? '覆盖' : '填空';
+    $('btnMode').classList.toggle('on', brush.replace);
+  });
+  $('rngSize').addEventListener('input', e => setBrushSize(+e.target.value));
+  $('btnView').addEventListener('click', () => setView(viewMode + 1));
+  $('btnUndo').addEventListener('click', undo);
+  $('btnClear').addEventListener('click', requestClear);
+  $('btnShot').addEventListener('click', screenshot);
+  $('btnRec').addEventListener('click', toggleRecord);
+  $('btnMute').addEventListener('click', () => {
+    audioStart();
+    audio.muted = !audio.muted;
+    $('btnMute').textContent = audio.muted ? '静音' : '声音';
+    $('btnMute').classList.toggle('warn', audio.muted);
+    audioSetVolume();
+  });
+  $('rngVol').addEventListener('input', e => { audioStart(); audio.volume = +e.target.value / 100; audioSetVolume(); });
+  document.querySelectorAll('[data-pop]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); togglePop(b); }));
+  document.querySelectorAll('.pop').forEach(p => p.addEventListener('pointerdown', e => e.stopPropagation()));
+  window.addEventListener('pointerdown', e => { if (!e.target.closest('[data-pop]')) closePops(); });
+  window.addEventListener('pointerdown', audioStart, { once: true });
+
+  SCENES.forEach((s, k) => {
+    const b = document.createElement('button');
+    b.innerHTML = '<span></span><small></small>';
+    b.firstChild.textContent = (k + 1) + '. ' + s.name; b.lastChild.textContent = s.note;
+    b.addEventListener('click', () => { loadScene(k); closePops(); });
+    $('sceneList').appendChild(b);
+  });
+
+  for (const [key, label] of SETTING_LABELS) {
+    const l = document.createElement('label'), c = document.createElement('input');
+    c.type = 'checkbox'; c.checked = settings[key];
+    c.addEventListener('change', () => {
+      settings[key] = c.checked;
+      if (key === 'hd') resizeRenderer();
+      sceneDirty = true;
+    });
+    l.appendChild(c); l.appendChild(document.createTextNode(label));
+    $('settingList').appendChild(l);
+  }
+  $('renderInfo').textContent = renderMode === 'webgl2'
+    ? '渲染：WebGL2' + (R.hdr ? '（HDR 浮点缓冲）' : '（8 位缓冲）') + '。按 ` 打开调试面板。'
+    : '渲染：Canvas2D 退路（没有 WebGL2）。发光、光照、扭曲等后处理不可用。';
+
+  $('btnSlotSave').addEventListener('click', saveSlot);
+  $('slotName').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') saveSlot(); });
+  $('btnExport').addEventListener('click', exportJSON);
+  $('btnImport').addEventListener('click', () => $('fileImport').click());
+  $('fileImport').addEventListener('change', e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; });
+}
+
+const GRAV_CYCLE = ['down', 'left', 'up', 'right'];
+let debugOn = false;
+
+function bindKeys() {
+  window.addEventListener('keydown', e => {
+    const tag = e.target.tagName;
+    if (tag === 'INPUT' && e.target.type === 'text') return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key;
+    if (k === ' ') { e.preventDefault(); if (e.target.blur && tag === 'BUTTON') e.target.blur(); setPaused(!paused); }
+    else if (k === '.') { setPaused(true); stepOnce = true; }
+    else if (k === 'g' || k === 'G') { setGravity(GRAV_CYCLE[(GRAV_CYCLE.indexOf(gravity) + 1) % 4]); syncGravityUI(); }
+    else if (k === 'v' || k === 'V') setView(viewMode + 1);
+    else if (k === 'c' || k === 'C') requestClear();
+    else if (k === '[') setBrushSize(brush.size - 1);
+    else if (k === ']') setBrushSize(brush.size + 1);
+    else if (k === '`' || k === '~') { debugOn = !debugOn; $('debug').style.display = debugOn ? 'block' : 'none'; }
+    else if (k === 'Escape') closePops();
+    else if (HOTKEYS[k] !== undefined) selectTool(HOTKEYS[k]);
+  });
+}
+
+/* ---------------------------------------------------------------------
+ * 5.7 自适应：窗口变化时重建网格，但保留场景内容（按底边居中对齐）
+ * ------------------------------------------------------------------- */
+function fitGrid(force) {
+  const w = Math.max(48, Math.floor(stage.clientWidth / CELL)), h = Math.max(48, Math.floor(stage.clientHeight / CELL));
+  if (!force && w === W && h === H) return;
+  const snap = N > 0 ? captureScene() : null;
+  allocGrid(w, h);
+  if (snap && snap.n > 0) restoreScene(snap);
+  resizeRenderer();
+  undoLen = 0; undoHead = 0;
+}
+
+let resizeTimer = 0;
+function bindResize() {
+  new ResizeObserver(() => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { if (!testRunning) fitGrid(false); }, 160);
+  }).observe(stage);
+}
+
+/* ---------------------------------------------------------------------
+ * 5.8 状态栏、检视器、调试面板
+ * ------------------------------------------------------------------- */
+const hud = { frames: 0, last: 0, fps: 0, simRate: 0, lastSteps: 0, interval: 16.7, work: 0, throttled: false };
+
+function updateHud(now) {
+  const dt = now - hud.last;
+  if (dt < 250) return;
+  hud.fps = hud.frames * 1000 / dt;
+  hud.simRate = (simStepsTotal - hud.lastSteps) * 1000 / dt;
+  hud.frames = 0; hud.last = now; hud.lastSteps = simStepsTotal;
+  $('stFps').textContent = Math.round(hud.fps);
+  $('stSim').textContent = paused ? '暂停' : Math.round(hud.simRate);
+  $('stCount').textContent = (particleCount + fpCount).toLocaleString();
+  $('stMode').textContent = renderMode === 'webgl2' ? 'WebGL2' : 'Canvas2D';
+  // rAF 间隔明显大于 16.7ms，而我们自己每帧的活儿（含 GPU）远小于间隔 → 是浏览器在降频，不是性能问题
+  hud.throttled = document.hidden || (hud.fps < 50 && hud.work + perf.gpu < 8);
+  $('stThrottle').classList.toggle('hide', !hud.throttled);
+  $('stThrottle').textContent = 'rAF 被降频（实际 ' + (hud.fps < 10 ? hud.fps.toFixed(1) : Math.round(hud.fps)) + ' 帧/秒，每帧只需 ' + (hud.work + perf.gpu).toFixed(1) + 'ms）';
+
+  // 检视器
+  if (inb(pointer.hx, pointer.hy) && pointer.inside) {
+    const i = pointer.hx + pointer.hy * W, t = type[i], f = flags[i], m = MATERIALS[t];
+    let s = m.name + ' · ' + Math.round(temp[i]) + '°C · ' + STATE_NAMES[m.state];
+    if (t === METAL && temp[i] > 450) s = '热' + s;
+    if (t === CLONE && life[i]) s += ' · 复制：' + MATERIALS[life[i]].name;
+    else if (life[i] && t !== 0) s += ' · ' + (f & F_BURN ? '燃烧剩余 ' : f & F_TIP ? '生长能量 ' : M_LATENT[t] ? '融化进度 ' : '寿命 ') + life[i];
+    if (f & F_BURN) s += ' · 燃烧中';
+    if (f & F_SCORCH) s += ' · 焦黑';
+    if (charge[i]) s += ' · 带电';
+    $('stInspect').textContent = s + '  (' + pointer.hx + ', ' + pointer.hy + ')';
+  } else $('stInspect').textContent = '—';
+
+  if (debugOn) {
+    const n = Math.max(1, perf.frames || 1), sN = Math.max(1, perf.steps);
+    $('debug').textContent =
+      '网格        ' + W + ' x ' + H + '  (' + CW * CHN + ' 块)\n' +
+      '活跃块      ' + perf.activeChunks + ' / ' + CW * CHN + '\n' +
+      '飞行粒子    ' + fpCount + ' / ' + FP_MAX + '\n' +
+      '爆炸 / 带电 ' + exActive + ' / ' + elecCount + '\n' +
+      '模拟步数    ' + (perf.steps / n).toFixed(2) + ' 步/帧  (' + Math.round(hud.simRate) + ' 步/秒)\n' +
+      '── 每帧耗时 (ms) ──\n' +
+      '模拟·粒子   ' + (perf.cells / n).toFixed(2) + '   (每步 ' + (perf.cells / sN).toFixed(2) + ')\n' +
+      '模拟·温度   ' + (perf.thermal / n).toFixed(2) + '\n' +
+      '模拟·其他   ' + (perf.misc / n).toFixed(2) + '\n' +
+      '渲染·打包   ' + (perf.pack / n).toFixed(2) + '\n' +
+      '渲染·场景   ' + (perf.draw / n).toFixed(2) + '\n' +
+      '渲染·后处理 ' + (perf.post / n).toFixed(2) + '\n' +
+      'GPU 完成    ' + perf.gpu.toFixed(2) + '  (抽样 gl.finish)\n' +
+      'rAF 间隔    ' + hud.interval.toFixed(1) + '   CPU 合计 ' + hud.work.toFixed(2) + '\n' +
+      '渲染后端    ' + renderMode + (gl ? ' ' + canvas.width + 'x' + canvas.height + (R.hdr ? ' HDR' : '') : '');
+  }
+  perf.cells = perf.thermal = perf.misc = perf.pack = perf.draw = perf.post = 0; perf.steps = 0; perf.frames = 0;
+}
+
+/* =====================================================================
+ * 6. 自测（?test=1）。模拟类用例不依赖 DOM，在 Node 里也能跑。
+ * ===================================================================== */
+const TESTS = [];
+function defTest(name, fn) { TESTS.push({ name, fn }); }
+function runSteps(n) { for (let k = 0; k < n; k++) simStep(); }
+
+function tArena() {
+  clearGrid(); setGravity('down'); seedRng(20240607);
+  return { cx: W >> 1, cy: H >> 1 };
+}
+
+function tBox(x0, y0, x1, y1, m) {
+  for (let x = x0; x <= x1; x++) { put(x + y0 * W, m, x, y0); put(x + y1 * W, m, x, y1); }
+  for (let y = y0; y <= y1; y++) { put(x0 + y * W, m, x0, y); put(x1 + y * W, m, x1, y); }
+}
+
+function tFloor(y, m) { for (let x = 0; x < W; x++) put(x + y * W, m || GLASS, x, y); }
+
+// 跑到条件成立为止；返回用了多少步，超时返回 -1
+function tUntil(maxSteps, every, cond) {
+  for (let s = 0; s < maxSteps; s++) {
+    simStep();
+    if (s % every === 0 && cond()) return s + 1;
+  }
+  return cond() ? maxSteps : -1;
+}
+
+/* ---- 6.1 反应矩阵里的每一条接触规则 ---- */
+for (const r of RULES) {
+  defTest('规则 ' + MATERIALS[r.a].name + ' × ' + MATERIALS[r.b].name, () => {
+    const { cx, cy } = tArena();
+    const x0 = cx - 4, x1 = cx + 3, y0 = cy - 3, y1 = cy + 2;
+    tBox(x0, y0, x1, y1, GLASS);
+    for (let y = y0 + 1; y < y1; y++) for (let x = x0 + 1; x < x1; x++) {
+      const i = x + y * W, top = y < y0 + 3;
+      put(i, top ? r.a : r.b, x, y);
+      if (top && r.maxT !== undefined) temp[i] = r.maxT - 3;
+    }
+    const a0 = countType(r.a), b0 = countType(r.b);
+    const a20 = countType(r.a2), b20 = countType(r.b2);
+    const cond = () =>
+      (r.a2 !== r.a && r.a2 !== EMPTY && countType(r.a2) > a20) ||
+      (r.b2 !== r.b && r.b2 !== EMPTY && countType(r.b2) > b20) ||
+      (r.b2 === EMPTY && countType(r.b) < b0) ||
+      (r.a2 === EMPTY && countType(r.a) < a0);
+    const n = tUntil(Math.min(8000, Math.ceil(60 / r.p)), 2, cond);
+    return { ok: n > 0, info: n > 0 ? n + ' 步出现产物' : '超时未出现产物' };
+  });
+}
+
+/* ---- 6.2 温度相变 ---- */
+defTest('冰受热融化成水', () => {
+  const { cx, cy } = tArena();
+  tBox(cx - 4, cy - 3, cx + 4, cy + 3, GLASS);
+  fillRect(ICE, cx - 2, cy, cx + 2, cy + 2);
+  const n = tUntil(600, 1, () => {      // 持续供热（相当于按住加热工具）
+    for (let x = cx - 2; x <= cx + 2; x++) for (let y = cy; y <= cy + 2; y++) if (type[x + y * W] === ICE) temp[x + y * W] = 60;
+    return countType(WATER) >= 10;
+  });
+  return { ok: n > 0, info: n + ' 步' };
+});
+
+defTest('冰在常温空气里不会自己融化', () => {
+  const { cx, cy } = tArena();
+  tFloor(cy + 3);
+  fillRect(ICE, cx - 3, cy, cx + 3, cy + 2);
+  const before = countType(ICE);
+  runSteps(900);
+  return { ok: countType(ICE) === before, info: before + ' → ' + countType(ICE) };
+});
+
+defTest('水烧开变蒸汽', () => {
+  const { cx, cy } = tArena();
+  tBox(cx - 4, cy - 6, cx + 4, cy + 3, GLASS);
+  fillRect(WATER, cx - 3, cy, cx + 3, cy + 2);
+  for (let x = cx - 3; x <= cx + 3; x++) for (let y = cy; y <= cy + 2; y++) temp[x + y * W] = 160;
+  const n = tUntil(200, 1, () => countType(STEAM) > 0);
+  return { ok: n > 0, info: n + ' 步' };
+});
+
+defTest('蒸汽冷却凝结成水（下雨）', () => {
+  const { cx, cy } = tArena();
+  tBox(cx - 10, cy - 12, cx + 10, cy + 12, GLASS);
+  fillRect(STEAM, cx - 8, cy - 2, cx + 8, cy + 2);
+  const n = tUntil(2500, 5, () => countType(WATER) >= 20);
+  return { ok: n > 0, info: n + ' 步后凝出 ' + countType(WATER) + ' 格水' };
+});
+
+defTest('沙子高温熔成玻璃', () => {
+  const { cx, cy } = tArena();
+  tFloor(cy + 3, STONE);
+  fillRect(SAND, cx - 2, cy + 1, cx + 2, cy + 2);
+  for (let x = cx - 2; x <= cx + 2; x++) for (let y = cy + 1; y <= cy + 2; y++) temp[x + y * W] = 1700;
+  runSteps(3);
+  return { ok: countType(GLASS) > 0, info: countType(GLASS) + ' 格玻璃' };
+});
+
+defTest('石头高温熔成熔岩，冷却后变回石头', () => {
+  const { cx, cy } = tArena();
+  fillRect(STONE, cx - 3, cy, cx + 3, cy + 3);
+  for (let x = cx - 1; x <= cx + 1; x++) temp[x + (cy + 1) * W] = 1600;
+  runSteps(2);
+  const melted = countType(LAVA);
+  const n = tUntil(6000, 20, () => countType(LAVA) === 0);
+  return { ok: melted > 0 && n > 0, info: '熔了 ' + melted + ' 格，' + n + ' 步后全部凝固' };
+});
+
+/* ---- 6.3 燃烧链 ---- */
+defTest('燃烧链：木头 → 火 + 炭 → 灰', () => {
+  const { cx, cy } = tArena();
+  tFloor(cy + 4, STONE);
+  fillRect(WOOD, cx - 4, cy + 1, cx + 4, cy + 3);
+  temp[cx + (cy + 1) * W] = 500; temp[cx + 1 + (cy + 1) * W] = 500;
+  let sawFire = false, sawCoal = false, sawAsh = false;
+  tUntil(6000, 4, () => {
+    if (countType(FIRE) > 0) sawFire = true;
+    if (countType(CHARCOAL) > 0) sawCoal = true;
+    if (countType(ASH) > 0) sawAsh = true;
+    return sawFire && sawCoal && sawAsh;
+  });
+  return { ok: sawFire && sawCoal && sawAsh, info: '火' + sawFire + ' 炭' + sawCoal + ' 灰' + sawAsh };
+});
+
+defTest('火没有燃料很快熄灭', () => {
+  const { cx, cy } = tArena();
+  fillCircle(FIRE, cx, cy, 4);
+  runSteps(120);
+  return { ok: countType(FIRE) === 0, info: '120 步后剩 ' + countType(FIRE) + ' 格火' };
+});
+
+defTest('油被点燃并烧掉', () => {
+  const { cx, cy } = tArena();
+  tBox(cx - 8, cy - 2, cx + 8, cy + 4, STONE);
+  fillRect(EMPTY, cx - 7, cy - 2, cx + 7, cy - 2);
+  fillRect(OIL, cx - 7, cy + 2, cx + 7, cy + 3);
+  const before = countType(OIL);
+  temp[cx + (cy + 2) * W] = 400;
+  let sawFire = false;
+  tUntil(1500, 4, () => { if (countType(FIRE) > 3) sawFire = true; return sawFire && countType(OIL) < before * 0.5; });
+  return { ok: sawFire && countType(OIL) < before * 0.5, info: '油 ' + before + ' → ' + countType(OIL) };
+});
+
+defTest('火药连锁燃爆', () => {
+  const { cx, cy } = tArena();
+  tFloor(cy + 3, STONE);
+  fillRect(GUNPOWDER, cx - 15, cy + 2, cx + 15, cy + 2);
+  const before = countType(GUNPOWDER);
+  temp[cx - 15 + (cy + 2) * W] = 400;
+  const n = tUntil(600, 2, () => countType(GUNPOWDER) === 0);
+  return { ok: n > 0, info: before + ' 格火药 ' + n + ' 步烧完' };
+});
+
+/* ---- 6.4 TNT ---- */
+defTest('TNT：冲击波分帧传播，石墙能挡住', () => {
+  const { cx, cy } = tArena();
+  tFloor(cy + 16, METAL);
+  fillRect(STONE, cx + 5, cy - 14, cx + 8, cy + 15);          // 右边一堵 4 格厚的石墙
+  fillRect(GLASS, cx + 10, cy + 6, cx + 13, cy + 15);         // 墙后的玻璃块
+  fillRect(GLASS, cx - 10, cy + 6, cx - 7, cy + 15);          // 另一侧没有遮挡的玻璃块
+  const i = cx + (cy + 10) * W;
+  put(i, TNT, cx, cy + 10); flags[i] |= F_BURN; life[i] = 1;
+  simStep();
+  const midway = exActive > 0;
+  let steps = 1;
+  while (exActive > 0 && steps < 20) { simStep(); steps++; }
+  const shielded = countType(GLASS, cx + 10, cy + 6, cx + 13, cy + 15);
+  const exposed = countType(GLASS, cx - 10, cy + 6, cx - 7, cy + 15);
+  const wall = countType(STONE, cx + 5, cy - 14, cx + 8, cy + 15);
+  runSteps(240);
+  return { ok: midway && steps >= 3 && shielded === 40 && exposed <= 28 && wall < 120,
+           info: '传播 ' + steps + ' 帧；墙后玻璃剩 ' + shielded + '/40，无遮挡侧剩 ' + exposed + '/40，石墙剩 ' + wall + '/120' };
+});
+
+defTest('TNT：连锁引爆错开时间，碎片池不超上限', () => {
+  const { cx, cy } = tArena();
+  tFloor(cy + 12, METAL);
+  fillRect(SAND, cx - 30, cy + 4, cx + 30, cy + 11);
+  fillRect(TNT, cx - 5, cy + 8, cx + 4, cy + 8);              // 10 个 TNT 排成一排
+  const i = cx - 5 + (cy + 8) * W;
+  flags[i] |= F_BURN; life[i] = 1;
+  let maxPerStep = 0, total = 0, maxFree = 0;
+  for (let s = 0; s < 200; s++) {
+    st.boom = 0;
+    simStep();
+    if (st.boom > maxPerStep) maxPerStep = st.boom;
+    total += st.boom;
+    if (fpCount > maxFree) maxFree = fpCount;
+  }
+  runSteps(400);
+  return { ok: total === 10 && maxPerStep <= 4 && maxFree <= FP_MAX && fpCount === 0,
+           info: '共 ' + total + ' 次爆炸，单帧最多 ' + maxPerStep + ' 次，飞行粒子峰值 ' + maxFree + '，结束后剩 ' + fpCount };
+});
+
+defTest('飞行粒子池：超出上限丢弃最旧的', () => {
+  tArena();
+  for (let k = 0; k < 6000; k++) spawnFree(SAND, W / 2, H / 2, 0, 0, 20, 1);
+  const ok = fpCount === FP_MAX;
+  fpClear();
+  return { ok, info: '生成 6000 个，池内 ' + FP_MAX };
+});
+
+/* ---- 6.5 液体与密度 ---- */
+defTest('液体按密度分层：油 > 水 > 盐水 > 酸（自上而下）', () => {
+  const { cx, cy } = tArena();
+  const x0 = cx - 3, x1 = cx + 3, y0 = cy - 20, y1 = cy + 20;
+  tBox(x0, y0, x1, y1, GLASS);
+  const kinds = [ACID, SALTWATER, WATER, OIL];
+  for (let y = y0 + 1; y < y1; y++) for (let x = x0 + 1; x < x1; x++) put(x + y * W, kinds[rndi(4)], x, y);
+  runSteps(3000);
+  const mean = {};
+  for (const k of [OIL, WATER, SALTWATER, ACID]) {
+    let s = 0, n = 0;
+    for (let y = y0 + 1; y < y1; y++) for (let x = x0 + 1; x < x1; x++) if (type[x + y * W] === k) { s += y; n++; }
+    mean[k] = n ? s / n : -1;
+  }
+  const ok = mean[OIL] < mean[WATER] && mean[WATER] < mean[SALTWATER] && mean[SALTWATER] < mean[ACID] &&
+             M_DENS[LAVA] > M_DENS[ACID];
+  return { ok, info: '平均高度 油' + mean[OIL].toFixed(1) + ' 水' + mean[WATER].toFixed(1) +
+                     ' 盐水' + mean[SALTWATER].toFixed(1) + ' 酸' + mean[ACID].toFixed(1) };
+});
+
+defTest('水下落有加速度，水面能静止并休眠', () => {
+  const { cx, cy } = tArena();
+  const floorY = Math.min(H - 2, cy + 40);
+  tBox(cx - 20, floorY - 30, cx + 20, floorY, GLASS);
+  fillRect(EMPTY, cx - 19, floorY - 30, cx + 19, floorY - 30);
+  const top = floorY - 70 > 1 ? floorY - 70 : 1;
+  put(cx + top * W, WATER, cx, top);
+  const fallSteps = tUntil(200, 1, () => type[cx + (floorY - 1) * W] === WATER || countType(WATER, cx - 19, floorY - 2, cx + 19, floorY - 1) > 0);
+  fillRect(WATER, cx - 19, floorY - 6, cx + 19, floorY - 1);
+  runSteps(600);
+  const asleep = perf.activeChunks === 0;
+  return { ok: fallSteps > 0 && fallSteps < 30 && asleep,
+           info: '下落 ' + (floorY - 1 - top) + ' 格用 ' + fallSteps + ' 步；静止后活跃块 ' + perf.activeChunks };
+});
+
+defTest('沙沉进水里，交界处没有空腔', () => {
+  const { cx, cy } = tArena();
+  tBox(cx - 12, cy - 14, cx + 12, cy + 12, GLASS);
+  fillRect(WATER, cx - 11, cy, cx + 11, cy + 11);
+  fillRect(SAND, cx - 6, cy - 12, cx + 6, cy - 6);
+  runSteps(900);
+  // 水面以下、容器之内不应该有被封住的空气格
+  let holes = 0;
+  for (let y = cy + 4; y <= cy + 11; y++) for (let x = cx - 11; x <= cx + 11; x++) if (type[x + y * W] === 0) holes++;
+  return { ok: holes === 0, info: '水线以下空格数 ' + holes };
+});
+
+/* ---- 6.6 电、植物、工具 ---- */
+defTest('电火花沿金属导线引爆火药', () => {
+  const { cx, cy } = tArena();
+  tFloor(cy + 3, GLASS);
+  fillRect(METAL, cx - 20, cy + 2, cx + 20, cy + 2);
+  fillRect(GUNPOWDER, cx + 21, cy + 1, cx + 24, cy + 2);
+  put(cx - 21 + (cy + 2) * W, SPARK, cx - 21, cy + 2);
+  const n = tUntil(400, 1, () => countType(GUNPOWDER) <= 2);
+  return { ok: n > 0, info: n + ' 步后火药被引爆，剩 ' + countType(GUNPOWDER) + ' 格' };
+});
+
+defTest('电在水里传导', () => {
+  const { cx, cy } = tArena();
+  tBox(cx - 15, cy, cx + 15, cy + 4, GLASS);
+  fillRect(EMPTY, cx - 14, cy, cx + 14, cy);
+  fillRect(WATER, cx - 14, cy + 1, cx + 14, cy + 3);
+  runSteps(30);
+  put(cx - 14 + cy * W, SPARK, cx - 14, cy);
+  let reached = false;
+  for (let s = 0; s < 60 && !reached; s++) {
+    simStep();
+    for (let x = cx - 5; x <= cx + 5; x++) if (charge[x + (cy + 2) * W] > 0) reached = true;
+  }
+  return { ok: reached, info: reached ? '电荷传到了 10 格以外' : '没有传到' };
+});
+
+defTest('种子在土上发芽、长高、开花', () => {
+  const { cx, cy } = tArena();
+  tFloor(cy + 20, STONE);
+  fillRect(SOIL, cx - 30, cy + 17, cx + 30, cy + 19);
+  for (let x = cx - 28; x <= cx + 28; x += 4) put(x + (cy + 10) * W, SEED, x, cy + 10);
+  runSteps(3000);
+  let minY = H;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (type[x + y * W] === PLANT && y < minY) minY = y;
+  const height = cy + 17 - minY;
+  return { ok: countType(PLANT) > 40 && height >= 8 && countType(FLOWER) > 0,
+           info: '植物 ' + countType(PLANT) + ' 格，最高 ' + height + ' 格，花 ' + countType(FLOWER) + ' 格' };
+});
+
+defTest('克隆体复制、黑洞吞噬', () => {
+  const { cx, cy } = tArena();
+  tFloor(cy + 10, STONE);
+  put(cx + cy * W, CLONE, cx, cy);
+  put(cx + (cy - 1) * W, SAND, cx, cy - 1);
+  runSteps(600);
+  const cloned = countType(SAND);
+  put(cx + (cy + 8) * W, VOID, cx, cy + 8);
+  put(cx + 1 + (cy + 8) * W, VOID, cx + 1, cy + 8);
+  clearCell(cx + cy * W, cx, cy);
+  runSteps(2500);
+  const left = countType(SAND);
+  return { ok: cloned > 20 && left <= cloned - 15, info: '复制出 ' + cloned + ' 格沙，黑洞吞到剩 ' + left };
+});
+
+defTest('酸不腐蚀玻璃和金属', () => {
+  const { cx, cy } = tArena();
+  tBox(cx - 5, cy - 3, cx + 5, cy + 3, GLASS);
+  fillRect(METAL, cx - 4, cy + 2, cx + 4, cy + 2);
+  fillRect(ACID, cx - 4, cy - 1, cx + 4, cy + 1);
+  const g0 = countType(GLASS), m0 = countType(METAL);
+  runSteps(1200);
+  return { ok: countType(GLASS) === g0 && countType(METAL) === m0, info: '玻璃 ' + g0 + '，金属 ' + m0 + '，均未减少' };
+});
+
+/* ---- 6.7 重力四向 ---- */
+defTest('四个重力方向：粉末下沉、气体反向、休止角一致', () => {
+  const ratios = [], notes = [];
+  let ok = true;
+  for (const dir of ['down', 'up', 'left', 'right']) {
+    clearGrid(); setGravity(dir); seedRng(99);
+    const cx = W >> 1, cy = H >> 1;
+    // 在重力下游 20 格处放一块金属板，沙落在板上堆成堆
+    const px = cx + gx * 20, py = cy + gy * 20;
+    for (let k = -45; k <= 45; k++) { const x = px + lx * k, y = py + ly * k; if (inb(x, y)) put(x + y * W, METAL, x, y); }
+    fillRect(SAND, cx - 10, cy - 10, cx + 10, cy + 10);
+    const sx = cx - gx * 16, sy = cy - gy * 16;
+    fillCircle(SMOKE, sx, sy, 3);
+    let moved = 0;
+    for (let s = 0; s < 40; s++) simStep();
+    // 烟的质心应该逆着重力移动
+    let gsx = 0, gsy = 0, gn = 0;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (type[x + y * W] === SMOKE) { gsx += x; gsy += y; gn++; }
+    if (gn > 0) moved = -((gsx / gn - sx) * gx + (gsy / gn - sy) * gy);
+    runSteps(500);
+    // 沙堆：沿重力方向的高度 vs 侧向宽度
+    let hMax = 0, lMin = 1e9, lMax = -1e9, n = 0;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (type[x + y * W] !== SAND) continue;
+      n++;
+      const dh = (px - x) * gx + (py - y) * gy, dl = (x - px) * lx + (y - py) * ly;
+      if (dh > hMax) hMax = dh;
+      if (dl < lMin) lMin = dl;
+      if (dl > lMax) lMax = dl;
+    }
+    const ratio = (lMax - lMin + 1) / hMax;
+    ratios.push(ratio);
+    notes.push(dir + ' 宽高比 ' + ratio.toFixed(2) + ' 气体逆行 ' + moved.toFixed(1));
+    if (n !== 441 || moved < 4 || hMax < 6) ok = false;
+  }
+  const mn = Math.min.apply(null, ratios), mx = Math.max.apply(null, ratios);
+  if (mx / mn > 1.35 || mn < 1.2 || mx > 4.5) ok = false;
+  setGravity('down');
+  return { ok, info: notes.join('；') };
+});
+
+/* ---- 6.8 架构 ---- */
+defTest('颜色种子跟着粒子走（移动时不闪）', () => {
+  const { cx } = tArena();
+  tFloor(H - 2, STONE);
+  const i = cx + 5 * W;
+  put(i, SAND, cx, 5); seed[i] = 177;
+  runSteps(20);
+  let found = -1;
+  for (let k = 0; k < N; k++) if (type[k] === SAND) found = seed[k];
+  return { ok: found === 177 && type[i] !== SAND, info: '下落后 seed = ' + found };
+});
+
+defTest('分块休眠：静止后活跃块归零，扰动后唤醒', () => {
+  const { cx, cy } = tArena();
+  tFloor(cy + 10, STONE);
+  fillRect(SAND, cx - 8, cy - 5, cx + 8, cy + 5);
+  runSteps(400);
+  const asleep = perf.activeChunks;
+  put(cx + (cy - 20) * W, SAND, cx, cy - 20);
+  simStep(); simStep();
+  const awake = perf.activeChunks;
+  return { ok: asleep === 0 && awake > 0, info: '静止时 ' + asleep + ' 块，扰动后 ' + awake + ' 块' };
+});
+
+defTest('存档往返：导出 → 清空 → 导入，逐格一致', () => {
+  const { cx, cy } = tArena();
+  tFloor(cy + 12, STONE);
+  const kinds = [SAND, WATER, WOOD, OIL, PLANT, METAL, ICE, SALT, GUNPOWDER, GLASS, LAVA, TNT];
+  for (let y = cy - 10; y < cy + 12; y++) for (let x = cx - 30; x < cx + 30; x++) if (rnd() < 0.6) put(x + y * W, kinds[rndi(kinds.length)], x, y);
+  runSteps(40);
+  setGravity('left');
+  const json1 = sceneToJSON(captureScene());
+  const t0 = type.slice(), s0 = seed.slice(), l0 = life.slice(), f0 = flags.slice(), T0 = temp.slice();
+  clearGrid(); setGravity('down');
+  const empty = countType(EMPTY) === N;
+  restoreScene(sceneFromJSON(json1));
+  let diff = 0;
+  for (let i = 0; i < N; i++) {
+    if (type[i] !== t0[i]) { diff++; continue; }
+    if (type[i] === 0) continue;
+    if (seed[i] !== s0[i] || life[i] !== l0[i] || (flags[i] & F_SAVE) !== (f0[i] & F_SAVE) || Math.abs(temp[i] - T0[i]) > 0.51) diff++;
+  }
+  const json2 = sceneToJSON(captureScene());
+  const ok = empty && diff === 0 && json1 === json2 && gravity === 'left';
+  setGravity('down');
+  return { ok, info: '差异 ' + diff + ' 格，JSON ' + (json1.length / 1024).toFixed(1) + ' KB，二次导出' + (json1 === json2 ? '完全相同' : '不同') };
+});
+
+// 同步跑完全部模拟用例（Node 用）
+function runSimTestsSync(log) {
+  let pass = 0;
+  const results = [];
+  for (const t of TESTS) {
+    let r;
+    try { r = t.fn(); } catch (e) { r = { ok: false, info: '异常：' + (e && e.stack || e) }; }
+    results.push({ name: t.name, ok: r.ok, info: r.info });
+    if (r.ok) pass++;
+    if (log) log((r.ok ? '通过  ' : '失败  ') + t.name + ' — ' + r.info);
+  }
+  return { pass, total: TESTS.length, results };
+}
+
+/* ---------------------------------------------------------------------
+ * 6.9 浏览器端：逐条跑用例并显示在页面角落，最后做性能测试
+ * ------------------------------------------------------------------- */
+function buildPerfScene() {
+  clearGrid(); setGravity('down'); seedRng(4242);
+  fillRect(STONE, 0, H - 3, W - 1, H - 1);
+  const target = Math.min(50000, Math.floor(N * 0.6));
+  const rows = Math.ceil(target / 2 / W);
+  fillRect(SAND, 0, H - 3 - rows, W - 1, H - 4);
+  fillRect(WATER, 0, H - 3 - rows * 2, W - 1, H - 4 - rows);
+  let n = 0;
+  for (let i = 0; i < N; i++) if (type[i] !== 0) n++;
+  for (let k = 0; k < 10; k++) {                         // 10 个 TNT 埋在沙层里，依次点燃
+    const x = Math.floor(W * (k + 0.5) / 10), y = H - 4 - (rows >> 1), i = x + y * W;
+    put(i, TNT, x, y); flags[i] |= F_BURN; life[i] = 30 + k * 5;
+  }
+  return n;
+}
+
+function perfTest() {
+  return new Promise(resolve => {
+    const count = buildPerfScene();
+    const frames = [];
+    let booms = 0, lastBoomFrame = -1, firstBoomFrame = -1, last = performance.now();
+    const prevBoom = onBoom;
+    onBoom = (x, y, R, P) => { booms++; lastBoomFrame = frames.length; if (firstBoomFrame < 0) firstBoomFrame = frames.length; if (prevBoom) prevBoom(x, y, R, P); };
+    // 驱动：正常走 rAF；如果 rAF 被降频（面板被遮挡等），30ms 后由 MessageChannel 兜底，
+    // 它不受后台定时器节流影响。每帧固定 1 个模拟步 + 1 次渲染，统计的是这一帧的实际工作耗时。
+    let rafFrames = 0, fallbackFrames = 0, token = 0;
+    const ch = new MessageChannel();
+    let armedAt = 0, armedToken = 0, pending = null;
+    ch.port1.onmessage = () => {
+      if (armedToken !== token || !pending) return;
+      if (performance.now() - armedAt < 30) { ch.port2.postMessage(0); return; }
+      const cb = pending; pending = null; token++; fallbackFrames++;
+      cb(performance.now());
+    };
+    const nextFrame = cb => {
+      const my = ++token;
+      pending = cb; armedAt = performance.now(); armedToken = my;
+      requestAnimationFrame(() => { if (token === my && pending) { pending = null; token++; rafFrames++; cb(performance.now()); } });
+      ch.port2.postMessage(0);
+    };
+    function fr(now) {
+      const dt = Math.min(100, now - last); last = now;
+      const t0 = performance.now();
+      simStep();
+      renderFrame(now, 16.7);
+      if (gl) gl.finish();                               // 把 GPU 时间也算进来
+      const work = performance.now() - t0;
+      frames.push({ dt, work, free: fpCount, chunks: perf.activeChunks });
+      audioFrame();
+      const n = frames.length;
+      const done = (booms >= 10 && n - lastBoomFrame > 300) || n > 1500;
+      if (!done) { nextFrame(fr); return; }
+      onBoom = prevBoom;
+      const during = frames.slice(Math.max(0, firstBoomFrame), lastBoomFrame + 24);
+      const after = frames.slice(lastBoomFrame + 120);               // 最后一次爆炸 2 秒（120 步）之后
+      const all = frames.slice(5);
+      const avg = a => a.reduce((s, f) => s + f.work, 0) / Math.max(1, a.length);
+      const maxW = a => a.reduce((m, f) => Math.max(m, f.work), 0);
+      const v = all.map(f => f.dt).sort((p, q) => p - q);
+      resolve({
+        count, grid: W + 'x' + H, booms, frames: n, displayHz: 1000 / (v[v.length >> 1] || 16.7),
+        throttled: fallbackFrames > rafFrames, rafFrames, fallbackFrames,
+        avgWork: avg(all), duringAvg: avg(during), duringMax: maxW(during), duringFrames: during.length,
+        duringMinFps: 1000 / Math.max(0.01, maxW(during)),
+        afterAvg: avg(after), afterMax: maxW(after), afterFps: 1000 / Math.max(0.01, maxW(after)),
+        peakFree: frames.reduce((m, f) => Math.max(m, f.free), 0), peakChunks: frames.reduce((m, f) => Math.max(m, f.chunks), 0),
+      });
+    }
+    nextFrame(fr);
+  });
+}
+
+async function runAllTests() {
+  testRunning = true;
+  const box = $('testbox');
+  box.style.display = 'block';
+  const rows = [];
+  let pass = 0;
+  const draw = extra => {
+    box.innerHTML = '<h4>自测 ' + pass + ' / ' + rows.length + ' 通过' + (rows.length < TESTS.length ? '（进行中 ' + rows.length + '/' + TESTS.length + '）' : '') + '</h4>' +
+      (extra || '') + rows.map(r => '<div class="' + (r.ok ? 'ok' : 'bad') + '">' + (r.ok ? '通过' : '失败') + '　' + r.name + ' <span class="dim">' + r.info + '</span></div>').join('');
+  };
+  for (const t of TESTS) {
+    await new Promise(r => setTimeout(r, 0));
+    let r;
+    try { r = t.fn(); } catch (e) { r = { ok: false, info: '异常：' + e.message }; console.error(e); }
+    rows.push({ name: t.name, ok: r.ok, info: r.info });
+    if (r.ok) pass++;
+    console.log((r.ok ? '通过' : '失败') + '  ' + t.name + ' — ' + r.info);
+    sceneDirty = true; renderFrame(performance.now(), 16.7);
+    draw();
+  }
+  fpClear(); exClear();
+  const p = await perfTest();
+  // 判定只看「每帧工作耗时」：爆炸期间最慢一帧 ≤ 22.2ms（≥45 FPS），结束 2 秒后最慢一帧 ≤ 16.7ms（60 FPS）
+  const perfOk = p.duringMax <= 22.2 && p.afterMax <= 16.7 && p.booms === 10;
+  rows.push({ name: '性能：' + p.count + ' 粒子 + 引爆 10 个 TNT（' + p.grid + '）', ok: perfOk,
+    info: '爆炸期间最慢一帧 ' + p.duringMax.toFixed(1) + 'ms（折合最低 ' + p.duringMinFps.toFixed(0) + ' FPS），平均 ' + p.duringAvg.toFixed(1) +
+          'ms；结束 2 秒后最慢 ' + p.afterMax.toFixed(1) + 'ms、平均 ' + p.afterAvg.toFixed(1) + 'ms；全程平均 ' + p.avgWork.toFixed(1) +
+          'ms；飞行粒子峰值 ' + p.peakFree + '，活跃块峰值 ' + p.peakChunks + (p.throttled ? '；注意：本次 rAF 被浏览器降频，测试改由消息通道驱动' : '；rAF ' + p.displayHz.toFixed(0) + 'Hz') });
+  if (perfOk) pass++;
+  console.log((perfOk ? '通过' : '失败') + '  ' + rows[rows.length - 1].name + ' — ' + rows[rows.length - 1].info);
+  const all = pass === rows.length;
+  draw('<div class="' + (all ? 'ok' : 'bad') + '">' + (all ? '全部通过' : '有 ' + (rows.length - pass) + ' 项失败') + ' · 渲染 ' + renderMode + '</div>');
+  console.log('自测结果：' + pass + '/' + rows.length + (all ? ' 全部通过' : ' 有失败'));
+  window.__testResults = { pass, total: rows.length, rows, perf: p, renderMode };
+  testRunning = false;
+}
+
+/* =====================================================================
+ * 7. 主循环：固定 60Hz 模拟步长，与渲染帧率解耦
+ * ===================================================================== */
+let lastFrameT = 0, simAcc = 0, frameNo = 0, slowGpu = 0;
+perf.frames = 0;
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  let dt = now - lastFrameT;
+  lastFrameT = now;
+  if (dt > 0 && dt < 5000) hud.interval += (dt - hud.interval) * 0.15;     // 真实 rAF 间隔（不截断，用来识别降频）
+  if (dt > 250 || dt <= 0) dt = 16.7;
+  hud.frames++; perf.frames++;
+  if (testRunning) { updateHud(now); return; }
+
+  const t0 = performance.now();
+  if (pointer.down && !pointer.line) stamp(pointer.x, pointer.y, pointer.erase);     // 按住不动也持续出料
+  if (!paused) {
+    const stepMs = 1000 / SIM_HZ, maxSteps = Math.max(2, Math.ceil(speed * 2));
+    simAcc += Math.min(dt, 100) * speed;
+    let n = 0;
+    while (simAcc >= stepMs && n < maxSteps) { simStep(); simAcc -= stepMs; n++; }
+    if (simAcc > stepMs * 2) simAcc = 0;               // 跟不上就丢步，不追帧
+  } else if (stepOnce) simStep();
+  stepOnce = false;
+
+  renderFrame(now, Math.min(dt, 100));
+  if (gl && frameNo % 30 === 0) {                      // 每 30 帧抽样一次真实 GPU 耗时
+    const g0 = performance.now();
+    gl.finish();
+    perf.gpu += (performance.now() - g0 - perf.gpu) * 0.5;
+    if (settings.hd && pixelRatio > 1 && perf.gpu > 13 && !document.hidden) {
+      if (++slowGpu >= 6) {                            // GPU 持续吃紧：自动降到 1x 渲染
+        settings.hd = false; slowGpu = 0;
+        resizeRenderer();
+        const boxes = $('settingList').querySelectorAll('input');
+        if (boxes[9]) boxes[9].checked = false;
+        toast('已自动关闭高清渲染以保持帧率');
+      }
+    } else slowGpu = 0;
+  }
+  frameNo++;
+  hud.work += (performance.now() - t0 - hud.work) * 0.1;
+  audioFrame();
+  updateHud(now);
+}
+
+function main() {
+  buildPalette();
+  selectTool(SAND);
+  createRenderer(viewport);
+  onBoom = (x, y, R, P) => { fxBoom(x, y, R, P); audioBoom(P * R / 15); };
+  fitGrid(true);
+  buildControls(); bindPointer(); bindKeys(); bindResize();
+  document.addEventListener('visibilitychange', () => { lastFrameT = performance.now(); simAcc = 0; });
+  if (QS.has('test')) setTimeout(runAllTests, 400);
+  else if (QS.has('scene')) loadScene(Math.max(0, Math.min(SCENES.length - 1, (+QS.get('scene') || 1) - 1)));
+  else toast('左键绘制 · 右键擦除 · 「场景」里有 6 个预设');
+  requestAnimationFrame(loop);
+}
+main();
+</script>
+</body>
+</html>
