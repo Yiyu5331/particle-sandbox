@@ -758,10 +758,10 @@ function renderGL(timeMs, dt) {
   else if (el >= 0) gl.uniform2f(P.u.uLightDir, -cs, -sn); else gl.uniform2f(P.u.uLightDir, cs, sn);
   gl.uniform1f(P.u.uDay, dayK); gl.uniform1f(P.u.uEl, el);
   gl.uniform1f(P.u.uShadowK, el >= 0 ? Math.min(1, el * 3) : Math.min(1, -el * 3) * 0.3);
-  const boltAge = lastBolt ? (tick - lastBolt.tick) : 999;
+  const boltAge = lastBolt && tick >= lastBolt.tick ? (tick - lastBolt.tick) : 999;
   gl.uniform1f(P.u.uBolt, boltAge < 12 ? 1 - boltAge / 12 : 0);
   gl.uniform4f(P.u.uQual, settings.smooth ? 1 : 0, settings.texture ? 1 : 0, settings.shadows ? 1 : 0, settings.clouds ? 1 : 0);
-  for (let k = 0; k < 8; k++) R.rip[k * 3] = ripples[k * 3], R.rip[k * 3 + 1] = ripples[k * 3 + 1], R.rip[k * 3 + 2] = ripples[k * 3 + 2] > 0 ? (tick - ripples[k * 3 + 2]) / 60 : 99;
+  for (let k = 0; k < 8; k++) R.rip[k * 3] = ripples[k * 3], R.rip[k * 3 + 1] = ripples[k * 3 + 1], R.rip[k * 3 + 2] = ripples[k * 3 + 2] > 0 && tick >= ripples[k * 3 + 2] ? (tick - ripples[k * 3 + 2]) / 60 : 99;
   gl.uniform3fv(P.u.uRip, R.rip);
   gl.uniform1f(P.u.uTime, time); gl.uniform1f(P.u.uDistort, settings.distort ? 1 : 0);
   gl.uniform1f(P.u.uGridLines, settings.gridLines ? 1 : 0); gl.uniform1i(P.u.uView, viewMode);

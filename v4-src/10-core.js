@@ -392,6 +392,7 @@ function clearGrid() {
   elecCount = 0; fpClear(); exClear(); bodiesClear(); clearWeather();
   env.waterIn = env.waterOut = env.waterSink = 0; env.rainCount = env.snowCount = env.strikes = 0; env.charge = 0;
   ledgerReset();
+  ripples.fill(0); rippleHead = 0; lastBolt = null;      // 渲染用的涟漪和闪电记录也清掉
   markStructAll();
   wakeAll();
 }

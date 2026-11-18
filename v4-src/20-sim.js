@@ -976,7 +976,7 @@ function stepElectric() {
         const j = nx + ny * W, o = type[j];
         if (o === 0) continue;
         if (M_ELEC[o]) {
-          if (e > loss && charge[j] === 0 && (o === METAL || o === STEEL || rnd() < 0.8)) {
+          if (e > loss && charge[j] === 0) {                 // 导体里必定导通；水里每格损耗大，传四十格左右就没了
             charge[j] = 6; chargeE[j] = e - loss; next[nn++] = j;
           }
         } else if (M_FLAM[o] > 0) { temp[j] += 300; wake(nx, ny); }
