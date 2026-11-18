@@ -227,20 +227,24 @@ function coldBoom() {
   let firstBoom = -1, booms = 0;
   const prev = onBoom;
   onBoom = (x, y, R, P) => { booms++; if (firstBoom < 0) firstBoom = frames.length; if (prev) prev(x, y, R, P); };
-  const ch = new MessageChannel();
+  const ch = new MessageChannel(), ctl = new Float64Array(60000);
+  let ctlMax = 0, ctlSum = 0;
   ch.port1.onmessage = () => {
     const t0 = performance.now();
     simStep(); renderFrame(performance.now(), 16.7); if (gl) gl.finish();
     frames.push(performance.now() - t0);
+    const c0 = performance.now();                        // 固定负载对照组：它也变慢，说明是机器忙
+    for (let i = 0; i < 60000; i++) ctl[i] = ctl[i] * 0.5 + i;
+    const cd = performance.now() - c0; ctlSum += cd; if (cd > ctlMax) ctlMax = cd;
     if (frames.length < 260) { ch.port2.postMessage(0); return; }
     onBoom = prev;
     const win = frames.slice(Math.max(0, firstBoom), firstBoom + 60);
     const r = { warm: !QS.has('nowarm'), warmMs: +warmMs.toFixed(0), count, booms, firstBoomFrame: firstBoom,
                 firstBoomMax: +Math.max.apply(null, win).toFixed(1), allMax: +Math.max.apply(null, frames).toFixed(1),
-                avg: +(frames.reduce((a, b) => a + b, 0) / frames.length).toFixed(2) };
+                avg: +(frames.reduce((a, b) => a + b, 0) / frames.length).toFixed(2), ctlAvg: +(ctlSum / frames.length).toFixed(3), ctlMax: +ctlMax.toFixed(1) };
     window.__coldBoom = r;
     box.innerHTML = '<h4>冷启动第一次大爆炸</h4><div class="' + (r.firstBoomMax <= 16 ? 'ok' : 'bad') + '">' + (r.warm ? '已热身（' + r.warmMs + 'ms）' : '未热身') +
-      '：第一次爆炸后 60 帧里最慢 ' + r.firstBoomMax + 'ms，全程最慢 ' + r.allMax + 'ms，平均 ' + r.avg + 'ms</div>';
+      '：第一次爆炸后 60 帧里最慢 ' + r.firstBoomMax + 'ms，全程最慢 ' + r.allMax + 'ms，平均 ' + r.avg + 'ms；固定负载对照平均 ' + r.ctlAvg + 'ms、最慢 ' + r.ctlMax + 'ms</div>';
     console.log('冷启动', JSON.stringify(r));
     testRunning = false;
   };
@@ -287,6 +291,22 @@ async function benchInPage() {
   testRunning = false;
 }
 
+/* ---- ?golden=1：完整的黄金快照检查（10 个场景跑到第 36000 步 + 5 段回放） ---- */
+function goldenInPage() {
+  testRunning = true;
+  const box = $('testbox');
+  box.style.display = 'block';
+  box.innerHTML = '<h4>黄金快照检查进行中（约一两分钟）……</h4>';
+  setTimeout(() => {
+    const t0 = performance.now();
+    const r = goldenCheck(36000);
+    window.__golden = { ok: r.ok, bad: r.bad, rows: r.rows, sec: (performance.now() - t0) / 1000 };
+    box.innerHTML = '<h4>黄金快照：' + r.ok + ' 个一致，' + r.bad + ' 个不一致</h4>' + r.rows.map(x => '<div class="' + (x[0] === '✓' ? 'ok' : 'bad') + '">' + x + '</div>').join('');
+    console.log('golden', JSON.stringify(window.__golden));
+    testRunning = false;
+  }, 50);
+}
+
 function main() {
   buildPalette();
   selectTool(SAND);
@@ -306,6 +326,7 @@ function main() {
   else if (QS.has('coldboom')) setTimeout(coldBoom, 50);
   else if (QS.has('soak')) setTimeout(soakInPage, 400);
   else if (QS.has('bench')) setTimeout(benchInPage, 400);
+  else if (QS.has('golden')) setTimeout(goldenInPage, 400);
   else if (QS.has('scene')) loadScene(Math.max(0, Math.min(SCENES.length - 1, (+QS.get('scene') || 1) - 1)));
   else toast('左键绘制 · 右键擦除 · 「场景」里有 10 个预设');
   requestAnimationFrame(loop);

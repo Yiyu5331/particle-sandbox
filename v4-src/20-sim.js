@@ -743,7 +743,8 @@ const exA = new Uint8Array(EX_MAX), exX = new Float32Array(EX_MAX), exY = new Fl
       exRays = new Float32Array(EX_MAX * EX_RAYS);
 let exActive = 0;
 
-function exClear() { exA.fill(0); exActive = 0; }
+// 整个池子归零（死槽位里的旧数据虽然不影响模拟，但会进哈希，必须清干净）
+function exClear() { exA.fill(0); exX.fill(0); exY.fill(0); exR.fill(0); exP.fill(0); exCur.fill(0); exN.fill(0); exPhase.fill(0); exRays.fill(0); exActive = 0; }
 
 function startExplosion(x, y, R, P) {
   let k = -1;
@@ -868,7 +869,11 @@ const fpAlive = new Uint8Array(FP_MAX), fpType = new Uint8Array(FP_MAX), fpSeed 
       fpQX = new Float32Array(FP_MAX), fpQY = new Float32Array(FP_MAX);     // 上上帧位置
 let fpHead = 0, fpCount = 0;
 
-function fpClear() { fpAlive.fill(0); fpCount = 0; fpHead = 0; }
+function fpClear() {
+  fpAlive.fill(0); fpType.fill(0); fpSeed.fill(0); fpAge.fill(0); fpTemp.fill(0); fpX.fill(0); fpY.fill(0);
+  fpVX.fill(0); fpVY.fill(0); fpPX.fill(0); fpPY.fill(0); fpQX.fill(0); fpQY.fill(0);
+  fpCount = 0; fpHead = 0;
+}
 
 function spawnFree(t, x, y, vx, vy, T, sd) {
   const k = fpHead;

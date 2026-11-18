@@ -237,6 +237,7 @@ function resetWorld(seedValue) {
   clearGrid();
   updateSun();
   tick = 0; parity = 0; slowPhase = 0; pinTick = -100; fracTick = -100; structCooldown = 0; structHold = false;
+  structSettle = false; fracVX = 0; fracVY = 0; clearStructDirty(); markStructAll();   // 上一局留下的结构力学状态全部清掉
   seedRng(seedValue);
   worldSeed = seedValue;
   cmdLog = [];
