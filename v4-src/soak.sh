@@ -1,7 +1,7 @@
 #!/bin/sh
 # soak 测试：10 个预设各跑 10 分钟模拟时间（36000 步），每 10 秒采样一次。结果写到 soak-result.json
 cd "$(dirname "$0")"
-{ echo "globalThis.location={search:''};"; cat 10-core.js 20-sim.js 22-struct.js 23-weather.js 25-codec.js 27-scenes.js 60-tests.js 62-tests4.js; cat <<'JS'
+{ echo "globalThis.location={search:''};"; cat 10-core.js 20-sim.js 22-struct.js 23-weather.js 25-codec.js 26-state.js 27-scenes.js 60-tests.js 62-tests4.js 64-tests41.js; cat <<'JS'
 const fs = require('fs');
 allocGrid(Number(process.env.GW||400), Number(process.env.GH||250));
 const steps = Number(process.env.STEPS||36000), out = [];

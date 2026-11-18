@@ -333,6 +333,7 @@ for (const r of RULES) { RX[r.a * NT + r.b] = r; HASRX[r.a] = 1; }
 const DAY_STEPS = 36000;   // 时间流速 1x 时，一昼夜 = 10 分钟模拟时间
 const env = {
   structure: true,         // 结构力学开关
+  plantAging: 1,           // 植物、花、种子的衰老速度倍数（1 = 正常）
   dayNight: true,          // 关掉后恒为正午、气温恒为 env.temp（自测用）
   time: 0.8,               // 0 = 午夜，0.25 = 日出，0.5 = 正午，0.75 = 日落
   timeScale: 1,            // 0 / 1 / 10 / 60
@@ -371,7 +372,7 @@ let CW = 0, CHN = 0, chunkTTL, chunkCount;
 let parity = 0, tick = 0;
 let gravity = 'down', gx = 0, gy = 1, lx = 1, ly = 0;
 let sceneDirty = true;     // 渲染端需要整张重传
-let structDirty = true;    // 有刚性固体被增删或削弱，需要重新做支撑检测
+let structDirty = true;    // 有待处理的支撑检测（脏格列表见 2s）
 
 function allocGrid(w, h) {
   W = w; H = h; N = w * h;
@@ -391,7 +392,7 @@ function clearGrid() {
   elecCount = 0; fpClear(); exClear(); bodiesClear(); clearWeather();
   env.waterIn = env.waterOut = env.waterSink = 0; env.rainCount = env.snowCount = env.strikes = 0; env.charge = 0;
   ledgerReset();
-  structDirty = true;
+  markStructAll();
   wakeAll();
 }
 
@@ -422,21 +423,21 @@ function initFuel(t) {
 // 新生成一个粒子（笔刷、克隆、喷发等）
 function put(i, t, x, y) {
   const old = type[i];
-  if (M_RIGID[t] | M_RIGID[old]) structDirty = true;
   type[i] = t; seed[i] = rndi(256); temp[i] = M_SPAWN[t];
   life[i] = t === PLANT ? rndi(150) : initLife(t);      // 植物的 life 是年龄：起始年龄随机，免得整片同时老死
   flags[i] = parity | (t === SPARK ? F_TIP : 0); charge[i] = 0;
   wet[i] = t === PLANT ? 60 : 0; fuel[i] = initFuel(t);
   aux[i] = M_RIGID[t] ? 255 : t === SOIL ? 200 : (AIRLIKE[t] && AIRLIKE[old]) ? aux[i] : 0;   // 火焰和烟继承所在空气格的浑浊度
+  if (M_RIGID[t] | M_RIGID[old]) markStructAround(i);
   wake(x, y);
 }
 
 // 清成空气，保留该格温度
 function clearCell(i, x, y) {
   const old = type[i];
-  if (M_RIGID[old]) structDirty = true;
   type[i] = 0; life[i] = 0; flags[i] = parity; charge[i] = 0; wet[i] = 0; fuel[i] = 0;
   if (!AIRLIKE[old]) aux[i] = 0;                     // 火焰 / 烟消失后，这格空气的浑浊度留着
+  if (M_RIGID[old]) markStructAround(i);
   wake(x, y);
 }
 
@@ -444,11 +445,11 @@ function clearCell(i, x, y) {
 function morph(i, t, x, y) {
   if (t === EMPTY) { clearCell(i, x, y); return; }
   const o = type[i];
-  if (M_RIGID[t] | M_RIGID[o]) structDirty = true;
   type[i] = t; life[i] = initLife(t); flags[i] = (flags[i] & F_SCORCH) | parity;
   fuel[i] = initFuel(t);
   aux[i] = M_RIGID[t] ? (M_RIGID[o] ? aux[i] >> 1 : 255) : t === SOIL ? 255 : (AIRLIKE[t] && AIRLIKE[o]) ? aux[i] : 0;
   if (wet[i] > M_ABSORB[t]) wet[i] = M_ABSORB[t];
+  if (M_RIGID[t] | M_RIGID[o]) markStructAround(i);
   wake(x, y);
 }
 
@@ -471,7 +472,7 @@ function setGravity(dir) {
   else if (dir === 'up') { gx = 0; gy = -1; lx = 1; ly = 0; }
   else if (dir === 'left') { gx = -1; gy = 0; lx = 0; ly = 1; }
   else { gx = 1; gy = 0; lx = 0; ly = 1; }
-  structDirty = true;
+  if (sdList.length === N && N > 0) markStructAll();
   if (chunkTTL) wakeAll();
 }
 

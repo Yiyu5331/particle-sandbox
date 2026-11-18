@@ -69,7 +69,7 @@ function movePowder(x, y, i, t) {
     flags[ci] = (flags[ci] & ~F_FALL) | (moved === 1 ? (sp < 3 ? sp + 1 : 3) << 6 : 0);
     st.powder++;
     const ux = x - gx, uy = y - gy;          // 原来压在它上面的如果是刚性固体，支撑关系可能变了
-    if (ux >= 0 && ux < W && uy >= 0 && uy < H && M_RIGID[type[ux + uy * W]]) structDirty = true;
+    if (ux >= 0 && ux < W && uy >= 0 && uy < H && M_RIGID[type[ux + uy * W]]) markStruct(ux + uy * W);
     if (moved === 1 && M_WIND[t] > 0) windPush(cx, cy, ci, t, M_WIND[t]);
     return;
   }
@@ -315,7 +315,7 @@ function burnStep(x, y, i, t, T) {
   const a = aux[i];
   if (M_RIGID[t] && a > 0) {                           // 烧焦的木头越来越不结实
     aux[i] = a > 2 ? a - 2 : 0;
-    if (a >= 70 && a - 2 < 70) structDirty = true;
+    if ((a >= 70 && a - 2 < 70) || (a >= 91 && a - 2 < 91)) markStructAround(i);
   }
   const F = fuel[i];
   if (F > 1) { fuel[i] = F - 1; return false; }
@@ -329,7 +329,9 @@ function burnStep(x, y, i, t, T) {
  * 2.3 植物：基因来自 seed 字节，整株共用
  *     低 4 位：株高上限 8~32 格；4-5 位：分叉概率；6-7 位：叶片密度
  * ------------------------------------------------------------------- */
-function plantLifespan(g) { return 520 + (g & 15) * 48; }   // 寿命（慢速过程的轮次，约等于秒）
+function plantLifespan(g) { return 2400 + (g & 15) * 160; }  // 寿命（慢速过程的轮次，约等于秒）：40~80 分钟
+// 植物能不能长：要有光，气温也要在 2°C 以上
+function canGrow() { return env.sun >= 0.12 && env.ambient > 2; }
 function geneHeight(g) { return 8 + (((g & 15) * 1.6) | 0); }
 function geneBranch(g) { return 0.05 + ((g >> 4) & 3) * 0.05; }
 function geneLeaf(g) { return 0.3 + ((g >> 6) & 3) * 0.13; }
@@ -413,7 +415,7 @@ function bloom(x, y, i) {
 function growTip(x, y, i) {
   const e = life[i];
   if (e <= 0) { bloom(x, y, i); return; }
-  if (env.sun < 0.12 || !skyOpen(x, y)) return;       // 没光不长
+  if (!canGrow() || !skyOpen(x, y)) return;           // 没光、太冷都不长
   const g = seed[i];
   if (stemHeight(x, y) >= geneHeight(g)) { life[i] = 0; return; }   // 到株高上限了：停止长高，展叶
   const side = rnd() < 0.3 ? (rnd() < 0.5 ? 1 : -1) : 0;
@@ -442,8 +444,9 @@ function growTip(x, y, i) {
 }
 
 function sprout(i, x, y) {
-  if (M_RIGID[type[i]]) structDirty = true;
+  const wasRigid = M_RIGID[type[i]];
   type[i] = PLANT; flags[i] = parity | F_TIP; life[i] = geneHeight(seed[i]); wet[i] = 30; fuel[i] = initFuel(PLANT); aux[i] = 0;
+  if (wasRigid) markStructAround(i);
   wake(x, y);
 }
 
@@ -568,7 +571,7 @@ function hookVoid(x, y, i) {
       const adx = dx < 0 ? -dx : dx, ady = dy < 0 ? -dy : dy;
       if (adx > 2 * ady) sy = 0; else if (ady > 2 * adx) sx = 0;
       const qx = px + sx, qy = py + sy, q = qx + qy * W, qt = type[q];
-      if (qt === 0) { if (M_RIGID[o]) structDirty = true; swapCells(j, q, px, py, qx, qy); }
+      if (qt === 0) { swapCells(j, q, px, py, qx, qy); if (M_RIGID[o]) { markStructAround(j); markStructAround(q); } }
       else if (qt === VOID) { if (o === WATER || o === SALTWATER || o === SNOW || o === ICE || o === STEAM) WL.voidOut++; clearCell(j, px, py); }
     }
   }
@@ -765,15 +768,16 @@ function startExplosion(x, y, R, P) {
     const d = Math.sqrt(dx * dx + dy * dy);
     if (d > RR) continue;
     if (M_BLAST[o] > 0) {                              // 殉爆：范围内的炸药不管有没有被挡住都会被引爆，时间按距离错开
-      if (!(flags[j] & (F_BURN | F_BODY))) { flags[j] |= F_BURN; life[j] = 3 + ((d * 0.5) | 0) + rndi(9); wake(px, py); }
+      if (flags[j] & F_BODY) lightBodyAt(j, 3 + ((d * 0.5) | 0) + rndi(9));
+      else if (!(flags[j] & F_BURN)) { flags[j] |= F_BURN; life[j] = 3 + ((d * 0.5) | 0) + rndi(9); wake(px, py); }
       continue;
     }
     if (!M_RIGID[o] || M_HARD[o] > 1) continue;
     const dmg = (1 - d / RR) * 110 * P / M_BOND[o];
-    const a = aux[j];
-    aux[j] = a > dmg ? a - dmg : 0;
+    const a = aux[j], na = a > dmg ? a - dmg : 0;
+    aux[j] = na;
+    if ((a >= 70 && na < 70) || (a >= 91 && na < 91)) markStructAround(j);     // 只有跨过连接阈值的格子才会改变支撑关系
   }
-  structDirty = true;
   clearPins();
   st.boom++;
   if (onBoom) onBoom(x, y, R, P);
@@ -808,7 +812,8 @@ function stepExplosion(k) {
         } else wake(px, py);
         continue;
       }
-      if (flags[j] & F_BODY) {                       // 打在刚体上：推它一把
+      if (flags[j] & F_BODY) {                       // 打在刚体上：推它一把；里面的炸药被引爆
+        if (M_BLAST[o]) lightBodyAt(j, 3 + ((d * 0.4) | 0) + rndi(9));
         bodyImpulse(life[j] - 1, dx * e * 2600, dy * e * 2600, px, py);
         e -= 0.3;
         continue;
@@ -983,7 +988,6 @@ function stepElectric() {
  * 2.10 温度场 + 空气含氧：只在清醒的块里做成对交换（守恒、原地），
  *      再向环境气温缓慢回落。空气格之间还交换「浑浊度」，网格边缘是开阔大气（恒为新鲜）。
  * ------------------------------------------------------------------- */
-let hotRigid = false;      // 有刚性固体被烧到 900°C 以上：金属可能软化了，过一会儿要重算支撑
 function stepThermal() {
   const NTn = NT, K = KTAB, IHC = M_IHC, RLX = M_RELAX, amb = env.ambient;
   for (let cy = 0; cy < CHN; cy++) {
@@ -1003,7 +1007,7 @@ function stepThermal() {
               if (AIRLIKE[type[i + 1]]) { const d = aux[i + 1] - aux[i]; if (d > 3 || d < -3) { const q = d >> 2; aux[i] += q; aux[i + 1] -= q; } }
               if (AIRLIKE[type[i + W]]) { const d = aux[i + W] - aux[i]; if (d > 3 || d < -3) { const q = d >> 2; aux[i] += q; aux[i + W] -= q; } }
             }
-          } else if (Ti > 900 && M_RIGID[a]) hotRigid = true;
+          } else if (Ti > 900 && (a === METAL || a === STEEL) && (tick & 31) === 0) markStructAround(i);   // 烧软的金属：重新评估
           if (x + 1 < W) {
             const d = temp[i + 1] - Ti;
             if (d > 0.5 || d < -0.5) {
@@ -1130,21 +1134,21 @@ function slowPlant(x, y, i) {
   if (w > 20 && rnd() < 0.12 * (0.3 + env.sun)) { w--; vaporAdd(x, y, 0.01); WL.transpire += 0.01; }  // 蒸腾
   wet[i] = w;
   if (f & (F_TIP | F_BURN | F_BODY)) return;
-  let age = life[i] + (w === 0 ? 2 : 1);               // 缺水老得快
+  let age = life[i] + (w === 0 ? 2 : 1) * env.plantAging;   // 缺水老得快；plantAging 是整体的衰老速度倍数
   if (age > 60000) age = 60000;
   life[i] = age;
-  if (age > plantLifespan(g) && rnd() < 0.15) {        // 寿终（约 9~21 分钟）：枯萎成枯枝
+  if (age > plantLifespan(g) && rnd() < 0.15) {        // 寿终：枯萎成枯枝
     type[i] = DEADPLANT; life[i] = 0; flags[i] = (f & F_SCORCH) | parity; fuel[i] = initFuel(DEADPLANT);
     wake(x, y);
     return;
   }
-  if (env.sun < 0.12) return;
+  if (!canGrow()) return;
   const ux = x - gx, uy = y - gy;
   if (ux < 0 || ux >= W || uy < 0 || uy >= H || type[ux + uy * W] !== 0) return;
-  if (age < 160 && w >= 50 && rnd() < 0.02 && skyOpen(x, y) && stemHeight(x, y) < geneHeight(g) && biomass(x, y, 3) < 24) {
+  if (age < 160 * env.plantAging && w >= 50 && rnd() < 0.02 && skyOpen(x, y) && stemHeight(x, y) < geneHeight(g) && biomass(x, y, 3) < 24) {
     flags[i] |= F_TIP; life[i] = Math.min(2 + rndi(4), geneHeight(g) - stemHeight(x, y));   // 水分充足的幼株顶端再抽一小段，不超过株高上限
     wake(x, y);
-  } else if (age > 30 && w >= 30 && rnd() < 0.006 && skyOpen(x, y)) {
+  } else if (age > 30 * env.plantAging && w >= 30 && rnd() < 0.006 && skyOpen(x, y)) {
     const j = ux + uy * W;                             // 成株开花
     put(j, FLOWER, ux, uy); seed[j] = rndi(5) * 51 + 8 + rndi(34);
     wet[i] = w - 20; env.waterSink += 0.2; WL.plantUse += 0.2;
@@ -1152,9 +1156,9 @@ function slowPlant(x, y, i) {
 }
 
 function slowFlower(x, y, i) {
-  const age = life[i] + 1;
+  const age = life[i] + env.plantAging;
   life[i] = age;
-  if (age > 35 && rnd() < 0.2) {                       // 谢了：六成落下一粒种子，基因来自母株并略有变异
+  if (age > 300 && rnd() < 0.02) {                     // 开五分钟左右才谢                       // 谢了：六成落下一粒种子，基因来自母株并略有变异
     if (rnd() < 0.6) {
       let g = rndi(256);
       for (let k = 0; k < 4; k++) {
@@ -1169,16 +1173,16 @@ function slowFlower(x, y, i) {
 }
 
 function slowSeed(x, y, i) {
-  const age = life[i] + 1;
+  const age = life[i] + env.plantAging;
   life[i] = age;
-  if (age > 240 && rnd() < 0.05) { clearCell(i, x, y); return; }      // 一直没发芽：烂掉
+  if (age > 1200 && rnd() < 0.01) { clearCell(i, x, y); return; }     // 二十分钟都没发芽：烂掉
   const bx = x + gx, by = y + gy;
   if (bx < 0 || bx >= W || by < 0 || by >= H) return;
   const bj = bx + by * W, b = type[bj];
   if (b === SOIL) { if (wet[bj] < 30 || aux[bj] < 20) return; }
   else if (b === SAND) { if (wet[bj] < 60) return; }
   else return;
-  if (env.sun < 0.12 || !skyOpen(x, y) || biomass(x, y, 4) > 10 || rnd() > 0.25) return;
+  if (!canGrow() || !skyOpen(x, y) || biomass(x, y, 4) > 10 || rnd() > 0.25) return;
   wet[bj] -= 30; env.waterSink += 0.3; WL.plantUse += 0.3;
   if (b === SOIL) aux[bj] -= 20;                        // 消耗养分
   sprout(i, x, y);
@@ -1186,7 +1190,7 @@ function slowSeed(x, y, i) {
 
 function slowSoil(x, y, i) {
   // 植被演替：湿润、有养分、见得到光、周围还空着的土面，偶尔自己冒出新芽（土里的种子库）
-  if (wet[i] < 80 || aux[i] < 40 || env.sun < 0.12 || rnd() > 0.0006) return;
+  if (wet[i] < 80 || aux[i] < 40 || !canGrow() || rnd() > 0.0006) return;
   const ux = x - gx, uy = y - gy;
   if (ux < 0 || ux >= W || uy < 0 || uy >= H || type[ux + uy * W] !== 0) return;
   if (!skyOpen(x, y) || biomass(x, y, 4) > 0) return;
@@ -1232,7 +1236,7 @@ function slowIce(x, y, i) {
   }
   if (!exposed) return;
   type[i] = WATER; life[i] = 0; flags[i] = parity; temp[i] = 1; aux[i] = 0;
-  structDirty = true;
+  markStructAround(i);
   wake(x, y);
 }
 
@@ -1340,18 +1344,20 @@ function simStep() {
 /* ---------------------------------------------------------------------
  * 2.13 绘制到网格（笔刷、预设、测试共用）与统计
  * ------------------------------------------------------------------- */
+// 返回 1 = 放下了一格，-1 = 擦掉了一格，0 = 没变（预算系统按这个扣材料）
 function paintCell(x, y, t, replace) {
-  if (x < 0 || x >= W || y < 0 || y >= H) return;
+  if (x < 0 || x >= W || y < 0 || y >= H) return 0;
   const i = x + y * W;
-  if (flags[i] & F_BODY) return;
-  if (t === TOOL_ERASE) { if (type[i] !== 0) clearCell(i, x, y); return; }
-  if (t === TOOL_HEAT) { temp[i] = Math.min(2500, temp[i] + 60); wake(x, y); return; }
-  if (t === TOOL_COOL) { temp[i] = Math.max(-200, temp[i] - 60); wake(x, y); return; }
-  if (t >= 100) return;
+  if (flags[i] & F_BODY) return 0;
+  if (t === TOOL_ERASE) { if (type[i] !== 0) { clearCell(i, x, y); return -1; } return 0; }
+  if (t === TOOL_HEAT) { temp[i] = Math.min(2500, temp[i] + 60); wake(x, y); return 0; }
+  if (t === TOOL_COOL) { temp[i] = Math.max(-200, temp[i] - 60); wake(x, y); return 0; }
+  if (t >= 100) return 0;
   const o = type[i];
-  if (o === t) return;
-  if (o !== 0 && !replace) return;
+  if (o === t) return 0;
+  if (o !== 0 && !replace) return 0;
   put(i, t, x, y);
+  return 1;
 }
 
 function fillRect(t, x0, y0, x1, y1) {

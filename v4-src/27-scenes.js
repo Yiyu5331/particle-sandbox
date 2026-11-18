@@ -336,7 +336,7 @@ const SCENES = [
 
 // 清空并搭建第 k 个预设；每个场景自己设定时间、天气和风
 function buildScene(k) {
-  env.temp = AMBIENT; env.dayNight = true; env.structure = true; env.wind = 0.2; env.windPower = 0.3;
+  env.temp = AMBIENT; env.dayNight = true; env.structure = true; env.plantAging = 1; env.wind = 0.2; env.windPower = 0.3;
   sceneState = null;
   setWeather('clear');
   clearGrid();
@@ -344,9 +344,9 @@ function buildScene(k) {
   updateSun();
   SCENES[k].fn();
   // 场景里一开始就有的植物年龄随机铺满整个寿命：之后陆续老死、陆续长新的，不会同一时间整片枯掉
-  for (let i = 0; i < N; i++) if (type[i] === PLANT && !(flags[i] & F_TIP)) life[i] = rndi(plantLifespan(seed[i]));
+  for (let i = 0; i < N; i++) if (type[i] === PLANT && !(flags[i] & F_TIP)) life[i] = rndi((plantLifespan(seed[i]) * 0.2) | 0);
   updateSun();
   temp.forEach((v, i) => { if (type[i] === 0) temp[i] = env.ambient; });
-  structDirty = true;
+  markStructAll();
   wakeAll();
 }

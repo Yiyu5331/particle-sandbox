@@ -19,11 +19,112 @@ let bodyCount = 0, colX = 0, colY = 0;
 let fracVX = 0, fracVY = 0, fracTick = -100;
 const structStats = { checks: 0, made: 0, frozen: 0, fractured: 0 };
 
-function allocStruct() { stMark = new Uint8Array(N); stQueue = new Int32Array(N); }
+// 增量支撑检测用的「脏格」列表：哪里的刚性固体被增删、削弱，或者脚下的东西挪走了，就把那一格记进来。
+// 每次只从这些格子出发做局部搜索；变动太多（或换了重力方向）才退回全图检测。
+let sdList = new Int32Array(1), sdSeen = new Uint8Array(1), sdCount = 0, structFull = true;
+let stBuf = new Int32Array(1), stGrp = new Int32Array(1);
+function allocStruct() {
+  stMark = new Uint8Array(N); stQueue = new Int32Array(N);
+  sdList = new Int32Array(N); sdSeen = new Uint8Array(N); sdCount = 0; structFull = true; stBuf = new Int32Array(N); stGrp = new Int32Array(N);
+}
+function markStruct(i) {
+  if (sdSeen[i] === 0) { sdSeen[i] = 1; sdList[sdCount++] = i; }
+  structDirty = true;
+}
+// 这一格和它四周的刚性格都要重新评估
+function markStructAround(i) {
+  const x = i % W, y = (i / W) | 0;
+  if (M_RIGID[type[i]]) markStruct(i);
+  if (x > 0 && M_RIGID[type[i - 1]]) markStruct(i - 1);
+  if (x < W - 1 && M_RIGID[type[i + 1]]) markStruct(i + 1);
+  if (y > 0 && M_RIGID[type[i - W]]) markStruct(i - W);
+  if (y < H - 1 && M_RIGID[type[i + W]]) markStruct(i + W);
+  structDirty = true;
+}
+function markStructAll() { structFull = true; structDirty = true; }
+function clearStructDirty() { for (let k = 0; k < sdCount; k++) sdSeen[sdList[k]] = 0; sdCount = 0; }
+
+// 这一格能不能当锚（不用靠别人就站得住）
+function isAnchor(i) {
+  const t = type[i];
+  if (M_HARD[t] > 1 || (flags[i] & F_PIN) !== 0) return true;
+  const x = i % W, y = (i / W) | 0, bx = x + gx, by = y + gy;
+  if (bx < 0 || bx >= W || by < 0 || by >= H) return true;
+  const j = bx + by * W, o = type[j];
+  return o !== 0 && !M_RIGID[o] && M_STATE[o] < S_LIQUID && !(flags[j] & F_BODY);
+}
+
+// n 能不能撑住相邻的 c（和全图检测的连接规则完全一致）
+function canSupport(n, c) {
+  const a = type[n], b = type[c];
+  if (c === n - (gx + gy * W)) return !(a === ROPE || b === ROPE);   // c 在 n 正上方：压着就行，但绳子撑不住上面的东西
+  const thr = a === b ? BOND_MIN : BOND_MIN * 1.3;
+  if ((aux[n] < thr && M_HARD[a] <= 1) || (aux[c] < thr && M_HARD[b] <= 1)) return false;
+  if ((a === METAL || a === STEEL) && temp[n] > 900) return false;
+  if ((b === METAL || b === STEEL) && temp[c] > 900) return false;
+  return true;
+}
+
+// 局部检测：从每个脏格出发，逆着「支撑」关系往回找锚。找到了就说明它站得住（提前停止）；
+// 找遍了也没有，搜到的这一片全都失去了支撑，变成刚体。mark：1 = 本轮已确认站得住，2 = 已确认失去支撑，3 = 正在搜
+function checkLocal() {
+  structStats.checks++;
+  const mark = stMark, q = stQueue, buf = stBuf;
+  let touched = 0;
+  for (let s = 0; s < sdCount; s++) {
+    const seedI = sdList[s];
+    if (mark[seedI] !== 0 || !M_RIGID[type[seedI]] || (flags[seedI] & F_BODY)) continue;
+    let qh = 0, qt = 0, found = false;
+    q[qt++] = seedI; mark[seedI] = 3;
+    while (qh < qt) {
+      const c = q[qh++];
+      if (mark[c] === 1 || isAnchor(c)) { found = true; break; }
+      const x = c % W, y = (c / W) | 0;
+      for (let k = 0; k < 4; k++) {
+        const nx = x + DX4[k], ny = y + DY4[k];
+        if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+        const n = nx + ny * W, mn = mark[n];
+        if (mn === 3 || mn === 2 || !M_RIGID[type[n]] || (flags[n] & F_BODY)) continue;
+        if (!canSupport(n, c)) continue;
+        if (mn === 1) { found = true; break; }
+        mark[n] = 3; q[qt++] = n;
+      }
+      if (found) break;
+    }
+    if (found) {
+      for (let k = 0; k < qt; k++) mark[q[k]] = 0;     // 搜到的其它格子还不能确定，清掉
+      mark[seedI] = 1; buf[touched++] = seedI;
+    } else {
+      for (let k = 0; k < qt; k++) { mark[q[k]] = 2; buf[touched++] = q[k]; }
+      // 失去支撑的这一片按四连通分组，各自成为刚体
+      for (let k = 0; k < qt; k++) {
+        const start = q[k];
+        if (mark[start] !== 2) continue;
+        const g = stGrp;
+        let h = 0, tl = 0;
+        g[tl++] = start; mark[start] = 4;
+        while (h < tl) {
+          const c = g[h++], x = c % W, y = (c / W) | 0;
+          for (let d = 0; d < 4; d++) {
+            const nx = x + DX4[d], ny = y + DY4[d];
+            if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+            const j = nx + ny * W;
+            if (mark[j] === 2) { mark[j] = 4; g[tl++] = j; }
+          }
+        }
+        makeBodies(g.slice(0, tl));
+      }
+    }
+  }
+  for (let k = 0; k < touched; k++) mark[buf[k]] = 0;
+  clearStructDirty();
+}
 function bodiesClear() { bodies.fill(null); bodyCount = 0; }
 
 function checkStructure() {
   structStats.checks++;
+  structFull = false;
+  clearStructDirty();
   const mark = stMark, q = stQueue, gOff = gx + gy * W;
   mark.fill(0);
   let qh = 0, qt = 0;
@@ -81,6 +182,7 @@ function checkStructure() {
     }
     makeBodies(q.slice(0, tl));
   }
+  mark.fill(0);                                       // 局部检测要用干净的标记
 }
 
 // 太大的块按随机偏移的方格切开（近似「沿薄弱处分裂」），每块各自成为刚体。
@@ -110,6 +212,7 @@ function debrisCell(c, vx, vy) {
   const x = c % W, y = (c / W) | 0;
   if (fpCount < FP_MAX - 20) spawnFree(type[c], x + 0.5, y + 0.5, vx + (rnd() - 0.5) * 1.2, vy + (rnd() - 0.5) * 1.2, temp[c], seed[c]);
   type[c] = 0; flags[c] = parity; life[c] = 0; aux[c] = 0; wet[c] = 0; fuel[c] = 0;
+  markStructAround(c);                               // 挂在它上面 / 下面的东西要重新评估
   wake(x, y);
 }
 
@@ -120,7 +223,7 @@ function makeBody(cells) {
   for (let k = 0; k < BODY_MAX; k++) if (!bodies[k]) { id = k; break; }
   if (id < 0) {                                        // 刚体满了：小块直接碎成渣，大块先原地不动，稍后再试
     if (n <= 40) for (let k = 0; k < n; k++) debrisCell(cells[k], 0, 0);
-    else { structDirty = true; structCooldown = 20; }
+    else { markStruct(cells[0]); structCooldown = 20; }
     return;
   }
   let minx = W, miny = H, maxx = 0, maxy = 0, mass = 0, mx = 0, my = 0;
@@ -144,10 +247,13 @@ function makeBody(cells) {
     I += M_DENS[type[c]] * (d2 + 0.17);
     if (d2 > r) r = d2;
     type[c] = 0; flags[c] = parity; life[c] = 0; aux[c] = 0; wet[c] = 0; fuel[c] = 0;
+    markStructAround(c);
   }
   const b = { id, n, mass, I, x: comX, y: comY, vx: 0, vy: 0, ang: 0, om: (rnd() - 0.5) * 0.012,
               lw, lh, cx: comX - minx, cy: comY - miny, lt, ls, lf, lT, pts, r: Math.sqrt(r) + 1.5, mat,
-              stamp: new Int32Array(n * 2 + 64), stampN: 0, rest: 0, age: 0, sub: 0, subDens: 0, stuck: 0, sx: comX, sy: comY };
+              stamp: new Int32Array(n * 2 + 64), stampL: new Int32Array(n * 2 + 64), stampN: 0, rest: 0, age: 0, sub: 0, subDens: 0, stuck: 0, sx: comX, sy: comY,
+              blast: 0, fuses: [] };
+  for (let t = 1; t < NT; t++) if (M_BLAST[t]) b.blast += cnt[t];
   if (tick - fracTick <= 4) { b.vx = fracVX; b.vy = fracVY; }      // 碎裂出来的块继承原来的速度
   bodies[id] = b; bodyCount++;
   structStats.made++;
@@ -187,7 +293,8 @@ function stampBody(b) {
       type[j] = t; seed[j] = b.ls[l]; temp[j] = b.lT[l]; flags[j] = parity | F_BODY | b.lf[l];
       life[j] = tag; aux[j] = 200; wet[j] = 0; fuel[j] = 0; charge[j] = 0;
       if (rowDens > 0) { sub++; subD += rowDens; }
-      if (n < cap) stamp[n++] = j;
+      if (n < cap) { stamp[n] = j; b.stampL[n] = l; n++; }
+      if (b.lf[l] & F_BURN) flags[j] |= F_BURN;          // 引信已点着的炸药：照样闪
       wake(wx, wy);
     }
   }
@@ -232,8 +339,7 @@ let pinTick = -100;
 function clearPins() {
   if (tick - pinTick < 30) return;
   pinTick = tick;
-  for (let i = 0; i < N; i++) if (flags[i] & F_PIN) flags[i] &= ~F_PIN;
-  structDirty = true;
+  for (let i = 0; i < N; i++) if (flags[i] & F_PIN) { flags[i] &= ~F_PIN; markStruct(i); }
 }
 
 function freezeBody(b, pin) {
@@ -250,11 +356,13 @@ function freezeBody(b, pin) {
   const stamp = b.stamp, tag = b.id + 1;
   for (let k = 0; k < b.stampN; k++) {
     const j = stamp[k];
-    if ((flags[j] & F_BODY) && life[j] === tag) { flags[j] = (flags[j] & ~F_BODY) | (pin ? F_PIN : 0); life[j] = 0; aux[j] = 120; fuel[j] = initFuel(type[j]); }
+    if ((flags[j] & F_BODY) && life[j] === tag) {
+      flags[j] = (flags[j] & ~F_BODY) | (pin ? F_PIN : 0); life[j] = 0; aux[j] = 120; fuel[j] = initFuel(type[j]); markStructAround(j);
+      if (b.lf[b.stampL[k]] & F_BURN) life[j] = fuseLeft(b, b.stampL[k]);   // 还在烧的引信：落地后接着烧
+    }
   }
   bodies[b.id] = null; bodyCount--;
   structStats.frozen++;
-  structDirty = true;
 }
 
 function fractureBody(b, impact) {
@@ -290,7 +398,7 @@ function fractureBody(b, impact) {
     const j = stamp[k];
     if (!((flags[j] & F_BODY) && life[j] === tag)) continue;
     const x = j % W, y = (j / W) | 0;
-    flags[j] &= ~F_BODY; life[j] = 0; aux[j] = 255;
+    flags[j] &= ~F_BODY; life[j] = 0; aux[j] = 255; markStruct(j);
     let onCut = false;
     for (let q = 0; q < cuts; q++) if (Math.abs((x + 0.5 - colX) * sa[q] - (y + 0.5 - colY) * ca[q]) < 0.8) { onCut = true; break; }
     if (!onCut) continue;
@@ -301,7 +409,7 @@ function fractureBody(b, impact) {
     }
   }
   bodies[b.id] = null; bodyCount--;
-  structDirty = true; structCooldown = 0;
+  structCooldown = 0;
 }
 
 function bodyImpulse(id, ix, iy, px, py) {
@@ -365,6 +473,7 @@ function stepBody(b) {
     break;
   }
   stampBody(b);
+  if (b.blast > 0 && stepFuses(b)) return;
   if (resting && Math.abs(b.vx) + Math.abs(b.vy) < 0.45 && Math.abs(b.om) < 0.05) b.rest++;
   else b.rest = 0;
   b.stuck = movedAny ? 0 : (b.stuck || 0) + 1;         // 卡在别的碎块里一动不动：一段时间后就地冻结
@@ -375,6 +484,63 @@ function stepBody(b) {
   }
   if (b.rest > 10) freezeBody(b, false);
   else if (wedged || b.age > 2400) freezeBody(b, b.sub === 0);
+}
+
+/* ---- 刚体里的炸药：下落途中被火、熔岩、余烬或爆炸波及，照样点着、照样炸 ---- */
+function fuseLeft(b, l) {
+  for (const f of b.fuses) if (f[0] === l) return f[1] > 1 ? f[1] : 1;
+  return 1;
+}
+
+// 点着刚体里第 l 格（局部坐标）的炸药，引信 t 步
+function lightBodyCell(b, l, t) {
+  if (b.lf[l] & F_BURN) { for (const f of b.fuses) if (f[0] === l && f[1] > t) f[1] = t; return; }
+  b.lf[l] |= F_BURN;
+  b.fuses.push([l, t]);
+}
+
+// 世界里第 j 格是刚体 id 盖的章：点着它对应的那格炸药
+function lightBodyAt(j, t) {
+  const b = bodies[life[j] - 1];
+  if (!b) return;
+  for (let k = 0; k < b.stampN; k++) if (b.stamp[k] === j) { const l = b.stampL[k]; if (M_BLAST[b.lt[l]]) lightBodyCell(b, l, t); return; }
+}
+
+// 每步：检查刚体里的炸药有没有挨着火，推进引信，到点就炸。返回 true 表示这个刚体已经没了
+function stepFuses(b) {
+  const stamp = b.stamp, sl = b.stampL;
+  for (let k = 0; k < b.stampN; k++) {
+    const j = stamp[k], l = sl[k], t = b.lt[l];
+    if (!M_BLAST[t] || (b.lf[l] & F_BURN)) continue;
+    const x = j % W, y = (j / W) | 0;
+    for (let d = 0; d < 4; d++) {
+      const nx = x + DX4[d], ny = y + DY4[d];
+      if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+      const n = nx + ny * W, o = type[n];
+      if ((flags[n] & F_BODY) && life[n] === b.id + 1) continue;
+      if (o === FIRE || o === LAVA || o === EMBER || (o !== 0 && (flags[n] & F_BURN) && !(flags[n] & F_BODY))) { lightBodyCell(b, l, M_BURNTIME[t]); break; }
+    }
+  }
+  if (b.fuses.length === 0) return false;
+  const c = dcos(b.ang), s = dsin(b.ang);
+  let boom = false;
+  for (let q = b.fuses.length - 1; q >= 0; q--) {
+    const f = b.fuses[q];
+    if (--f[1] > 0) continue;
+    const l = f[0], t = b.lt[l];
+    b.fuses.splice(q, 1);
+    if (!M_BLAST[t]) continue;
+    const li = l % b.lw, lj = (l / b.lw) | 0, px = li + 0.5 - b.cx, py = lj + 0.5 - b.cy;
+    const wx = Math.floor(b.x + c * px - s * py), wy = Math.floor(b.y + s * px + c * py);
+    b.lt[l] = 0; b.lf[l] &= ~F_BURN; b.blast--;
+    if (wx >= 0 && wx < W && wy >= 0 && wy < H) {
+      const j = wx + wy * W;
+      if ((flags[j] & F_BODY) && life[j] === b.id + 1) { type[j] = 0; flags[j] = parity; life[j] = 0; aux[j] = 0; }
+      startExplosion(wx, wy, M_BLAST[t], M_BPOW[t]);
+      boom = true;
+    }
+  }
+  return boom && !bodies[b.id];
 }
 
 const bodyOrder = [];
@@ -392,10 +558,10 @@ function stepStructure() {
     if (bodyCount > 0) for (let k = 0; k < BODY_MAX; k++) { const b = bodies[k]; if (b) freezeBody(b, false); }
     return;
   }
-  if (hotRigid && (tick & 31) === 0) { hotRigid = false; structDirty = true; }
-  if ((tick % 300) === 0) clearPins();                    // 「楔住」的标记每 5 秒失效一次，重新评估（真卡住的会再被标上）
+  if ((tick % 300) === 0) clearPins();                    // 「楔住」的标记每 300 步失效一次，重新评估（真卡住的会再被标上）
   if (structDirty && !structHold && --structCooldown <= 0) {
     structDirty = false; structCooldown = bodyCount > 8 ? 6 : 3;      // 正在大规模坍塌时少查几次
-    checkStructure();
+    if (structFull || sdCount > (N >> 4)) checkStructure();         // 换了重力方向、或者一次变动太多：全图检测
+    else checkLocal();
   }
 }

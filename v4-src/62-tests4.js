@@ -173,6 +173,7 @@ defTest('植物：有株高上限、生物量有上限、走完整个生命周�
   tFloor(gy0 + 3, STONE);
   fillRect(SOIL, cx - 40, gy0, cx + 40, gy0 + 2);
   for (let x = cx - 36; x <= cx + 36; x += 6) put(x + (gy0 - 1) * W, SEED, x, gy0 - 1);
+  env.plantAging = 8;                                    // 正常寿命是 40~80 分钟，用例里让它老得快 8 倍
   let maxPlant = 0, maxH = 0, sawFlower = false, sawSeed = false, sawDead = false, sawSoilFromDead = false;
   const hist = [];
   const soil0 = countType(SOIL);

@@ -49,7 +49,6 @@ function stateArrays() {
     ['fpAlive', fpAlive], ['fpType', fpType], ['fpSeed', fpSeed], ['fpAge', fpAge], ['fpTemp', fpTemp], ['fpX', fpX], ['fpY', fpY],
     ['fpVX', fpVX], ['fpVY', fpVY], ['fpPX', fpPX], ['fpPY', fpPY], ['fpQX', fpQX], ['fpQY', fpQY],
     ['exA', exA], ['exX', exX], ['exY', exY], ['exR', exR], ['exP', exP], ['exCur', exCur], ['exN', exN], ['exPhase', exPhase], ['exRays', exRays],
-    ['pendX', pendX], ['pendY', pendY], ['pendT', pendT], ['pendR', pendR], ['pendP', pendP],
     ['sdList', sdList.subarray(0, sdCount)],
   ];
 }
@@ -57,8 +56,8 @@ function stateArrays() {
 // 参与哈希和存档的标量
 function stateScalars() {
   return {
-    W, H, tick, parity, gravity, rng: _rs, fpHead, fpCount, exActive, elecCount, slowPhase, hotRigid,
-    structDirty, structFull, structCooldown, structHold, bodyCount, fracVX, fracVY, fracTick, pinTick, solidRow, pendCount, sdCount,
+    W, H, tick, parity, gravity, rng: _rs, fpHead, fpCount, exActive, elecCount, slowPhase,
+    structDirty, structFull, structCooldown, structHold, bodyCount, fracVX, fracVY, fracTick, pinTick, solidRow, sdCount,
   };
 }
 
@@ -123,6 +122,7 @@ function deserializeWorld(str) {
   if (!o || o.app !== 'particle-sandbox' || o.kind !== 'full') throw new Error('不是完整存档');
   const sc = o.scalars;
   allocGrid(sc.W, sc.H);
+  setGravity(sc.gravity);                 // 先设重力：它会唤醒所有分块，必须在恢复分块状态之前
   const setArr = (dst, b64) => { const src = b64ToBytes(b64); new Uint8Array(dst.buffer, dst.byteOffset, dst.byteLength).set(src.subarray(0, dst.byteLength)); };
   for (const [name, arr] of stateArrays()) if (name !== 'sdList') setArr(arr, o.arrays[name]);
   const sd = b64ToTA(o.arrays.sdList, Int32Array);
@@ -139,11 +139,11 @@ function deserializeWorld(str) {
     for (const key of Object.keys(src)) b[key] = decodeValue(src[key]);
     bodies[k] = b;
   }
-  tick = sc.tick; parity = sc.parity; setGravity(sc.gravity); _rs = sc.rng;
-  fpHead = sc.fpHead; fpCount = sc.fpCount; exActive = sc.exActive; elecCount = el.length; slowPhase = sc.slowPhase; hotRigid = sc.hotRigid;
+  tick = sc.tick; parity = sc.parity; _rs = sc.rng;
+  fpHead = sc.fpHead; fpCount = sc.fpCount; exActive = sc.exActive; elecCount = el.length; slowPhase = sc.slowPhase;
   structDirty = sc.structDirty; structFull = sc.structFull; structCooldown = sc.structCooldown; structHold = sc.structHold;
   bodyCount = sc.bodyCount; fracVX = sc.fracVX; fracVY = sc.fracVY; fracTick = sc.fracTick; pinTick = sc.pinTick;
-  solidRow = sc.solidRow; pendCount = sc.pendCount;
+  solidRow = sc.solidRow;
   for (const k of Object.keys(env)) delete env[k];
   Object.assign(env, o.env);
   sceneState = o.sceneState;

@@ -12,6 +12,7 @@ let GW = 1, GH = 1;
 let windX = new Float32Array(1), heatC = new Float32Array(1);
 let vapor = new Float32Array(1), vaporB = new Float32Array(1), cloud = new Float32Array(1), cloudB = new Float32Array(1);
 let solidC = new Float32Array(1);   // 每个粗格里被固体 / 粉末 / 液体占住的比例：挡水汽、挡风
+let windShade = new Float32Array(1); // 上风方向有障碍物挡着的程度（0 = 开阔，1 = 完全挡住）
 let solidRow = 0;
 let lastBolt = null;       // 最近一次闪电（渲染用来整屏闪一下）
 
@@ -20,10 +21,10 @@ function allocWeather() {
   const n = GW * GH;
   windX = new Float32Array(n); heatC = new Float32Array(n);
   vapor = new Float32Array(n); vaporB = new Float32Array(n); cloud = new Float32Array(n); cloudB = new Float32Array(n);
-  solidC = new Float32Array(n); solidRow = 0;
+  solidC = new Float32Array(n); windShade = new Float32Array(n); solidRow = 0;
 }
 
-function clearWeather() { windX.fill(0); heatC.fill(0); vapor.fill(0); cloud.fill(0); solidC.fill(0); solidRow = 0; env.atmos = 0; }
+function clearWeather() { windX.fill(0); heatC.fill(0); vapor.fill(0); cloud.fill(0); solidC.fill(0); windShade.fill(0); solidRow = 0; env.atmos = 0; }
 
 // 每次只重算四分之一的粗格行（每 16 步全部刷新一遍）
 function refreshSolid() {
@@ -146,11 +147,18 @@ function stepWeather() {
     for (let cy = 0; cy < GH; cy++) {
       const alt = altitudeOf(cy);
       const base = env.wind * pw * 1.4 * (0.5 + 0.7 * alt) + dsin(tick * 0.011 + cy * 0.7) * 0.1 * pw + gust * 0.08 * pw;
-      for (let cx = 0; cx < GW; cx++) {
-        const c = cx + cy * GW;
+      // 风影：从上风一侧扫过去，碰到固体就被挡住，挡住的程度往下风方向每个粗格衰减一成半。墙后面形成一片风影区，
+      // 墙顶上面那几行照样有风（风从建筑上面绕过去）
+      const dir = base >= 0 ? 1 : -1;
+      let sh = 0;
+      for (let k = 0; k < GW; k++) {
+        const cx = dir > 0 ? k : GW - 1 - k, c = cx + cy * GW;
+        const blk = solidC[c] * 2 > 1 ? 1 : solidC[c] * 2;      // 半个粗格被墙占住就基本挡死了
+        sh = blk > sh * 0.85 ? blk : sh * 0.85;
+        windShade[c] = sh;
         let d = ((cx < GW - 1 ? heatC[c + 1] : 0) - (cx > 0 ? heatC[c - 1] : 0)) * 0.003;   // 往热的一侧吸
         d = d > 0.6 ? 0.6 : d < -0.6 ? -0.6 : d;
-        windX[c] += (base + d - windX[c]) * 0.15;
+        windX[c] += (base * (1 - sh) + d - windX[c]) * 0.15;
       }
     }
   } else if (ph === 2) stepVapor();
@@ -189,7 +197,11 @@ function lightning(tx) {
     if (v > bv) { bv = v; best = c; }
   }
   let sx, sy;
-  if (best >= 0) { sx = ((best % GW) << 3) + 4; sy = (((best / GW) | 0) << 3) + 6; }
+  if (best >= 0) {                                    // 从这片云的云底起劈：顺着这一列往下找到云的最下沿
+    let c = best;
+    while (c + GW < GW * GH && cloud[c + GW] >= 0.3) c += GW;
+    sx = ((c % GW) << 3) + 4; sy = Math.min(H - 2, (((c / GW) | 0) << 3) + 7);
+  }
   else { sx = manual ? tx + rndi(21) - 10 : rndi(W); sy = 1; }
   if (!manual) tx = sx + rndi(41) - 20;
   const span = manual ? 5 : 40;
@@ -222,7 +234,7 @@ function lightning(tx) {
     wake(x, y);
   }
   env.strikes++;
-  lastBolt = { x: bx, y: by, tick };
+  lastBolt = { x: bx, y: by, sx, sy, tick };
   if (onThunder) onThunder(bx, by);
 }
 

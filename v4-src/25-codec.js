@@ -82,7 +82,7 @@ function restoreScene(s) {
       else { wet[i] = t === PLANT ? 60 : 0; aux[i] = M_RIGID[t] ? 255 : t === SOIL ? 200 : 0; fuel[i] = initFuel(t); }
     }
   }
-  structDirty = true;
+  markStructAll();
   wakeAll();
 }
 

@@ -8,7 +8,7 @@ function runSteps(n) { for (let k = 0; k < n; k++) simStep(); }
 
 function tArena() {
   // 自测默认环境：恒为正午、20°C、无风、晴，结构力学关闭（很多用例把容器悬在半空）。需要的用例自己打开。
-  env.dayNight = false; env.temp = AMBIENT; env.wind = 0; env.windPower = 0; env.structure = false; sceneState = null;
+  env.dayNight = false; env.temp = AMBIENT; env.wind = 0; env.windPower = 0; env.structure = false; env.plantAging = 1; sceneState = null;
   setWeather('clear'); env.windPower = 0; env.cloudFade = 0; updateSun();
   clearGrid(); setGravity('down'); seedRng(20240607);
   return { cx: W >> 1, cy: H >> 1 };
