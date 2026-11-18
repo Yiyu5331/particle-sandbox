@@ -22,6 +22,7 @@ const structStats = { checks: 0, made: 0, frozen: 0, fractured: 0 };
 // 增量支撑检测用的「脏格」列表：哪里的刚性固体被增删、削弱，或者脚下的东西挪走了，就把那一格记进来。
 // 每次只从这些格子出发做局部搜索；变动太多（或换了重力方向）才退回全图检测。
 let sdList = new Int32Array(1), sdSeen = new Uint8Array(1), sdCount = 0, structFull = true;
+let structSettle = false;   // 有刚体在动：等它们全部静止后再做一次全图兜底检测
 let stBuf = new Int32Array(1), stGrp = new Int32Array(1);
 function allocStruct() {
   stMark = new Uint8Array(N); stQueue = new Int32Array(N);
@@ -374,8 +375,9 @@ function fractureBody(b, impact) {
     if (x < 0 || x >= W || y < 0 || y >= H || dx * dx + dy * dy > R * R) continue;
     const j = x + y * W, o = type[j];
     if (!M_RIGID[o] || M_HARD[o] > 1 || (flags[j] & F_BODY)) continue;
-    const d = dmgK * (1 - Math.sqrt(dx * dx + dy * dy) / R) / M_BOND[o], a = aux[j];
-    aux[j] = a > d ? a - d : 0;
+    const d = dmgK * (1 - Math.sqrt(dx * dx + dy * dy) / R) / M_BOND[o], a = aux[j], na = a > d ? a - d : 0;
+    aux[j] = na;
+    if ((a >= 70 && na < 70) || (a >= 91 && na < 91)) markStructAround(j);
   }
   fracVX = b.vx * 0.5; fracVY = b.vy * 0.5; fracTick = tick;
   const c = dcos(b.ang), s = dsin(b.ang);
@@ -559,6 +561,10 @@ function stepStructure() {
     return;
   }
   if ((tick % 300) === 0) clearPins();                    // 「楔住」的标记每 300 步失效一次，重新评估（真卡住的会再被标上）
+  // 大规模坍塌时碎块互相撞来撞去，局部标记可能漏掉被连带削弱的地方：坍塌进行中每 120 步、
+  // 以及所有碎块都静止下来的那一刻，各做一次全图兜底检测。平时只做局部检测
+  if (bodyCount > 0) { structSettle = true; if ((tick % 120) === 0) markStructAll(); }
+  else if (structSettle) { structSettle = false; markStructAll(); }
   if (structDirty && !structHold && --structCooldown <= 0) {
     structDirty = false; structCooldown = bodyCount > 8 ? 6 : 3;      // 正在大规模坍塌时少查几次
     if (structFull || sdCount > (N >> 4)) checkStructure();         // 换了重力方向、或者一次变动太多：全图检测

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>粒子沙盘 v4</title>
+<title>粒子沙盘 v4.1</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -160,7 +160,7 @@
 <body>
 <div id="app">
   <header id="topbar" class="glass">
-    <span id="brand">粒子沙盘<small>v4</small></span>
+    <span id="brand">粒子沙盘<small>v4.1</small></span>
     <div class="grp">
       <button id="btnPause" title="暂停 / 继续（空格）">❚❚ 暂停</button>
       <button id="btnStep" class="sq" title="单步（.）" aria-label="单步">▸|</button>
@@ -237,6 +237,9 @@
   <div class="col" id="slotList" style="margin-top:8px"></div>
   <h4 style="margin-top:12px">文件</h4>
   <div class="row"><button id="btnExport" style="text-align:center">导出 JSON</button><button id="btnImport" style="text-align:center">导入 JSON</button></div>
+  <h4 style="margin-top:12px">录制</h4>
+  <div class="row"><button id="btnRecExport" style="text-align:center">导出录制</button><button id="btnPlayStop" style="text-align:center;display:none">停止回放</button></div>
+  <div class="note">「导入 JSON」也能读录制文件：读进来就从头回放。</div>
   <input type="file" id="fileImport" accept=".json,application/json" hidden>
 </div>
 <div id="popSettings" class="pop">
@@ -287,14 +290,31 @@ const WAKE_TTL = 3;        // 被唤醒后至少再模拟几帧
 const SIM_HZ = 60;
 const QS = new URLSearchParams(location.search);
 
-// xorshift32：热循环里只用它，不用 Math.random
-let _rs = ((Date.now() ^ 0x9e3779b9) | 0) || 1;
+// xorshift32：模拟里只用它，不用 Math.random。初始种子固定，由宿主（页面 / 测试）显式设置
+let _rs = 0x2545f491;
+function rngState() { return _rs; }
+function setRngState(s) { _rs = (s | 0) || 1; }
 function rnd() {
   _rs ^= _rs << 13; _rs ^= _rs >>> 17; _rs ^= _rs << 5;
   return (_rs >>> 0) * 2.3283064365386963e-10;
 }
 function rndi(n) { return (rnd() * n) | 0; }
 function seedRng(s) { _rs = (s | 0) || 1; }
+
+/* ---------------------------------------------------------------------
+ * 1.1b 确定性数学：模拟里禁止用 Math.sin / cos / exp / pow / log / hypot
+ *      （不同 JS 引擎的结果在最后几位可能不同）。这里只用 + - * / 和 Math.floor / sqrt / abs，
+ *      这些在 IEEE 754 下每个引擎结果都一样。精度约 1e-7，模拟够用。渲染层不受这条限制。
+ * ------------------------------------------------------------------- */
+const TAU = 6.283185307179586, HALF_PI = 1.5707963267948966;
+function dsin(x) {
+  x -= Math.floor(x / TAU + 0.5) * TAU;              // 归到 [-π, π]
+  if (x > HALF_PI) x = 3.141592653589793 - x;         // 再折到 [-π/2, π/2]
+  else if (x < -HALF_PI) x = -3.141592653589793 - x;
+  const x2 = x * x;
+  return x * (1 + x2 * (-1 / 6 + x2 * (1 / 120 + x2 * (-1 / 5040 + x2 * (1 / 362880 + x2 * (-1 / 39916800))))));
+}
+function dcos(x) { return dsin(x + HALF_PI); }
 
 /* ---------------------------------------------------------------------
  * 1.2 材料表（声明式；所有通用行为都从这张表读）
@@ -317,7 +337,7 @@ const MAT_DEFAULTS = {
   flame: 0, residue: 1,
   meltTemp: Infinity, meltInto: EMPTY, latent: 0, latentRate: 4,
   boilTemp: Infinity, boilInto: EMPTY,
-  freezeTemp: -Infinity, freezeInto: EMPTY,
+  freezeTemp: -Infinity, freezeInto: EMPTY, freezeLatent: 0,
   conductivity: 0.15, heatCapacity: 1.5, relax: 0.001,
   hardness: 0.2, emissive: 0, alpha: 1, palette: ['#ff00ff'],
   spawnTemp: AMBIENT, life: null, decayInto: EMPTY, decayChance: 0,
@@ -369,11 +389,11 @@ defMat(SNOW, 'SNOW', '雪', { state: S_POWDER, cat: 'powder', density: 200, cond
 // ---- 液体（密度：熔岩 > 酸 > 盐水 > 水 > 油；粘度：熔岩 >> 油 > 酸 > 水）----
 defMat(WATER, 'WATER', '水', { state: S_LIQUID, cat: 'liquid', density: 1000, dispersion: 5,
   conductivity: 0.6, heatCapacity: 4, relax: 0, hardness: 0.03, alpha: 0.82, electric: true,
-  boilTemp: 100, boilInto: STEAM, freezeTemp: 0, freezeInto: ICE,
+  boilTemp: 100, boilInto: STEAM, freezeTemp: 0, freezeInto: ICE, freezeLatent: 1500,
   palette: ['#3a7bd5', '#3574cc', '#4082da'], note: '比热大：能把燃烧的东西降到燃点以下；会被土、沙、木头吸收，会蒸发' });
 defMat(SALTWATER, 'SALTWATER', '盐水', { state: S_LIQUID, cat: 'liquid', density: 1100, dispersion: 5,
   conductivity: 0.6, heatCapacity: 4, relax: 0, hardness: 0.03, alpha: 0.85, electric: true,
-  boilTemp: 104, boilInto: STEAM, freezeTemp: -18, freezeInto: ICE,
+  boilTemp: 104, boilInto: STEAM, freezeTemp: -18, freezeInto: ICE, freezeLatent: 1500,
   palette: ['#3f9aa8', '#3a90a0', '#46a3b0'], note: '比水重，冰点更低，导电' });
 defMat(OIL, 'OIL', '油', { state: S_LIQUID, cat: 'liquid', density: 850, viscosity: 0.45, dispersion: 3,
   heatCapacity: 2, hardness: 0.03, alpha: 0.92,
@@ -464,7 +484,7 @@ const M_STATE = new Uint8Array(NT), M_DENS = new Float32Array(NT), M_VISC = new 
       M_FLAME = new Float32Array(NT), M_RESIDUE = new Float32Array(NT),
       M_MELT = new Float32Array(NT), M_MELTINTO = new Uint8Array(NT), M_LATENT = new Uint16Array(NT), M_LATK = new Float32Array(NT),
       M_BOIL = new Float32Array(NT), M_BOILINTO = new Uint8Array(NT),
-      M_FREEZE = new Float32Array(NT), M_FREEZEINTO = new Uint8Array(NT),
+      M_FREEZE = new Float32Array(NT), M_FREEZEINTO = new Uint8Array(NT), M_FLATENT = new Uint16Array(NT),
       M_IHC = new Float32Array(NT), M_RELAX = new Float32Array(NT), M_HARD = new Float32Array(NT),
       M_SPAWN = new Float32Array(NT), M_LIFE0 = new Uint16Array(NT), M_LIFE1 = new Uint16Array(NT),
       M_DECAY = new Uint8Array(NT), M_DECAYP = new Float32Array(NT),
@@ -489,7 +509,7 @@ function hexToRgb(h) {
     M_BURNTIME[t] = m.burnTime; M_BURNTEMP[t] = m.burnTemp; M_FLAME[t] = m.flame; M_RESIDUE[t] = m.residue;
     M_MELT[t] = m.meltTemp; M_MELTINTO[t] = m.meltInto; M_LATENT[t] = m.latent; M_LATK[t] = m.latentRate;
     M_BOIL[t] = m.boilTemp; M_BOILINTO[t] = m.boilInto;
-    M_FREEZE[t] = m.freezeTemp; M_FREEZEINTO[t] = m.freezeInto;
+    M_FREEZE[t] = m.freezeTemp; M_FREEZEINTO[t] = m.freezeInto; M_FLATENT[t] = m.freezeLatent;
     M_IHC[t] = 1 / m.heatCapacity; M_RELAX[t] = m.relax; M_HARD[t] = m.hardness;
     M_SPAWN[t] = m.spawnTemp;
     if (m.life) { M_LIFE0[t] = m.life[0]; M_LIFE1[t] = m.life[1]; }
@@ -515,7 +535,7 @@ function hexToRgb(h) {
  *
  *            │ 熔岩                         │ 火 / 余烬            │ 盐           │ 冰                    │ 石头/砖/混凝土
  *  ──────────┼──────────────────────────────┼──────────────────────┼──────────────┼───────────────────────┼───────────────
- *  水        │ 蒸汽 + 熔岩降温260°C (.3)    │ 水升温 + 火熄灭 (1)  │ 盐水+空(.04) │ 冰+冰(.002，水<4°C时) │ —
+ *  水        │ 蒸汽 + 熔岩降温260°C (.3)    │ 水升温 + 火熄灭 (1)  │ 盐水+空(.04) │ 冰+冰(.002，过冷水<-1°C) │ —
  *  盐水      │ 蒸汽 + 熔岩降温260°C (.3)    │ 盐水升温 + 火熄灭(1) │ —            │ 盐水+水 (.012)        │ —
  *  盐        │ —                            │ —                    │ —            │ 空+盐水 (.03)         │ —
  *  酸液      │ 火+熔岩 (1)                  │ —                    │ 溶解 (.02)   │ 溶解 (.02)            │ 溶解 (.0015~.004)
@@ -540,6 +560,7 @@ function hexToRgb(h) {
  *    火药(170°C，受潮不燃) → 2 帧后小爆炸      TNT(240°C) → 60 帧引信后爆炸
  *
  * 【温度相变】
+ *    冰 <──<0°C 且放够潜热──── 水（结冰时温度钉在 0°C，冰层下面的水要很久才冻上）
  *    冰 ──>0°C 且吸够潜热──> 水 ──>100°C──> 蒸汽 ──<85°C──> 水汽（湿度场）──高空饱和──> 云 ──> 雨 / 雪
  *    雪 ──>0.5°C 且吸够潜热──> 水      蒸汽碰到 <50°C 的固体表面 → 直接凝成水珠
  *    盐水 ──>104°C──> 蒸汽     盐水 ──<-18°C──> 冰
@@ -563,7 +584,7 @@ const RULES = [
   { a: WATER, b: EMBER, p: 1, a2: WATER, b2: EMPTY, aDT: 6 },
   { a: SALTWATER, b: EMBER, p: 1, a2: SALTWATER, b2: EMPTY, aDT: 6 },
   { a: WATER, b: SALT, p: 0.04, a2: SALTWATER, b2: EMPTY },
-  { a: WATER, b: ICE, p: 0.002, a2: ICE, b2: ICE, maxT: 4, aT: -4 },
+  { a: WATER, b: ICE, p: 0.002, a2: ICE, b2: ICE, maxT: -1, aT: -2 },     // 只有过冷水（< -1°C）碰到冰才会瞬间结晶
   { a: SALT, b: ICE, p: 0.03, a2: EMPTY, b2: SALTWATER, bT: 1 },
   { a: SALTWATER, b: ICE, p: 0.012, a2: SALTWATER, b2: WATER, bT: 1 },
   { a: ACID, b: LAVA, p: 1, a2: FIRE, b2: LAVA, aT: 900 },
@@ -583,12 +604,15 @@ for (const r of RULES) { RX[r.a * NT + r.b] = r; HASRX[r.a] = 1; }
 const DAY_STEPS = 36000;   // 时间流速 1x 时，一昼夜 = 10 分钟模拟时间
 const env = {
   structure: true,         // 结构力学开关
+  plantAging: 1,           // 植物、花、种子的衰老速度倍数（1 = 正常）
   dayNight: true,          // 关掉后恒为正午、气温恒为 env.temp（自测用）
   time: 0.8,               // 0 = 午夜，0.25 = 日出，0.5 = 正午，0.75 = 日落
   timeScale: 1,            // 0 / 1 / 10 / 60
   wind: 0.2,               // 风向与相对强度：-1（向左）.. 1（向右）
   windPower: 0.3,          // 风力 0..1
-  moistIn: 0,              // 高空外来水汽（天气预设用；属于外部输入）
+  moistPerMin: 0,          // 天气预设每分钟最多注入多少格水汽（外部输入）
+  atmosCap: 0,             // 每个粗格列的大气含水容量，大气里的水汽 + 云到了这个量就停止注入
+  atmos: 0,                // 当前大气里的水汽 + 云（每 4 步更新一次）
   cloudFade: 0,            // 晴天时云的消散速率（外部输出）
   temp: AMBIENT,           // 全局气温
   weather: 'clear', storm: 0,
@@ -597,6 +621,11 @@ const env = {
   waterIn: 0, waterOut: 0, waterSink: 0,
   rainCount: 0, snowCount: 0, strikes: 0, charge: 0,
 };
+// 水量收支明细（单位：格水），只用来诊断，不参与模拟
+const LEDGER_KEYS = ['weatherIn', 'cloneIn', 'precip', 'voidOut', 'evapSurface', 'evapWet', 'steamToVapor', 'transpire', 'plantUse', 'seep', 'decayOut', 'sublimate', 'cloudFade', 'condense', 'cloudEvap', 'wallCondense'];
+const WL = {};
+function ledgerReset() { for (const k of LEDGER_KEYS) WL[k] = 0; }
+ledgerReset();
 
 /* ---------------------------------------------------------------------
  * 1.5 网格与分块
@@ -614,7 +643,7 @@ let CW = 0, CHN = 0, chunkTTL, chunkCount;
 let parity = 0, tick = 0;
 let gravity = 'down', gx = 0, gy = 1, lx = 1, ly = 0;
 let sceneDirty = true;     // 渲染端需要整张重传
-let structDirty = true;    // 有刚性固体被增删或削弱，需要重新做支撑检测
+let structDirty = true;    // 有待处理的支撑检测（脏格列表见 2s）
 
 function allocGrid(w, h) {
   W = w; H = h; N = w * h;
@@ -633,7 +662,8 @@ function clearGrid() {
   wet.fill(0); aux.fill(0); fuel.fill(0);
   elecCount = 0; fpClear(); exClear(); bodiesClear(); clearWeather();
   env.waterIn = env.waterOut = env.waterSink = 0; env.rainCount = env.snowCount = env.strikes = 0; env.charge = 0;
-  structDirty = true;
+  ledgerReset();
+  markStructAll();
   wakeAll();
 }
 
@@ -664,21 +694,21 @@ function initFuel(t) {
 // 新生成一个粒子（笔刷、克隆、喷发等）
 function put(i, t, x, y) {
   const old = type[i];
-  if (M_RIGID[t] | M_RIGID[old]) structDirty = true;
   type[i] = t; seed[i] = rndi(256); temp[i] = M_SPAWN[t];
   life[i] = t === PLANT ? rndi(150) : initLife(t);      // 植物的 life 是年龄：起始年龄随机，免得整片同时老死
   flags[i] = parity | (t === SPARK ? F_TIP : 0); charge[i] = 0;
   wet[i] = t === PLANT ? 60 : 0; fuel[i] = initFuel(t);
   aux[i] = M_RIGID[t] ? 255 : t === SOIL ? 200 : (AIRLIKE[t] && AIRLIKE[old]) ? aux[i] : 0;   // 火焰和烟继承所在空气格的浑浊度
+  if (M_RIGID[t] | M_RIGID[old]) markStructAround(i);
   wake(x, y);
 }
 
 // 清成空气，保留该格温度
 function clearCell(i, x, y) {
   const old = type[i];
-  if (M_RIGID[old]) structDirty = true;
   type[i] = 0; life[i] = 0; flags[i] = parity; charge[i] = 0; wet[i] = 0; fuel[i] = 0;
   if (!AIRLIKE[old]) aux[i] = 0;                     // 火焰 / 烟消失后，这格空气的浑浊度留着
+  if (M_RIGID[old]) markStructAround(i);
   wake(x, y);
 }
 
@@ -686,11 +716,11 @@ function clearCell(i, x, y) {
 function morph(i, t, x, y) {
   if (t === EMPTY) { clearCell(i, x, y); return; }
   const o = type[i];
-  if (M_RIGID[t] | M_RIGID[o]) structDirty = true;
   type[i] = t; life[i] = initLife(t); flags[i] = (flags[i] & F_SCORCH) | parity;
   fuel[i] = initFuel(t);
   aux[i] = M_RIGID[t] ? (M_RIGID[o] ? aux[i] >> 1 : 255) : t === SOIL ? 255 : (AIRLIKE[t] && AIRLIKE[o]) ? aux[i] : 0;
   if (wet[i] > M_ABSORB[t]) wet[i] = M_ABSORB[t];
+  if (M_RIGID[t] | M_RIGID[o]) markStructAround(i);
   wake(x, y);
 }
 
@@ -713,7 +743,7 @@ function setGravity(dir) {
   else if (dir === 'up') { gx = 0; gy = -1; lx = 1; ly = 0; }
   else if (dir === 'left') { gx = -1; gy = 0; lx = 0; ly = 1; }
   else { gx = 1; gy = 0; lx = 0; ly = 1; }
-  structDirty = true;
+  if (sdList.length === N && N > 0) markStructAll();
   if (chunkTTL) wakeAll();
 }
 
@@ -801,7 +831,7 @@ function movePowder(x, y, i, t) {
     flags[ci] = (flags[ci] & ~F_FALL) | (moved === 1 ? (sp < 3 ? sp + 1 : 3) << 6 : 0);
     st.powder++;
     const ux = x - gx, uy = y - gy;          // 原来压在它上面的如果是刚性固体，支撑关系可能变了
-    if (ux >= 0 && ux < W && uy >= 0 && uy < H && M_RIGID[type[ux + uy * W]]) structDirty = true;
+    if (ux >= 0 && ux < W && uy >= 0 && uy < H && M_RIGID[type[ux + uy * W]]) markStruct(ux + uy * W);
     if (moved === 1 && M_WIND[t] > 0) windPush(cx, cy, ci, t, M_WIND[t]);
     return;
   }
@@ -931,6 +961,17 @@ function moveGas(x, y, i, t) {
 /* ---------------------------------------------------------------------
  * 2.2 燃烧：燃料 + 热量 + 氧气
  * ------------------------------------------------------------------- */
+// 逆着重力往上走 48 格，路上只有空气 / 气体就算「通着天」
+function openSky(x, y) {
+  for (let k = 1; k <= 48; k++) {
+    const nx = x - gx * k, ny = y - gy * k;
+    if (nx < 0 || nx >= W || ny < 0 || ny >= H) return true;
+    const o = type[nx + ny * W];
+    if (o !== 0 && M_STATE[o] < S_GAS) return false;
+  }
+  return true;
+}
+
 // 旁边有没有还能支持燃烧的空气
 function hasOxygen(x, y) {
   for (let k = 0; k < 4; k++) {
@@ -1036,7 +1077,7 @@ function burnStep(x, y, i, t, T) {
   const a = aux[i];
   if (M_RIGID[t] && a > 0) {                           // 烧焦的木头越来越不结实
     aux[i] = a > 2 ? a - 2 : 0;
-    if (a >= 70 && a - 2 < 70) structDirty = true;
+    if ((a >= 70 && a - 2 < 70) || (a >= 91 && a - 2 < 91)) markStructAround(i);
   }
   const F = fuel[i];
   if (F > 1) { fuel[i] = F - 1; return false; }
@@ -1050,6 +1091,9 @@ function burnStep(x, y, i, t, T) {
  * 2.3 植物：基因来自 seed 字节，整株共用
  *     低 4 位：株高上限 8~32 格；4-5 位：分叉概率；6-7 位：叶片密度
  * ------------------------------------------------------------------- */
+function plantLifespan(g) { return 2400 + (g & 15) * 160; }  // 寿命（慢速过程的轮次，约等于秒）：40~80 分钟
+// 植物能不能长：要有光，气温也要在 2°C 以上
+function canGrow() { return env.sun >= 0.12 && env.ambient > 2; }
 function geneHeight(g) { return 8 + (((g & 15) * 1.6) | 0); }
 function geneBranch(g) { return 0.05 + ((g >> 4) & 3) * 0.05; }
 function geneLeaf(g) { return 0.3 + ((g >> 6) & 3) * 0.13; }
@@ -1094,7 +1138,7 @@ function drawSap(x, y, need) {
   let cx = x, cy = y;
   for (let n = 0; n < 50; n++) {
     const c = cx + cy * W;
-    if (wet[c] >= need) { wet[c] -= need; env.waterSink += need / 100; return true; }
+    if (wet[c] >= need) { wet[c] -= need; env.waterSink += need / 100; WL.plantUse += need / 100; return true; }
     const nx = cx + gx, ny = cy + gy;
     if (nx < 0 || nx >= W || ny < 0 || ny >= H) return false;
     if (type[nx + ny * W] === PLANT) { cx = nx; cy = ny; continue; }
@@ -1105,12 +1149,12 @@ function drawSap(x, y, need) {
     }
     if (found) continue;
     const b = nx + ny * W, o = type[b];
-    if ((o === SOIL || o === SAND) && wet[b] >= need) { wet[b] -= need; env.waterSink += need / 100; return true; }
+    if ((o === SOIL || o === SAND) && wet[b] >= need) { wet[b] -= need; env.waterSink += need / 100; WL.plantUse += need / 100; return true; }
     for (let k = 0; k < 4; k++) {
       const wx = cx + DX4[k], wy = cy + DY4[k];
       if (wx < 0 || wx >= W || wy < 0 || wy >= H || type[wx + wy * W] !== WATER) continue;
       if (rnd() * 100 < need) clearCell(wx + wy * W, wx, wy);
-      env.waterSink += need / 100;
+      env.waterSink += need / 100; WL.plantUse += need / 100;
       return true;
     }
     return false;
@@ -1133,7 +1177,7 @@ function bloom(x, y, i) {
 function growTip(x, y, i) {
   const e = life[i];
   if (e <= 0) { bloom(x, y, i); return; }
-  if (env.sun < 0.12 || !skyOpen(x, y)) return;       // 没光不长
+  if (!canGrow() || !skyOpen(x, y)) return;           // 没光、太冷都不长
   const g = seed[i];
   if (stemHeight(x, y) >= geneHeight(g)) { life[i] = 0; return; }   // 到株高上限了：停止长高，展叶
   const side = rnd() < 0.3 ? (rnd() < 0.5 ? 1 : -1) : 0;
@@ -1162,8 +1206,9 @@ function growTip(x, y, i) {
 }
 
 function sprout(i, x, y) {
-  if (M_RIGID[type[i]]) structDirty = true;
+  const wasRigid = M_RIGID[type[i]];
   type[i] = PLANT; flags[i] = parity | F_TIP; life[i] = geneHeight(seed[i]); wet[i] = 30; fuel[i] = initFuel(PLANT); aux[i] = 0;
+  if (wasRigid) markStructAround(i);
   wake(x, y);
 }
 
@@ -1220,7 +1265,7 @@ function hookSteam(x, y, i) {
   if (nx < 0 || nx >= W || ny < 0 || ny >= H) return false;
   const j = nx + ny * W, o = type[j];
   if (o !== 0 && M_STATE[o] < S_LIQUID && temp[j] < 50 && rnd() < 0.3) {
-    type[i] = WATER; life[i] = 0; flags[i] = parity; temp[i] = 60;
+    type[i] = WATER; life[i] = 0; flags[i] = parity; temp[i] = 60; WL.wallCondense++;
     wake(x, y);
     return true;
   }
@@ -1268,7 +1313,7 @@ function hookClone(x, y, i) {
   for (let k = 0; k < 4; k++) {
     const kk = (k0 + k) & 3, nx = x + DX4[kk], ny = y + DY4[kk];
     if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
-    if (type[nx + ny * W] === 0) { put(nx + ny * W, src, nx, ny); return false; }
+    if (type[nx + ny * W] === 0) { put(nx + ny * W, src, nx, ny); if (src === WATER || src === SALTWATER || src === STEAM || src === SNOW || src === ICE) WL.cloneIn++; return false; }
   }
   return false;
 }
@@ -1282,14 +1327,14 @@ function hookVoid(x, y, i) {
     if (px < 0 || px >= W || py < 0 || py >= H) continue;
     const j = px + py * W, o = type[j];
     if (o === 0 || o === VOID || o === ANCHOR || (flags[j] & F_BODY)) continue;
-    if (d2 <= 2) { clearCell(j, px, py); continue; }
+    if (d2 <= 2) { if (o === WATER || o === SALTWATER || o === SNOW || o === ICE || o === STEAM) WL.voidOut++; clearCell(j, px, py); continue; }
     if (rnd() < 0.6) {
       let sx = dx > 0 ? -1 : dx < 0 ? 1 : 0, sy = dy > 0 ? -1 : dy < 0 ? 1 : 0;
       const adx = dx < 0 ? -dx : dx, ady = dy < 0 ? -dy : dy;
       if (adx > 2 * ady) sy = 0; else if (ady > 2 * adx) sx = 0;
       const qx = px + sx, qy = py + sy, q = qx + qy * W, qt = type[q];
-      if (qt === 0) { if (M_RIGID[o]) structDirty = true; swapCells(j, q, px, py, qx, qy); }
-      else if (qt === VOID) clearCell(j, px, py);
+      if (qt === 0) { swapCells(j, q, px, py, qx, qy); if (M_RIGID[o]) { markStructAround(j); markStructAround(q); } }
+      else if (qt === VOID) { if (o === WATER || o === SALTWATER || o === SNOW || o === ICE || o === STEAM) WL.voidOut++; clearCell(j, px, py); }
     }
   }
   return false;
@@ -1365,7 +1410,7 @@ function updateCell(x, y, i) {
   if (w > M_SAP[t] && T > 100) {
     wet[i] = w - 1; T -= 120; temp[i] = T;   // 汽化潜热很大：每烘掉 1 单位水分要吃掉 120°C，一个燃烧的邻格烤不干一块湿透的木头
     const d = 1;
-    vaporAdd(x, y, d / 100);
+    vaporAdd(x, y, d / 100); WL.evapWet += d / 100;
     wake(x, y);
     if (rnd() < 0.04) emitSmoke(x, y, 0);
   }
@@ -1386,10 +1431,22 @@ function updateCell(x, y, i) {
     morph(i, M_BOILINTO[t], x, y); temp[i] = T < 135 ? 160 : T + 25; st.boil++;
     return;
   } else if (T < M_FREEZE[t]) {
-    if (t === STEAM) { clearCell(i, x, y); vaporAdd(x, y, 1); return; }   // 蒸汽冷下来变成看不见的水汽
-    morph(i, M_FREEZEINTO[t], x, y);
-    return;
-  }
+    if (t === STEAM) {
+      if (openSky(x, y)) { clearCell(i, x, y); vaporAdd(x, y, 1); WL.steamToVapor++; }   // 头顶通着天：变成看不见的水汽升上去
+      else { type[i] = WATER; life[i] = 0; flags[i] = parity; temp[i] = 60; WL.wallCondense++; wake(x, y); }   // 关在容器里：就地凝成水珠
+      return;
+    }
+    const lat = M_FLATENT[t];
+    if (lat > 0) {                           // 结冰要放出潜热：温度钉在冰点，放够了才变成冰
+      const add = ((M_FREEZE[t] - T) * 4) | 0;
+      temp[i] = M_FREEZE[t];
+      if (add > 0) {
+        const L = life[i] + add;
+        if (L >= lat) { morph(i, M_FREEZEINTO[t], x, y); temp[i] = M_FREEZE[t] - 0.5; return; }
+        life[i] = L; wake(x, y);
+      }
+    } else { morph(i, M_FREEZEINTO[t], x, y); return; }
+  } else if (M_FLATENT[t] > 0 && life[i] > 0) life[i] = 0;    // 回暖了：结冰进度清零
 
   // 燃烧
   if (M_FLAM[t] > 0) {
@@ -1422,7 +1479,7 @@ function updateCell(x, y, i) {
       const r = RX[base + o];
       if (r === null || (flags[j] & F_BODY)) continue;
       wake(x, y);                            // 只要身边有能反应的对象，这一块就保持清醒
-      if ((r.maxT === undefined || temp[i] < r.maxT) && rnd() < r.p) {
+      if ((r.maxT === undefined || T < r.maxT) && rnd() < r.p) {     // 温度条件按这一步开始时的温度判断
         if (applyRule(r, i, j, x, y, nx, ny)) return;
       }
     }
@@ -1473,15 +1530,16 @@ function startExplosion(x, y, R, P) {
     const d = Math.sqrt(dx * dx + dy * dy);
     if (d > RR) continue;
     if (M_BLAST[o] > 0) {                              // 殉爆：范围内的炸药不管有没有被挡住都会被引爆，时间按距离错开
-      if (!(flags[j] & (F_BURN | F_BODY))) { flags[j] |= F_BURN; life[j] = 3 + ((d * 0.5) | 0) + rndi(9); wake(px, py); }
+      if (flags[j] & F_BODY) lightBodyAt(j, 3 + ((d * 0.5) | 0) + rndi(9));
+      else if (!(flags[j] & F_BURN)) { flags[j] |= F_BURN; life[j] = 3 + ((d * 0.5) | 0) + rndi(9); wake(px, py); }
       continue;
     }
     if (!M_RIGID[o] || M_HARD[o] > 1) continue;
     const dmg = (1 - d / RR) * 110 * P / M_BOND[o];
-    const a = aux[j];
-    aux[j] = a > dmg ? a - dmg : 0;
+    const a = aux[j], na = a > dmg ? a - dmg : 0;
+    aux[j] = na;
+    if ((a >= 70 && na < 70) || (a >= 91 && na < 91)) markStructAround(j);     // 只有跨过连接阈值的格子才会改变支撑关系
   }
-  structDirty = true;
   clearPins();
   st.boom++;
   if (onBoom) onBoom(x, y, R, P);
@@ -1494,7 +1552,7 @@ function stepExplosion(k) {
   for (let r = 0; r < n; r++) {
     let e = exRays[base + r];
     if (e <= 0) continue;
-    const a = ph + r / n * 6.2832, dx = Math.cos(a), dy = Math.sin(a);
+    const a = ph + r / n * 6.2832, dx = dcos(a), dy = dsin(a);
     let lastJ = -1;
     for (let d = r0 < 0.8 ? 0.8 : r0; d < r1; d += 0.6) {
       const px = Math.round(cx + dx * d), py = Math.round(cy + dy * d);
@@ -1516,7 +1574,8 @@ function stepExplosion(k) {
         } else wake(px, py);
         continue;
       }
-      if (flags[j] & F_BODY) {                       // 打在刚体上：推它一把
+      if (flags[j] & F_BODY) {                       // 打在刚体上：推它一把；里面的炸药被引爆
+        if (M_BLAST[o]) lightBodyAt(j, 3 + ((d * 0.4) | 0) + rndi(9));
         bodyImpulse(life[j] - 1, dx * e * 2600, dy * e * 2600, px, py);
         e -= 0.3;
         continue;
@@ -1691,7 +1750,6 @@ function stepElectric() {
  * 2.10 温度场 + 空气含氧：只在清醒的块里做成对交换（守恒、原地），
  *      再向环境气温缓慢回落。空气格之间还交换「浑浊度」，网格边缘是开阔大气（恒为新鲜）。
  * ------------------------------------------------------------------- */
-let hotRigid = false;      // 有刚性固体被烧到 900°C 以上：金属可能软化了，过一会儿要重算支撑
 function stepThermal() {
   const NTn = NT, K = KTAB, IHC = M_IHC, RLX = M_RELAX, amb = env.ambient;
   for (let cy = 0; cy < CHN; cy++) {
@@ -1711,7 +1769,7 @@ function stepThermal() {
               if (AIRLIKE[type[i + 1]]) { const d = aux[i + 1] - aux[i]; if (d > 3 || d < -3) { const q = d >> 2; aux[i] += q; aux[i + 1] -= q; } }
               if (AIRLIKE[type[i + W]]) { const d = aux[i + W] - aux[i]; if (d > 3 || d < -3) { const q = d >> 2; aux[i] += q; aux[i + W] -= q; } }
             }
-          } else if (Ti > 900 && M_RIGID[a]) hotRigid = true;
+          } else if (Ti > 900 && (a === METAL || a === STEEL) && (tick & 31) === 0) markStructAround(i);   // 烧软的金属：重新评估
           if (x + 1 < W) {
             const d = temp[i + 1] - Ti;
             if (d > 0.5 || d < -0.5) {
@@ -1753,40 +1811,67 @@ let slowPhase = 0;
 
 function slowWet(x, y, i, t, w) {
   let exposed = false;
+  // 渗水：先往下（顺着重力）渗，下面吃不下了再随机往旁边匀
+  const bx = x + gx, by = y + gy;
+  let bottom = bx < 0 || bx >= W || by < 0 || by >= H;
+  if (!bottom) {
+    const j = bx + by * W, o = type[j], cap = M_ABSORB[o];
+    if (cap > 0 && o !== PLANT && !(flags[j] & F_BODY)) {
+      const wj = wet[j];
+      if (w > wj && wj < cap) {
+        const q = Math.min(w - wj > 4 ? (w - wj) >> 1 : w - wj, cap - wj);
+        if ((wj <= 60 && wj + q > 60) || (w > 60 && w - q <= 60)) { wake(x, y); wake(bx, by); }
+        wet[j] = wj + q; w -= q;
+      }
+    } else if (o !== 0 && M_STATE[o] !== S_LIQUID) bottom = true;      // 下面是不吸水的石头 / 金属：这是最底层
+  }
   const k0 = rndi(4);
   for (let k = 0; k < 4; k++) {
     const kk = (k0 + k) & 3, nx = x + DX4[kk], ny = y + DY4[kk];
     if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
     const j = nx + ny * W, o = type[j];
     if (o === 0) { exposed = true; continue; }
-    if (k !== 0 || o === PLANT) continue;
-    const cap = M_ABSORB[o], wj = wet[j];              // 渗水：往更干的吸水邻格匀一半
+    if (k !== 0 || o === PLANT || (nx === bx && ny === by)) continue;
+    const cap = M_ABSORB[o], wj = wet[j];
     if (cap > 0 && w - wj > 24 && wj < cap) {
       const q = Math.min((w - wj) >> 1, cap - wj);
       if ((wj <= 60 && wj + q > 60) || (w > 60 && w - q <= 60)) { wake(x, y); wake(nx, ny); }
       wet[j] = wj + q; w -= q;
     }
   }
-  if (t === SOIL && w > 110 && !exposed && rnd() < 0.5) {              // 深层的土吸饱了：多余的水渗到地下（外部输出，记在账上）
-    const ux = x - gx * 3, uy = y - gy * 3;
-    if (ux >= 0 && ux < W && uy >= 0 && uy < H && type[ux + uy * W] === SOIL) { w -= 12; env.waterOut += 0.12; }
-  }
-  if (exposed && rnd() < 0.12) {                       // 晾干：水分进入空气
-    const rate = 1 + ((env.sun * 3) | 0) + (temp[i] > 40 ? 3 : 0);
+  if (exposed && rnd() < (temp[i] < 0 ? 0.01 : 0.12)) {      // 晾干：按日照、温度、风速，水分进入空气（冻住的地面几乎不蒸发）
+    const wv = windX[(x >> 3) + (y >> 3) * GW];
+    const rate = 1 + ((env.sun * 3) | 0) + (temp[i] > 40 ? 3 : 0) + ((wv < 0 ? -wv : wv) > 0.4 ? 1 : 0);
     const d = w < rate ? w : rate;
     if (w > 60 && w - d <= 60) wake(x, y);
     w -= d;
-    vaporAdd(x, y, d / 100);
+    vaporAdd(x, y, d / 100); WL.evapWet += d / 100;
   }
   wet[i] = w;
 }
 
 function slowWater(x, y, i) {
+  // 下渗：积水下面是土 / 沙，没吸饱就渗进去；吸饱了也会慢慢渗进地下水
+  const bx = x + gx, by = y + gy;
+  if (bx >= 0 && bx < W && by >= 0 && by < H) {
+    const j = bx + by * W, o = type[j];
+    if ((o === SOIL || o === SAND) && !(flags[j] & F_BODY)) {
+      const cap = M_ABSORB[o];
+      if (cap - wet[j] >= 50) { wet[j] = Math.min(cap, wet[j] + 100); clearCell(i, x, y); wake(bx, by); return; }
+      // 薄薄一层的积水（上面没有别的水压着）在吸饱的地面上也会慢慢渗走；深水（湖、池塘）不会
+      const ux = x - gx, uy = y - gy;
+      const isW = (px, py) => px >= 0 && px < W && py >= 0 && py < H && (type[px + py * W] === WATER || type[px + py * W] === SALTWATER);
+      const thin = !isW(ux, uy) && !isW(x + lx, y + ly) && !isW(x - lx, y - ly);      // 孤立的一小摊水，不是湖边
+      if (thin && rnd() < 0.01) { env.waterOut += 1; WL.seep += 1; clearCell(i, x, y); return; }
+    }
+  }
   const ux = x - gx, uy = y - gy;
   if (ux < 0 || ux >= W || uy < 0 || uy >= H || type[ux + uy * W] !== 0) return;
+  // 水面蒸发：白天快、夜里慢，越热越快，有风更快
   let k = 1 + (env.ambient - 20) / 25;
   k = k < 0.2 ? 0.2 : k > 3 ? 3 : k;
-  if (rnd() < 0.0012 * (0.4 + 1.6 * env.sun) * k) { clearCell(i, x, y); vaporAdd(x, y, 1); }   // 水面蒸发
+  const wv = windX[(x >> 3) + (y >> 3) * GW];
+  if (rnd() < 0.003 * (0.4 + 1.6 * env.sun) * k * (1 + (wv < 0 ? -wv : wv))) { clearCell(i, x, y); vaporAdd(x, y, 1); WL.evapSurface++; }
 }
 
 function slowPlant(x, y, i) {
@@ -1808,34 +1893,34 @@ function slowPlant(x, y, i) {
       wet[j] += q; w -= q;
     }
   }
-  if (w > 20 && rnd() < 0.12 * (0.3 + env.sun)) { w--; vaporAdd(x, y, 0.01); }  // 蒸腾
+  if (w > 20 && rnd() < 0.12 * (0.3 + env.sun)) { w--; vaporAdd(x, y, 0.01); WL.transpire += 0.01; }  // 蒸腾
   wet[i] = w;
   if (f & (F_TIP | F_BURN | F_BODY)) return;
-  let age = life[i] + (w === 0 ? 2 : 1);               // 缺水老得快
+  let age = life[i] + (w === 0 ? 2 : 1) * env.plantAging;   // 缺水老得快；plantAging 是整体的衰老速度倍数
   if (age > 60000) age = 60000;
   life[i] = age;
-  if (age > 520 + (g & 15) * 48 && rnd() < 0.15) {     // 寿终（约 9~21 分钟）：枯萎成枯枝
+  if (age > plantLifespan(g) && rnd() < 0.15) {        // 寿终：枯萎成枯枝
     type[i] = DEADPLANT; life[i] = 0; flags[i] = (f & F_SCORCH) | parity; fuel[i] = initFuel(DEADPLANT);
     wake(x, y);
     return;
   }
-  if (env.sun < 0.12) return;
+  if (!canGrow()) return;
   const ux = x - gx, uy = y - gy;
   if (ux < 0 || ux >= W || uy < 0 || uy >= H || type[ux + uy * W] !== 0) return;
-  if (age < 160 && w >= 50 && rnd() < 0.02 && skyOpen(x, y) && stemHeight(x, y) < geneHeight(g) && biomass(x, y, 3) < 24) {
+  if (age < 160 * env.plantAging && w >= 50 && rnd() < 0.02 && skyOpen(x, y) && stemHeight(x, y) < geneHeight(g) && biomass(x, y, 3) < 24) {
     flags[i] |= F_TIP; life[i] = Math.min(2 + rndi(4), geneHeight(g) - stemHeight(x, y));   // 水分充足的幼株顶端再抽一小段，不超过株高上限
     wake(x, y);
-  } else if (age > 30 && w >= 30 && rnd() < 0.006 && skyOpen(x, y)) {
+  } else if (age > 30 * env.plantAging && w >= 30 && rnd() < 0.006 && skyOpen(x, y)) {
     const j = ux + uy * W;                             // 成株开花
     put(j, FLOWER, ux, uy); seed[j] = rndi(5) * 51 + 8 + rndi(34);
-    wet[i] = w - 20; env.waterSink += 0.2;
+    wet[i] = w - 20; env.waterSink += 0.2; WL.plantUse += 0.2;
   }
 }
 
 function slowFlower(x, y, i) {
-  const age = life[i] + 1;
+  const age = life[i] + env.plantAging;
   life[i] = age;
-  if (age > 35 && rnd() < 0.2) {                       // 谢了：六成落下一粒种子，基因来自母株并略有变异
+  if (age > 300 && rnd() < 0.004) {                    // 开五分钟以后才陆续谢（平均再开四分钟），不会同时谢光                       // 谢了：六成落下一粒种子，基因来自母株并略有变异
     if (rnd() < 0.6) {
       let g = rndi(256);
       for (let k = 0; k < 4; k++) {
@@ -1850,31 +1935,31 @@ function slowFlower(x, y, i) {
 }
 
 function slowSeed(x, y, i) {
-  const age = life[i] + 1;
+  const age = life[i] + env.plantAging;
   life[i] = age;
-  if (age > 240 && rnd() < 0.05) { clearCell(i, x, y); return; }      // 一直没发芽：烂掉
+  if (age > 180 && rnd() < 0.01) { clearCell(i, x, y); return; }      // 三分钟内没发芽（太挤、太干、没光）：大多烂掉
   const bx = x + gx, by = y + gy;
   if (bx < 0 || bx >= W || by < 0 || by >= H) return;
   const bj = bx + by * W, b = type[bj];
   if (b === SOIL) { if (wet[bj] < 30 || aux[bj] < 20) return; }
   else if (b === SAND) { if (wet[bj] < 60) return; }
   else return;
-  if (env.sun < 0.12 || !skyOpen(x, y) || biomass(x, y, 4) > 10 || rnd() > 0.25) return;
-  wet[bj] -= 30; env.waterSink += 0.3;
+  if (!canGrow() || !skyOpen(x, y) || biomass(x, y, 4) > 10 || rnd() > 0.25) return;
+  wet[bj] -= 30; env.waterSink += 0.3; WL.plantUse += 0.3;
   if (b === SOIL) aux[bj] -= 20;                        // 消耗养分
   sprout(i, x, y);
 }
 
 function slowSoil(x, y, i) {
   // 植被演替：湿润、有养分、见得到光、周围还空着的土面，偶尔自己冒出新芽（土里的种子库）
-  if (wet[i] < 80 || aux[i] < 40 || env.sun < 0.12 || rnd() > 0.0006) return;
+  if (wet[i] < 80 || aux[i] < 40 || !canGrow() || rnd() > 0.0006) return;
   const ux = x - gx, uy = y - gy;
   if (ux < 0 || ux >= W || uy < 0 || uy >= H || type[ux + uy * W] !== 0) return;
   if (!skyOpen(x, y) || biomass(x, y, 4) > 0) return;
   const j = ux + uy * W;
   put(j, PLANT, ux, uy);
   flags[j] |= F_TIP; life[j] = geneHeight(seed[j]); wet[j] = 30;
-  wet[i] -= 30; aux[i] -= 20; env.waterSink += 0.3;
+  wet[i] -= 30; aux[i] -= 20; env.waterSink += 0.3; WL.plantUse += 0.3;
 }
 
 function slowAsh(x, y, i) {
@@ -1882,23 +1967,27 @@ function slowAsh(x, y, i) {
 }
 
 function slowDead(x, y, i) {
-  // 枯枝腐烂：潮湿时快，干燥时慢；大部分分解掉，只有一小部分变成肥土（否则土会越积越多）
-  if (rnd() < (wet[i] > 30 ? 0.03 : 0.01)) {
-    if (rnd() < 0.15) { morph(i, SOIL, x, y); aux[i] = 255; } else { env.waterOut += wet[i] / 100; clearCell(i, x, y); }
+  // 枯枝分解：越湿越快（干的约 4 分钟，湿透的约 25 秒）；一小部分变成肥土，其余分解掉
+  const w = wet[i];
+  if (rnd() < 0.004 + 0.036 * (w > 60 ? 1 : w / 60)) {
+    if (rnd() < 0.15) { morph(i, SOIL, x, y); aux[i] = 255; } else { env.waterOut += w / 100; WL.decayOut += w / 100; clearCell(i, x, y); }
   }
 }
 
 function slowIce(x, y, i) {
-  // 气温高于冰点时，露在空气里的冰雪慢慢融化；每融一格都从周围吸热
-  const amb = env.ambient;
-  if (amb <= 1) {                                      // 冰点以下：露天的雪慢慢升华回空气里（否则只进不出，越积越厚）
-    if (type[i] === SNOW && rnd() < 0.005) {
-      const ux = x - gx, uy = y - gy;
-      if (ux >= 0 && ux < W && uy >= 0 && uy < H && type[ux + uy * W] === 0) { clearCell(i, x, y); vaporAdd(x, y, 1); }
-    }
+  const amb = env.ambient, snow = type[i] === SNOW;
+  let open = false;                                    // 任何一面挨着空气就算露天（被风吹成的雪墙，侧面也会升华）
+  for (let k = 0; k < 4 && !open; k++) {
+    const nx = x + DX4[k], ny = y + DY4[k];
+    open = nx < 0 || nx >= W || ny < 0 || ny >= H || type[nx + ny * W] === 0;
+  }
+  if (amb <= 1) {
+    // 冰点以下：露天的积雪靠阳光升华（白天快、夜里很慢），所以夜里积得起来，白天又会变薄
+    if (snow && open && rnd() < 0.0006 + env.sun * 0.014) { clearCell(i, x, y); vaporAdd(x, y, 1); WL.sublimate++; }
     return;
   }
-  if (rnd() > amb * (type[i] === SNOW ? 0.006 : 0.0012)) return;
+  // 气温高于冰点：露在空气里的冰雪慢慢融化（日照加速），每融一格都从周围吸热
+  if (rnd() > amb * (snow ? 0.006 : 0.0012) * (1 + env.sun)) return;
   let exposed = false;
   for (let k = 0; k < 4; k++) {
     const nx = x + DX4[k], ny = y + DY4[k];
@@ -1909,7 +1998,7 @@ function slowIce(x, y, i) {
   }
   if (!exposed) return;
   type[i] = WATER; life[i] = 0; flags[i] = parity; temp[i] = 1; aux[i] = 0;
-  structDirty = true;
+  markStructAround(i);
   wake(x, y);
 }
 
@@ -1980,31 +2069,36 @@ function sweepCells() {
   }
 }
 
+// 分析用的计时器由宿主注入（页面里是 performance.now）。模拟代码自己不读任何时钟
+let simClock = null;
+function setSimClock(fn) { simClock = fn; }
+
 function simStep() {
   parity ^= 1; tick++; simStepsTotal++;
-  const t0 = performance.now();
+  const clk = simClock;
+  const t0 = clk ? clk() : 0;
   let act = 0;
   for (let c = 0, n = chunkTTL.length; c < n; c++) {
     const v = chunkTTL[c];
     if (v > 0) { chunkTTL[c] = v - 1; if (v > 1) act++; }
   }
   perf.activeChunks = act;
-  if (sceneScript) sceneScript();
+  stepScene();
   stepWeather();
-  const t1 = performance.now();
+  const t1 = clk ? clk() : 0;
   stepExplosions();
   stepElectric();
-  const t2 = performance.now();
+  const t2 = clk ? clk() : 0;
   stepStructure();
-  const t3 = performance.now();
+  const t3 = clk ? clk() : 0;
   sweepCells();
-  const t4 = performance.now();
+  const t4 = clk ? clk() : 0;
   stepThermal();
-  const t5 = performance.now();
+  const t5 = clk ? clk() : 0;
   stepFree();
-  const t6 = performance.now();
+  const t6 = clk ? clk() : 0;
   slowTick();
-  const t7 = performance.now();
+  const t7 = clk ? clk() : 0;
   perf.weather += t1 - t0; perf.misc += (t2 - t1) + (t6 - t5); perf.struct += t3 - t2;
   perf.cells += t4 - t3; perf.thermal += t5 - t4; perf.slow += t7 - t6; perf.steps++;
 }
@@ -2012,18 +2106,20 @@ function simStep() {
 /* ---------------------------------------------------------------------
  * 2.13 绘制到网格（笔刷、预设、测试共用）与统计
  * ------------------------------------------------------------------- */
+// 返回 1 = 放下了一格，-1 = 擦掉了一格，0 = 没变（预算系统按这个扣材料）
 function paintCell(x, y, t, replace) {
-  if (x < 0 || x >= W || y < 0 || y >= H) return;
+  if (x < 0 || x >= W || y < 0 || y >= H) return 0;
   const i = x + y * W;
-  if (flags[i] & F_BODY) return;
-  if (t === TOOL_ERASE) { if (type[i] !== 0) clearCell(i, x, y); return; }
-  if (t === TOOL_HEAT) { temp[i] = Math.min(2500, temp[i] + 60); wake(x, y); return; }
-  if (t === TOOL_COOL) { temp[i] = Math.max(-200, temp[i] - 60); wake(x, y); return; }
-  if (t >= 100) return;
+  if (flags[i] & F_BODY) return 0;
+  if (t === TOOL_ERASE) { if (type[i] !== 0) { clearCell(i, x, y); return -1; } return 0; }
+  if (t === TOOL_HEAT) { temp[i] = Math.min(2500, temp[i] + 60); wake(x, y); return 0; }
+  if (t === TOOL_COOL) { temp[i] = Math.max(-200, temp[i] - 60); wake(x, y); return 0; }
+  if (t >= 100) return 0;
   const o = type[i];
-  if (o === t) return;
-  if (o !== 0 && !replace) return;
+  if (o === t) return 0;
+  if (o !== 0 && !replace) return 0;
   put(i, t, x, y);
+  return 1;
 }
 
 function fillRect(t, x0, y0, x1, y1) {
@@ -2089,11 +2185,113 @@ let bodyCount = 0, colX = 0, colY = 0;
 let fracVX = 0, fracVY = 0, fracTick = -100;
 const structStats = { checks: 0, made: 0, frozen: 0, fractured: 0 };
 
-function allocStruct() { stMark = new Uint8Array(N); stQueue = new Int32Array(N); }
+// 增量支撑检测用的「脏格」列表：哪里的刚性固体被增删、削弱，或者脚下的东西挪走了，就把那一格记进来。
+// 每次只从这些格子出发做局部搜索；变动太多（或换了重力方向）才退回全图检测。
+let sdList = new Int32Array(1), sdSeen = new Uint8Array(1), sdCount = 0, structFull = true;
+let structSettle = false;   // 有刚体在动：等它们全部静止后再做一次全图兜底检测
+let stBuf = new Int32Array(1), stGrp = new Int32Array(1);
+function allocStruct() {
+  stMark = new Uint8Array(N); stQueue = new Int32Array(N);
+  sdList = new Int32Array(N); sdSeen = new Uint8Array(N); sdCount = 0; structFull = true; stBuf = new Int32Array(N); stGrp = new Int32Array(N);
+}
+function markStruct(i) {
+  if (sdSeen[i] === 0) { sdSeen[i] = 1; sdList[sdCount++] = i; }
+  structDirty = true;
+}
+// 这一格和它四周的刚性格都要重新评估
+function markStructAround(i) {
+  const x = i % W, y = (i / W) | 0;
+  if (M_RIGID[type[i]]) markStruct(i);
+  if (x > 0 && M_RIGID[type[i - 1]]) markStruct(i - 1);
+  if (x < W - 1 && M_RIGID[type[i + 1]]) markStruct(i + 1);
+  if (y > 0 && M_RIGID[type[i - W]]) markStruct(i - W);
+  if (y < H - 1 && M_RIGID[type[i + W]]) markStruct(i + W);
+  structDirty = true;
+}
+function markStructAll() { structFull = true; structDirty = true; }
+function clearStructDirty() { for (let k = 0; k < sdCount; k++) sdSeen[sdList[k]] = 0; sdCount = 0; }
+
+// 这一格能不能当锚（不用靠别人就站得住）
+function isAnchor(i) {
+  const t = type[i];
+  if (M_HARD[t] > 1 || (flags[i] & F_PIN) !== 0) return true;
+  const x = i % W, y = (i / W) | 0, bx = x + gx, by = y + gy;
+  if (bx < 0 || bx >= W || by < 0 || by >= H) return true;
+  const j = bx + by * W, o = type[j];
+  return o !== 0 && !M_RIGID[o] && M_STATE[o] < S_LIQUID && !(flags[j] & F_BODY);
+}
+
+// n 能不能撑住相邻的 c（和全图检测的连接规则完全一致）
+function canSupport(n, c) {
+  const a = type[n], b = type[c];
+  if (c === n - (gx + gy * W)) return !(a === ROPE || b === ROPE);   // c 在 n 正上方：压着就行，但绳子撑不住上面的东西
+  const thr = a === b ? BOND_MIN : BOND_MIN * 1.3;
+  if ((aux[n] < thr && M_HARD[a] <= 1) || (aux[c] < thr && M_HARD[b] <= 1)) return false;
+  if ((a === METAL || a === STEEL) && temp[n] > 900) return false;
+  if ((b === METAL || b === STEEL) && temp[c] > 900) return false;
+  return true;
+}
+
+// 局部检测：从每个脏格出发，逆着「支撑」关系往回找锚。找到了就说明它站得住（提前停止）；
+// 找遍了也没有，搜到的这一片全都失去了支撑，变成刚体。mark：1 = 本轮已确认站得住，2 = 已确认失去支撑，3 = 正在搜
+function checkLocal() {
+  structStats.checks++;
+  const mark = stMark, q = stQueue, buf = stBuf;
+  let touched = 0;
+  for (let s = 0; s < sdCount; s++) {
+    const seedI = sdList[s];
+    if (mark[seedI] !== 0 || !M_RIGID[type[seedI]] || (flags[seedI] & F_BODY)) continue;
+    let qh = 0, qt = 0, found = false;
+    q[qt++] = seedI; mark[seedI] = 3;
+    while (qh < qt) {
+      const c = q[qh++];
+      if (mark[c] === 1 || isAnchor(c)) { found = true; break; }
+      const x = c % W, y = (c / W) | 0;
+      for (let k = 0; k < 4; k++) {
+        const nx = x + DX4[k], ny = y + DY4[k];
+        if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+        const n = nx + ny * W, mn = mark[n];
+        if (mn === 3 || mn === 2 || !M_RIGID[type[n]] || (flags[n] & F_BODY)) continue;
+        if (!canSupport(n, c)) continue;
+        if (mn === 1) { found = true; break; }
+        mark[n] = 3; q[qt++] = n;
+      }
+      if (found) break;
+    }
+    if (found) {
+      for (let k = 0; k < qt; k++) mark[q[k]] = 0;     // 搜到的其它格子还不能确定，清掉
+      mark[seedI] = 1; buf[touched++] = seedI;
+    } else {
+      for (let k = 0; k < qt; k++) { mark[q[k]] = 2; buf[touched++] = q[k]; }
+      // 失去支撑的这一片按四连通分组，各自成为刚体
+      for (let k = 0; k < qt; k++) {
+        const start = q[k];
+        if (mark[start] !== 2) continue;
+        const g = stGrp;
+        let h = 0, tl = 0;
+        g[tl++] = start; mark[start] = 4;
+        while (h < tl) {
+          const c = g[h++], x = c % W, y = (c / W) | 0;
+          for (let d = 0; d < 4; d++) {
+            const nx = x + DX4[d], ny = y + DY4[d];
+            if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+            const j = nx + ny * W;
+            if (mark[j] === 2) { mark[j] = 4; g[tl++] = j; }
+          }
+        }
+        makeBodies(g.slice(0, tl));
+      }
+    }
+  }
+  for (let k = 0; k < touched; k++) mark[buf[k]] = 0;
+  clearStructDirty();
+}
 function bodiesClear() { bodies.fill(null); bodyCount = 0; }
 
 function checkStructure() {
   structStats.checks++;
+  structFull = false;
+  clearStructDirty();
   const mark = stMark, q = stQueue, gOff = gx + gy * W;
   mark.fill(0);
   let qh = 0, qt = 0;
@@ -2151,6 +2349,7 @@ function checkStructure() {
     }
     makeBodies(q.slice(0, tl));
   }
+  mark.fill(0);                                       // 局部检测要用干净的标记
 }
 
 // 太大的块按随机偏移的方格切开（近似「沿薄弱处分裂」），每块各自成为刚体。
@@ -2180,6 +2379,7 @@ function debrisCell(c, vx, vy) {
   const x = c % W, y = (c / W) | 0;
   if (fpCount < FP_MAX - 20) spawnFree(type[c], x + 0.5, y + 0.5, vx + (rnd() - 0.5) * 1.2, vy + (rnd() - 0.5) * 1.2, temp[c], seed[c]);
   type[c] = 0; flags[c] = parity; life[c] = 0; aux[c] = 0; wet[c] = 0; fuel[c] = 0;
+  markStructAround(c);                               // 挂在它上面 / 下面的东西要重新评估
   wake(x, y);
 }
 
@@ -2190,7 +2390,7 @@ function makeBody(cells) {
   for (let k = 0; k < BODY_MAX; k++) if (!bodies[k]) { id = k; break; }
   if (id < 0) {                                        // 刚体满了：小块直接碎成渣，大块先原地不动，稍后再试
     if (n <= 40) for (let k = 0; k < n; k++) debrisCell(cells[k], 0, 0);
-    else { structDirty = true; structCooldown = 20; }
+    else { markStruct(cells[0]); structCooldown = 20; }
     return;
   }
   let minx = W, miny = H, maxx = 0, maxy = 0, mass = 0, mx = 0, my = 0;
@@ -2214,10 +2414,13 @@ function makeBody(cells) {
     I += M_DENS[type[c]] * (d2 + 0.17);
     if (d2 > r) r = d2;
     type[c] = 0; flags[c] = parity; life[c] = 0; aux[c] = 0; wet[c] = 0; fuel[c] = 0;
+    markStructAround(c);
   }
   const b = { id, n, mass, I, x: comX, y: comY, vx: 0, vy: 0, ang: 0, om: (rnd() - 0.5) * 0.012,
               lw, lh, cx: comX - minx, cy: comY - miny, lt, ls, lf, lT, pts, r: Math.sqrt(r) + 1.5, mat,
-              stamp: new Int32Array(n * 2 + 64), stampN: 0, rest: 0, age: 0, sub: 0, subDens: 0, stuck: 0, sx: comX, sy: comY };
+              stamp: new Int32Array(n * 2 + 64), stampL: new Int32Array(n * 2 + 64), stampN: 0, rest: 0, age: 0, sub: 0, subDens: 0, stuck: 0, sx: comX, sy: comY,
+              blast: 0, fuses: [] };
+  for (let t = 1; t < NT; t++) if (M_BLAST[t]) b.blast += cnt[t];
   if (tick - fracTick <= 4) { b.vx = fracVX; b.vy = fracVY; }      // 碎裂出来的块继承原来的速度
   bodies[id] = b; bodyCount++;
   structStats.made++;
@@ -2225,7 +2428,7 @@ function makeBody(cells) {
 }
 
 function stampBody(b) {
-  const c = Math.cos(b.ang), s = Math.sin(b.ang), R = b.r, lw = b.lw, lh = b.lh, tag = b.id + 1;
+  const c = dcos(b.ang), s = dsin(b.ang), R = b.r, lw = b.lw, lh = b.lh, tag = b.id + 1;
   const x0 = Math.max(0, Math.floor(b.x - R)), x1 = Math.min(W - 1, Math.ceil(b.x + R));
   const y0 = Math.max(0, Math.floor(b.y - R)), y1 = Math.min(H - 1, Math.ceil(b.y + R));
   let n = 0, sub = 0, subD = 0;
@@ -2257,7 +2460,8 @@ function stampBody(b) {
       type[j] = t; seed[j] = b.ls[l]; temp[j] = b.lT[l]; flags[j] = parity | F_BODY | b.lf[l];
       life[j] = tag; aux[j] = 200; wet[j] = 0; fuel[j] = 0; charge[j] = 0;
       if (rowDens > 0) { sub++; subD += rowDens; }
-      if (n < cap) stamp[n++] = j;
+      if (n < cap) { stamp[n] = j; b.stampL[n] = l; n++; }
+      if (b.lf[l] & F_BURN) flags[j] |= F_BURN;          // 引信已点着的炸药：照样闪
       wake(wx, wy);
     }
   }
@@ -2277,7 +2481,7 @@ function unstampBody(b) {
 // colStatic = 其中撞在静止物上的格数，colBody = 撞到的另一个刚体（没有则为 -1）
 let colStatic = 0, colBody = -1;
 function collide(b, X, Y, A) {
-  const c = Math.cos(A), s = Math.sin(A), pts = b.pts;
+  const c = dcos(A), s = dsin(A), pts = b.pts;
   let n = 0, sx = 0, sy = 0, ns = 0, other = -1;
   for (let k = 0, m = b.n * 2; k < m; k += 2) {
     const px = pts[k], py = pts[k + 1];
@@ -2302,8 +2506,7 @@ let pinTick = -100;
 function clearPins() {
   if (tick - pinTick < 30) return;
   pinTick = tick;
-  for (let i = 0; i < N; i++) if (flags[i] & F_PIN) flags[i] &= ~F_PIN;
-  structDirty = true;
+  for (let i = 0; i < N; i++) if (flags[i] & F_PIN) { flags[i] &= ~F_PIN; markStruct(i); }
 }
 
 function freezeBody(b, pin) {
@@ -2320,11 +2523,13 @@ function freezeBody(b, pin) {
   const stamp = b.stamp, tag = b.id + 1;
   for (let k = 0; k < b.stampN; k++) {
     const j = stamp[k];
-    if ((flags[j] & F_BODY) && life[j] === tag) { flags[j] = (flags[j] & ~F_BODY) | (pin ? F_PIN : 0); life[j] = 0; aux[j] = 120; fuel[j] = initFuel(type[j]); }
+    if ((flags[j] & F_BODY) && life[j] === tag) {
+      flags[j] = (flags[j] & ~F_BODY) | (pin ? F_PIN : 0); life[j] = 0; aux[j] = 120; fuel[j] = initFuel(type[j]); markStructAround(j);
+      if (b.lf[b.stampL[k]] & F_BURN) life[j] = fuseLeft(b, b.stampL[k]);   // 还在烧的引信：落地后接着烧
+    }
   }
   bodies[b.id] = null; bodyCount--;
   structStats.frozen++;
-  structDirty = true;
 }
 
 function fractureBody(b, impact) {
@@ -2336,11 +2541,12 @@ function fractureBody(b, impact) {
     if (x < 0 || x >= W || y < 0 || y >= H || dx * dx + dy * dy > R * R) continue;
     const j = x + y * W, o = type[j];
     if (!M_RIGID[o] || M_HARD[o] > 1 || (flags[j] & F_BODY)) continue;
-    const d = dmgK * (1 - Math.sqrt(dx * dx + dy * dy) / R) / M_BOND[o], a = aux[j];
-    aux[j] = a > d ? a - d : 0;
+    const d = dmgK * (1 - Math.sqrt(dx * dx + dy * dy) / R) / M_BOND[o], a = aux[j], na = a > d ? a - d : 0;
+    aux[j] = na;
+    if ((a >= 70 && na < 70) || (a >= 91 && na < 91)) markStructAround(j);
   }
   fracVX = b.vx * 0.5; fracVY = b.vy * 0.5; fracTick = tick;
-  const c = Math.cos(b.ang), s = Math.sin(b.ang);
+  const c = dcos(b.ang), s = dsin(b.ang);
   if (b.mat === GLASS || b.n < 24) {                   // 玻璃和小块：直接碎成渣
     for (let lj = 0; lj < b.lh; lj++) for (let li = 0; li < b.lw; li++) {
       const l = li + lj * b.lw, t = b.lt[l];
@@ -2355,12 +2561,12 @@ function fractureBody(b, impact) {
   stampBody(b);
   const stamp = b.stamp, tag = b.id + 1, cuts = 1 + (rnd() < 0.5 ? 1 : 0) + (b.n > 400 ? 1 : 0);
   const ca = [], sa = [];
-  for (let k = 0; k < cuts; k++) { const a = rnd() * 3.1416; ca.push(Math.cos(a)); sa.push(Math.sin(a)); }
+  for (let k = 0; k < cuts; k++) { const a = rnd() * 3.1416; ca.push(dcos(a)); sa.push(dsin(a)); }
   for (let k = 0; k < b.stampN; k++) {
     const j = stamp[k];
     if (!((flags[j] & F_BODY) && life[j] === tag)) continue;
     const x = j % W, y = (j / W) | 0;
-    flags[j] &= ~F_BODY; life[j] = 0; aux[j] = 255;
+    flags[j] &= ~F_BODY; life[j] = 0; aux[j] = 255; markStruct(j);
     let onCut = false;
     for (let q = 0; q < cuts; q++) if (Math.abs((x + 0.5 - colX) * sa[q] - (y + 0.5 - colY) * ca[q]) < 0.8) { onCut = true; break; }
     if (!onCut) continue;
@@ -2371,7 +2577,7 @@ function fractureBody(b, impact) {
     }
   }
   bodies[b.id] = null; bodyCount--;
-  structDirty = true; structCooldown = 0;
+  structCooldown = 0;
 }
 
 function bodyImpulse(id, ix, iy, px, py) {
@@ -2405,7 +2611,7 @@ function stepBody(b) {
     const other = colStatic === 0 && colBody >= 0 ? bodies[colBody] : null;
     if (other) {
       // 撞上的是另一个还在动的刚体：按质量把两者的速度拉平（一起往下掉），只有相对速度够大才算撞击
-      const mt = b.mass + other.mass, rel = Math.hypot(b.vx - other.vx, b.vy - other.vy);
+      const mt = b.mass + other.mass, rvx = b.vx - other.vx, rvy = b.vy - other.vy, rel = Math.sqrt(rvx * rvx + rvy * rvy);
       const vx = (b.vx * b.mass + other.vx * other.mass) / mt, vy = (b.vy * b.mass + other.vy * other.mass) / mt;
       b.vx = other.vx = vx; b.vy = other.vy = vy; b.om *= 0.8;
       if (rel > 0.9) { st.crash += rel * Math.min(400, b.n); if (onCrash) onCrash(colX, colY, rel, b.n); }
@@ -2414,7 +2620,7 @@ function stepBody(b) {
     }
     // 撞上静止物：对接触点施加冲量（会带来转动），再加一点摩擦
     let rx = colX - b.x, ry = colY - b.y;
-    const rl = Math.hypot(rx, ry);
+    const rl = Math.sqrt(rx * rx + ry * ry);
     let nx, ny;
     if (rl < 0.6) { nx = -gx; ny = -gy; rx = 0; ry = 0; } else { nx = -rx / rl; ny = -ry / rl; }
     const vcx = b.vx - b.om * ry, vcy = b.vy + b.om * rx, vn = vcx * nx + vcy * ny;
@@ -2435,16 +2641,74 @@ function stepBody(b) {
     break;
   }
   stampBody(b);
+  if (b.blast > 0 && stepFuses(b)) return;
   if (resting && Math.abs(b.vx) + Math.abs(b.vy) < 0.45 && Math.abs(b.om) < 0.05) b.rest++;
   else b.rest = 0;
   b.stuck = movedAny ? 0 : (b.stuck || 0) + 1;         // 卡在别的碎块里一动不动：一段时间后就地冻结
   let wedged = b.stuck > 24;
   if (b.age % 90 === 0) {                              // 每 1.5 秒看一次：几乎没挪窝也算卡住（浸在液体里漂着的不算）
-    if (b.age > 90 && b.sub === 0 && Math.hypot(b.x - b.sx, b.y - b.sy) < 1.5) wedged = true;
+    if (b.age > 90 && b.sub === 0 && (b.x - b.sx) * (b.x - b.sx) + (b.y - b.sy) * (b.y - b.sy) < 2.25) wedged = true;
     b.sx = b.x; b.sy = b.y;
   }
   if (b.rest > 10) freezeBody(b, false);
   else if (wedged || b.age > 2400) freezeBody(b, b.sub === 0);
+}
+
+/* ---- 刚体里的炸药：下落途中被火、熔岩、余烬或爆炸波及，照样点着、照样炸 ---- */
+function fuseLeft(b, l) {
+  for (const f of b.fuses) if (f[0] === l) return f[1] > 1 ? f[1] : 1;
+  return 1;
+}
+
+// 点着刚体里第 l 格（局部坐标）的炸药，引信 t 步
+function lightBodyCell(b, l, t) {
+  if (b.lf[l] & F_BURN) { for (const f of b.fuses) if (f[0] === l && f[1] > t) f[1] = t; return; }
+  b.lf[l] |= F_BURN;
+  b.fuses.push([l, t]);
+}
+
+// 世界里第 j 格是刚体 id 盖的章：点着它对应的那格炸药
+function lightBodyAt(j, t) {
+  const b = bodies[life[j] - 1];
+  if (!b) return;
+  for (let k = 0; k < b.stampN; k++) if (b.stamp[k] === j) { const l = b.stampL[k]; if (M_BLAST[b.lt[l]]) lightBodyCell(b, l, t); return; }
+}
+
+// 每步：检查刚体里的炸药有没有挨着火，推进引信，到点就炸。返回 true 表示这个刚体已经没了
+function stepFuses(b) {
+  const stamp = b.stamp, sl = b.stampL;
+  for (let k = 0; k < b.stampN; k++) {
+    const j = stamp[k], l = sl[k], t = b.lt[l];
+    if (!M_BLAST[t] || (b.lf[l] & F_BURN)) continue;
+    const x = j % W, y = (j / W) | 0;
+    for (let d = 0; d < 4; d++) {
+      const nx = x + DX4[d], ny = y + DY4[d];
+      if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+      const n = nx + ny * W, o = type[n];
+      if ((flags[n] & F_BODY) && life[n] === b.id + 1) continue;
+      if (o === FIRE || o === LAVA || o === EMBER || (o !== 0 && (flags[n] & F_BURN) && !(flags[n] & F_BODY))) { lightBodyCell(b, l, M_BURNTIME[t]); break; }
+    }
+  }
+  if (b.fuses.length === 0) return false;
+  const c = dcos(b.ang), s = dsin(b.ang);
+  let boom = false;
+  for (let q = b.fuses.length - 1; q >= 0; q--) {
+    const f = b.fuses[q];
+    if (--f[1] > 0) continue;
+    const l = f[0], t = b.lt[l];
+    b.fuses.splice(q, 1);
+    if (!M_BLAST[t]) continue;
+    const li = l % b.lw, lj = (l / b.lw) | 0, px = li + 0.5 - b.cx, py = lj + 0.5 - b.cy;
+    const wx = Math.floor(b.x + c * px - s * py), wy = Math.floor(b.y + s * px + c * py);
+    b.lt[l] = 0; b.lf[l] &= ~F_BURN; b.blast--;
+    if (wx >= 0 && wx < W && wy >= 0 && wy < H) {
+      const j = wx + wy * W;
+      if ((flags[j] & F_BODY) && life[j] === b.id + 1) { type[j] = 0; flags[j] = parity; life[j] = 0; aux[j] = 0; }
+      startExplosion(wx, wy, M_BLAST[t], M_BPOW[t]);
+      boom = true;
+    }
+  }
+  return boom && !bodies[b.id];
 }
 
 const bodyOrder = [];
@@ -2462,11 +2726,15 @@ function stepStructure() {
     if (bodyCount > 0) for (let k = 0; k < BODY_MAX; k++) { const b = bodies[k]; if (b) freezeBody(b, false); }
     return;
   }
-  if (hotRigid && (tick & 31) === 0) { hotRigid = false; structDirty = true; }
-  if ((tick % 300) === 0) clearPins();                    // 「楔住」的标记每 5 秒失效一次，重新评估（真卡住的会再被标上）
+  if ((tick % 300) === 0) clearPins();                    // 「楔住」的标记每 300 步失效一次，重新评估（真卡住的会再被标上）
+  // 大规模坍塌时碎块互相撞来撞去，局部标记可能漏掉被连带削弱的地方：坍塌进行中每 120 步、
+  // 以及所有碎块都静止下来的那一刻，各做一次全图兜底检测。平时只做局部检测
+  if (bodyCount > 0) { structSettle = true; if ((tick % 120) === 0) markStructAll(); }
+  else if (structSettle) { structSettle = false; markStructAll(); }
   if (structDirty && !structHold && --structCooldown <= 0) {
     structDirty = false; structCooldown = bodyCount > 8 ? 6 : 3;      // 正在大规模坍塌时少查几次
-    checkStructure();
+    if (structFull || sdCount > (N >> 4)) checkStructure();         // 换了重力方向、或者一次变动太多：全图检测
+    else checkLocal();
   }
 }
 
@@ -2482,6 +2750,9 @@ const RAIN_THR = 2.0;
 let GW = 1, GH = 1;
 let windX = new Float32Array(1), heatC = new Float32Array(1);
 let vapor = new Float32Array(1), vaporB = new Float32Array(1), cloud = new Float32Array(1), cloudB = new Float32Array(1);
+let solidC = new Float32Array(1);   // 每个粗格里被固体 / 粉末 / 液体占住的比例：挡水汽、挡风
+let windShade = new Float32Array(1); // 上风方向有障碍物挡着的程度（0 = 开阔，1 = 完全挡住）
+let solidRow = 0;
 let lastBolt = null;       // 最近一次闪电（渲染用来整屏闪一下）
 
 function allocWeather() {
@@ -2489,9 +2760,24 @@ function allocWeather() {
   const n = GW * GH;
   windX = new Float32Array(n); heatC = new Float32Array(n);
   vapor = new Float32Array(n); vaporB = new Float32Array(n); cloud = new Float32Array(n); cloudB = new Float32Array(n);
+  solidC = new Float32Array(n); windShade = new Float32Array(n); solidRow = 0;
 }
 
-function clearWeather() { windX.fill(0); heatC.fill(0); vapor.fill(0); cloud.fill(0); }
+function clearWeather() { windX.fill(0); heatC.fill(0); vapor.fill(0); cloud.fill(0); solidC.fill(0); windShade.fill(0); solidRow = 0; env.atmos = 0; }
+
+// 每次只重算四分之一的粗格行（每 16 步全部刷新一遍）
+function refreshSolid() {
+  for (let cy = solidRow; cy < GH; cy += 4) {
+    const y0 = cy << 3, y1 = Math.min(H, y0 + 8);
+    for (let cx = 0; cx < GW; cx++) {
+      const x0 = cx << 3, x1 = Math.min(W, x0 + 8);
+      let n = 0;
+      for (let y = y0; y < y1; y++) for (let x = x0, i = y * W + x0; x < x1; x++, i++) { const o = type[i]; if (o !== 0 && M_STATE[o] < S_GAS) n++; }
+      solidC[cx + cy * GW] = n / ((x1 - x0) * (y1 - y0));
+    }
+  }
+  solidRow = (solidRow + 1) & 3;
+}
 
 function vaporAdd(x, y, amount) { vapor[(x >> 3) + (y >> 3) * GW] += amount; }
 
@@ -2503,7 +2789,7 @@ function weatherWater() {
 
 function updateSun() {
   if (!env.dayNight) { env.el = 1; env.sun = 1; env.ambient = env.temp; return; }
-  const el = Math.sin((env.time - 0.25) * 6.2832);
+  const el = dsin((env.time - 0.25) * 6.2832);
   env.el = el;
   env.sun = el > 0 ? Math.min(1, el * 1.6) : 0;
   env.ambient = env.temp + el * 4 - 1;
@@ -2517,7 +2803,7 @@ function spawnPrecip(cx, cy, alt) {
   if (type[i] !== 0) return false;
   if (env.ambient - alt * 6 <= 0.5) { put(i, SNOW, x, y); env.snowCount++; }
   else { put(i, WATER, x, y); temp[i] = Math.max(1, Math.min(env.ambient, 15)); env.rainCount++; }
-  st.rain++;
+  st.rain++; WL.precip++;
   return true;
 }
 
@@ -2525,45 +2811,59 @@ function stepVapor() {
   const n = GW * GH, amb = env.ambient;
   let tf = 1 + (amb - 20) / 40;
   tf = tf < 0.3 ? 0.3 : tf > 2 ? 2 : tf;
+  refreshSolid();
   vaporB.fill(0); cloudB.fill(0);
   const upOff = gy > 0 ? -GW : gy < 0 ? GW : 0;
+  // 天气是「有预算的源」：每分钟最多注入 moistPerMin 格水（按 400 格宽的画面折算），
+  // 大气里已有的水汽 + 云越接近容量 atmosCap（每个粗格列），注入越少；到容量就停
+  let topCells = 0;
+  for (let cy = 0; cy < GH; cy++) if (altitudeOf(cy) > 0.8) topCells += GW;
+  let inject = 0;
+  if (env.moistPerMin > 0 && topCells > 0) {
+    const room = 1 - env.atmos / (env.atmosCap * GW);
+    if (room > 0) inject = env.moistPerMin / 900 * (W / 400) * room / topCells;
+  }
+  let atmos = 0;
   for (let cy = 0; cy < GH; cy++) {
-    const alt = altitudeOf(cy), sat = (0.35 + 5.6 * Math.pow(1 - alt, 1.5)) * tf;
+    const alt = altitudeOf(cy), lo = 1 - alt, sat = (0.35 + 5.6 * lo * Math.sqrt(lo)) * tf;
     for (let cx = 0; cx < GW; cx++) {
       const c = cx + cy * GW;
       let v = vapor[c], cl = cloud[c];
-      if (v > sat) { const d = (v - sat) * 0.25; v -= d; cl += d; }                      // 过饱和 → 凝成云
-      else if (cl > 0 && v < sat * 0.6) { const d = Math.min(cl, (sat * 0.6 - v) * 0.03); cl -= d; v += d; }   // 太干 → 云散
+      if (v > sat) { const d = (v - sat) * 0.25; v -= d; cl += d; WL.condense += d; }                      // 过饱和 → 凝成云
+      else if (cl > 0 && v < sat * 0.6) { const d = Math.min(cl, (sat * 0.6 - v) * 0.03); cl -= d; v += d; WL.cloudEvap += d; }   // 太干 → 云散
       if (alt > 0.8) {                                                                 // 高空：天气预设的外部输入 / 输出
-        if (env.moistIn > 0) { v += env.moistIn; env.waterIn += env.moistIn; }
-        if (env.cloudFade > 0) { const d = cl * env.cloudFade + v * env.cloudFade; cl -= cl * env.cloudFade; v -= v * env.cloudFade; env.waterOut += d; }
+        if (inject > 0) { v += inject; env.waterIn += inject; WL.weatherIn += inject; }
+        if (env.cloudFade > 0) { const d = cl * env.cloudFade + v * env.cloudFade; cl -= cl * env.cloudFade; v -= v * env.cloudFade; env.waterOut += d; WL.cloudFade += d; }
       }
       // 云够厚就降水：超过一半阈值开始零星落雨，超过阈值越厚下得越急；每一滴都从云里扣掉
       if (cl > RAIN_THR * 0.5 && rnd() < Math.min(0.6, (cl - RAIN_THR * 0.5) * 0.06 + (cl > RAIN_THR ? (cl - RAIN_THR) * 0.2 : 0))) { if (spawnPrecip(cx, cy, alt)) cl -= 1; }
       if (env.storm > 0 && cl > RAIN_THR * 0.8) env.charge += env.storm * 0.0006 * cl;
       if (v < 1e-6) v = 0;
       if (cl < 1e-6) cl = 0;
-      // 输运：水汽上升 + 随风 + 扩散；云只随风和少量扩散
+      atmos += v + cl;
+      // 输运：水汽上升 + 随风 + 扩散；云只随风和少量扩散。往哪个粗格走，都要按那个粗格的空隙比例打折（水汽不穿墙）
       const w = windX[c], aw = w < 0 ? -w : w, fw = aw * 0.15 > 0.3 ? 0.3 : aw * 0.15;
       const side = w > 0 ? (cx < GW - 1 ? c + 1 : -1) : (cx > 0 ? c - 1 : -1);
       const up = upOff !== 0 && c + upOff >= 0 && c + upOff < n ? c + upOff : -1;
+      const openHere = 1 - solidC[c];
       let keep = v;
-      if (up >= 0) { const d = v * 0.08; vaporB[up] += d; keep -= d; }
-      if (side >= 0) { const d = v * fw; vaporB[side] += d; keep -= d; }
-      const dv = v * 0.02;
-      if (cx > 0) { vaporB[c - 1] += dv; keep -= dv; }
-      if (cx < GW - 1) { vaporB[c + 1] += dv; keep -= dv; }
-      if (cy > 0) { vaporB[c - GW] += dv; keep -= dv; }
-      if (cy < GH - 1) { vaporB[c + GW] += dv; keep -= dv; }
+      if (up >= 0) { const d = v * 0.08 * (1 - solidC[up]) * openHere; vaporB[up] += d; keep -= d; }
+      if (side >= 0) { const d = v * fw * (1 - solidC[side]) * openHere; vaporB[side] += d; keep -= d; }
+      const dv = v * 0.02 * openHere;
+      if (cx > 0) { const d = dv * (1 - solidC[c - 1]); vaporB[c - 1] += d; keep -= d; }
+      if (cx < GW - 1) { const d = dv * (1 - solidC[c + 1]); vaporB[c + 1] += d; keep -= d; }
+      if (cy > 0) { const d = dv * (1 - solidC[c - GW]); vaporB[c - GW] += d; keep -= d; }
+      if (cy < GH - 1) { const d = dv * (1 - solidC[c + GW]); vaporB[c + GW] += d; keep -= d; }
       vaporB[c] += keep;
       let keepC = cl;
-      if (side >= 0) { const d = cl * fw * 0.7; cloudB[side] += d; keepC -= d; }
+      if (side >= 0) { const d = cl * fw * 0.7 * (1 - solidC[side]); cloudB[side] += d; keepC -= d; }
       const dc = cl * 0.008;
-      if (cx > 0) { cloudB[c - 1] += dc; keepC -= dc; }
-      if (cx < GW - 1) { cloudB[c + 1] += dc; keepC -= dc; }
+      if (cx > 0) { const d = dc * (1 - solidC[c - 1]); cloudB[c - 1] += d; keepC -= d; }
+      if (cx < GW - 1) { const d = dc * (1 - solidC[c + 1]); cloudB[c + 1] += d; keepC -= d; }
       cloudB[c] += keepC;
     }
   }
+  env.atmos = atmos;
   let t = vapor; vapor = vaporB; vaporB = t;
   t = cloud; cloud = cloudB; cloudB = t;
   if (env.charge > 1) { env.charge = 0; lightning(); }
@@ -2582,15 +2882,22 @@ function stepWeather() {
     heatC[c] += (ex - heatC[c]) * 0.2;
   }
   if (ph === 0) {
-    const gust = Math.sin(tick * 0.004), pw = env.windPower;
+    const gust = dsin(tick * 0.004), pw = env.windPower;
     for (let cy = 0; cy < GH; cy++) {
       const alt = altitudeOf(cy);
-      const base = env.wind * pw * 1.4 * (0.5 + 0.7 * alt) + Math.sin(tick * 0.011 + cy * 0.7) * 0.1 * pw + gust * 0.08 * pw;
-      for (let cx = 0; cx < GW; cx++) {
-        const c = cx + cy * GW;
+      const base = env.wind * pw * 1.4 * (0.5 + 0.7 * alt) + dsin(tick * 0.011 + cy * 0.7) * 0.1 * pw + gust * 0.08 * pw;
+      // 风影：从上风一侧扫过去，碰到固体就被挡住，挡住的程度往下风方向每个粗格衰减一成半。墙后面形成一片风影区，
+      // 墙顶上面那几行照样有风（风从建筑上面绕过去）
+      const dir = base >= 0 ? 1 : -1;
+      let sh = 0;
+      for (let k = 0; k < GW; k++) {
+        const cx = dir > 0 ? k : GW - 1 - k, c = cx + cy * GW;
+        const blk = solidC[c] * 2 > 1 ? 1 : solidC[c] * 2;      // 半个粗格被墙占住就基本挡死了
+        sh = blk > sh * 0.85 ? blk : sh * 0.85;
+        windShade[c] = sh;
         let d = ((cx < GW - 1 ? heatC[c + 1] : 0) - (cx > 0 ? heatC[c - 1] : 0)) * 0.003;   // 往热的一侧吸
         d = d > 0.6 ? 0.6 : d < -0.6 ? -0.6 : d;
-        windX[c] += (base + d - windX[c]) * 0.15;
+        windX[c] += (base * (1 - sh) + d - windX[c]) * 0.15;
       }
     }
   } else if (ph === 2) stepVapor();
@@ -2629,7 +2936,11 @@ function lightning(tx) {
     if (v > bv) { bv = v; best = c; }
   }
   let sx, sy;
-  if (best >= 0) { sx = ((best % GW) << 3) + 4; sy = (((best / GW) | 0) << 3) + 6; }
+  if (best >= 0) {                                    // 从这片云的云底起劈：顺着这一列往下找到云的最下沿
+    let c = best;
+    while (c + GW < GW * GH && cloud[c + GW] >= 0.3) c += GW;
+    sx = ((c % GW) << 3) + 4; sy = Math.min(H - 2, (((c / GW) | 0) << 3) + 7);
+  }
   else { sx = manual ? tx + rndi(21) - 10 : rndi(W); sy = 1; }
   if (!manual) tx = sx + rndi(41) - 20;
   const span = manual ? 5 : 40;
@@ -2662,25 +2973,26 @@ function lightning(tx) {
     wake(x, y);
   }
   env.strikes++;
-  lastBolt = { x: bx, y: by, tick };
+  lastBolt = { x: bx, y: by, sx, sy, tick };
   if (onThunder) onThunder(bx, by);
 }
 
 // 雷声延迟：按落点到「听者」（画面底边中点）的距离算，越远越晚
-function thunderDelay(x, y) { return 0.15 + Math.hypot(x - W / 2, y - (H - 1)) / W * 2.2; }
+function thunderDelay(x, y) { const dx = x - W / 2, dy = y - (H - 1); return 0.15 + Math.sqrt(dx * dx + dy * dy) / W * 2.2; }
 
+// moistPerMin：每分钟最多注入多少格水（按 400 格宽的画面折算）；atmosCap：每个粗格列的大气含水容量，到了就停止注入
 const WEATHER_PRESETS = {
-  clear:  { name: '晴',   moistIn: 0,     cloudFade: 0.004, storm: 0, windPower: 0.2 },
-  cloudy: { name: '多云', moistIn: 0.0006, cloudFade: 0,     storm: 0, windPower: 0.3 },
-  rain:   { name: '雨',   moistIn: 0.0015, cloudFade: 0,     storm: 0, windPower: 0.45 },
-  storm:  { name: '雷暴', moistIn: 0.0025, cloudFade: 0,     storm: 1, windPower: 0.8 },
-  snow:   { name: '雪',   moistIn: 0.0004, cloudFade: 0,     storm: 0, windPower: 0.35, temp: -6 },
+  clear:  { name: '晴',   moistPerMin: 0,   atmosCap: 0,   cloudFade: 0.004, storm: 0, windPower: 0.2 },
+  cloudy: { name: '多云', moistPerMin: 40,  atmosCap: 1.2, cloudFade: 0,     storm: 0, windPower: 0.3 },
+  rain:   { name: '雨',   moistPerMin: 260, atmosCap: 3.0, cloudFade: 0,     storm: 0, windPower: 0.45 },
+  storm:  { name: '雷暴', moistPerMin: 420, atmosCap: 4.0, cloudFade: 0,     storm: 1, windPower: 0.8 },
+  snow:   { name: '雪',   moistPerMin: 120, atmosCap: 2.0, cloudFade: 0,     storm: 0, windPower: 0.35, temp: -6 },
 };
 
 function setWeather(key) {
   const p = WEATHER_PRESETS[key];
   if (!p) return;
-  env.weather = key; env.moistIn = p.moistIn; env.cloudFade = p.cloudFade; env.storm = p.storm; env.windPower = p.windPower;
+  env.weather = key; env.moistPerMin = p.moistPerMin; env.atmosCap = p.atmosCap; env.cloudFade = p.cloudFade; env.storm = p.storm; env.windPower = p.windPower;
   if (p.temp !== undefined) env.temp = p.temp; else if (env.temp < 5) env.temp = AMBIENT;
 }
 
@@ -2767,7 +3079,7 @@ function restoreScene(s) {
       else { wet[i] = t === PLANT ? 60 : 0; aux[i] = M_RIGID[t] ? 255 : t === SOIL ? 200 : 0; fuel[i] = initFuel(t); }
     }
   }
-  structDirty = true;
+  markStructAll();
   wakeAll();
 }
 
@@ -2801,9 +3113,298 @@ function sceneFromJSON(str) {
 }
 
 /* =====================================================================
+ * 2.16 世界状态：哈希、完整存档、命令录制与回放
+ *   · worldHash()        对所有会影响后续模拟的状态算一个 64 位哈希（16 位十六进制）
+ *   · serializeWorld()   完整存档：格子、温度、含水量、湿度场、云、风场、刚体、飞行粒子、
+ *                        爆炸池、带电列表、随机数状态、天气和时间……读档后继续跑，结果逐格一致
+ *   · execCmd()          玩家的每一次操作都走这里，记成 {step, command, args}，可以回放
+ *   诊断用的计数（水量账本、结构统计、渲染涟漪）进存档，但不进哈希。
+ * ===================================================================== */
+
+// ---- 哈希 ----
+let _h1 = 0, _h2 = 0;
+function hashReset() { _h1 = 0x811c9dc5 | 0; _h2 = 0x01000193 ^ 0x5bd1e995; }
+function hashWord(w) {
+  _h1 = Math.imul(_h1 ^ w, 0x01000193);
+  _h2 = Math.imul(_h2 ^ w, 0x5bd1e995); _h2 ^= _h2 >>> 15;
+}
+const _hf = new Float64Array(1), _hu = new Uint32Array(_hf.buffer);
+function hashNum(v) { _hf[0] = v; hashWord(_hu[0]); hashWord(_hu[1]); }
+function hashStr(s) { hashWord(s.length); for (let i = 0; i < s.length; i++) hashWord(s.charCodeAt(i)); }
+function hashBytes(ta, len) {
+  const u8 = new Uint8Array(ta.buffer, ta.byteOffset, len === undefined ? ta.byteLength : len * ta.BYTES_PER_ELEMENT);
+  const n4 = u8.byteLength >> 2;
+  hashWord(u8.byteLength);
+  if ((u8.byteOffset & 3) === 0) {
+    const u32 = new Uint32Array(u8.buffer, u8.byteOffset, n4);
+    for (let i = 0; i < n4; i++) hashWord(u32[i]);
+  } else for (let i = 0; i < n4; i++) hashWord(u8[i * 4] | (u8[i * 4 + 1] << 8) | (u8[i * 4 + 2] << 16) | (u8[i * 4 + 3] << 24));
+  for (let i = n4 << 2; i < u8.byteLength; i++) hashWord(u8[i]);
+}
+function hashValue(v) {
+  if (v === null || v === undefined) { hashWord(0x7f7f7f7f); return; }
+  if (typeof v === 'number') { hashNum(v); return; }
+  if (typeof v === 'boolean') { hashWord(v ? 1 : 2); return; }
+  if (typeof v === 'string') { hashStr(v); return; }
+  if (ArrayBuffer.isView(v)) { hashBytes(v); return; }
+  if (Array.isArray(v)) { hashWord(v.length); for (const x of v) hashValue(x); return; }
+  const keys = Object.keys(v).sort();
+  for (const k of keys) { hashStr(k); hashValue(v[k]); }
+}
+function hex8(x) { return ('0000000' + (x >>> 0).toString(16)).slice(-8); }
+
+// 参与哈希和存档的数组（顺序固定）。新增模拟状态时，在这里登记一行。
+function stateArrays() {
+  return [
+    ['type', type], ['seed', seed], ['flags', flags], ['charge', charge], ['chargeE', chargeE], ['wet', wet], ['aux', aux],
+    ['fuel', fuel], ['life', life], ['temp', temp], ['chunkTTL', chunkTTL],
+    ['windX', windX], ['heatC', heatC], ['vapor', vapor], ['cloud', cloud], ['solidC', solidC], ['windShade', windShade],
+    ['fpAlive', fpAlive], ['fpType', fpType], ['fpSeed', fpSeed], ['fpAge', fpAge], ['fpTemp', fpTemp], ['fpX', fpX], ['fpY', fpY],
+    ['fpVX', fpVX], ['fpVY', fpVY], ['fpPX', fpPX], ['fpPY', fpPY], ['fpQX', fpQX], ['fpQY', fpQY],
+    ['exA', exA], ['exX', exX], ['exY', exY], ['exR', exR], ['exP', exP], ['exCur', exCur], ['exN', exN], ['exPhase', exPhase], ['exRays', exRays],
+    ['sdList', sdList.subarray(0, sdCount)],
+  ];
+}
+
+// 参与哈希和存档的标量
+function stateScalars() {
+  return {
+    W, H, tick, parity, gravity, rng: _rs, fpHead, fpCount, exActive, elecCount, slowPhase,
+    structDirty, structFull, structCooldown, structHold, bodyCount, fracVX, fracVY, fracTick, pinTick, solidRow, sdCount, structSettle,
+  };
+}
+
+function bodyState(b) {
+  const o = {};
+  for (const k of Object.keys(b).sort()) o[k] = b[k];
+  return o;
+}
+
+function worldHash() {
+  hashReset();
+  hashValue(stateScalars());
+  for (const [name, arr] of stateArrays()) { hashStr(name); hashBytes(arr); }
+  hashBytes(elecCur === null ? new Int32Array(0) : elecCur.subarray(0, elecCount));
+  for (let k = 0; k < BODY_MAX; k++) { const b = bodies[k]; if (b) { hashWord(k); hashValue(bodyState(b)); } }
+  const e = {};
+  for (const k of Object.keys(env)) e[k] = env[k];
+  hashValue(e);
+  hashValue(sceneState);
+  return hex8(_h1) + hex8(_h2);
+}
+
+// ---- 完整存档 ----
+function taToB64(ta) { return bytesToB64(new Uint8Array(ta.buffer, ta.byteOffset, ta.byteLength)); }
+function b64ToTA(b64, Ctor) {
+  const u8 = b64ToBytes(b64);
+  const copy = new Uint8Array(u8.length); copy.set(u8);
+  return new Ctor(copy.buffer, 0, copy.length / Ctor.BYTES_PER_ELEMENT);
+}
+function encodeValue(v) {
+  if (ArrayBuffer.isView(v)) return { $ta: v.constructor.name, b: taToB64(v) };
+  return v;
+}
+const TA_CTORS = { Uint8Array, Uint16Array, Int32Array, Uint32Array, Float32Array, Float64Array, Int16Array, Int8Array };
+function decodeValue(v) {
+  if (v && typeof v === 'object' && v.$ta) return b64ToTA(v.b, TA_CTORS[v.$ta]);
+  return v;
+}
+
+function serializeWorld() {
+  const arrays = {};
+  for (const [name, arr] of stateArrays()) arrays[name] = taToB64(arr);
+  arrays.elec = taToB64(elecCur === null ? new Int32Array(0) : elecCur.subarray(0, elecCount));
+  arrays.ripples = taToB64(ripples);
+  const bs = [];
+  for (let k = 0; k < BODY_MAX; k++) {
+    const b = bodies[k];
+    if (!b) { bs.push(null); continue; }
+    const o = {};
+    for (const key of Object.keys(b)) o[key] = encodeValue(b[key]);
+    bs.push(o);
+  }
+  return JSON.stringify({
+    app: 'particle-sandbox', v: 41, kind: 'full', scalars: stateScalars(), env: Object.assign({}, env), sceneState,
+    arrays, bodies: bs, ledger: Object.assign({}, WL), structStats: Object.assign({}, structStats), rippleHead,
+    lastBolt, cmdLogLen: cmdLog.length,
+  });
+}
+
+function deserializeWorld(str) {
+  const o = typeof str === 'string' ? JSON.parse(str) : str;
+  if (!o || o.app !== 'particle-sandbox' || o.kind !== 'full') throw new Error('不是完整存档');
+  const sc = o.scalars;
+  allocGrid(sc.W, sc.H);
+  setGravity(sc.gravity);                 // 先设重力：它会唤醒所有分块，必须在恢复分块状态之前
+  const setArr = (dst, b64) => { const src = b64ToBytes(b64); new Uint8Array(dst.buffer, dst.byteOffset, dst.byteLength).set(src.subarray(0, dst.byteLength)); };
+  for (const [name, arr] of stateArrays()) if (name !== 'sdList') setArr(arr, o.arrays[name]);
+  const sd = b64ToTA(o.arrays.sdList, Int32Array);
+  sdList.set(sd); sdCount = sd.length;
+  for (let k = 0; k < sdCount; k++) sdSeen[sdList[k]] = 1;
+  const el = b64ToTA(o.arrays.elec, Int32Array);
+  if (el.length > 0) { elecCur = new Int32Array(N); elecNext = new Int32Array(N); elecCur.set(el); }
+  setArr(ripples, o.arrays.ripples);
+  bodiesClear();
+  for (let k = 0; k < o.bodies.length; k++) {
+    const src = o.bodies[k];
+    if (!src) continue;
+    const b = {};
+    for (const key of Object.keys(src)) b[key] = decodeValue(src[key]);
+    bodies[k] = b;
+  }
+  tick = sc.tick; parity = sc.parity; _rs = sc.rng;
+  fpHead = sc.fpHead; fpCount = sc.fpCount; exActive = sc.exActive; elecCount = el.length; slowPhase = sc.slowPhase;
+  structDirty = sc.structDirty; structFull = sc.structFull; structCooldown = sc.structCooldown; structHold = sc.structHold;
+  bodyCount = sc.bodyCount; fracVX = sc.fracVX; fracVY = sc.fracVY; fracTick = sc.fracTick; pinTick = sc.pinTick;
+  solidRow = sc.solidRow; structSettle = sc.structSettle;
+  for (const k of Object.keys(env)) delete env[k];
+  Object.assign(env, o.env);
+  sceneState = o.sceneState;
+  Object.assign(WL, o.ledger); Object.assign(structStats, o.structStats);
+  rippleHead = o.rippleHead; lastBolt = o.lastBolt;
+  sceneDirty = true;
+}
+
+/* ---------------------------------------------------------------------
+ * 命令：所有改变世界的玩家操作都走 execCmd，按 {step, command, args} 记下来
+ * ------------------------------------------------------------------- */
+const ENV_DEFAULTS = JSON.parse(JSON.stringify(env));     // 开局时的环境（resetWorld 恢复成这样，回放才对得上）
+let cmdLog = [];
+let cmdRecording = true;
+let worldSeed = 1;          // 这一局的种子（录制文件里要带上）
+let cmdHook = null;        // 宿主可以挂一个回调：命令执行后通知（区域规则、预算、UI 同步）
+
+// 一个笔刷印章：返回 {placed, removed}（实际改动了多少格），给预算系统用
+function stampCells(cx, cy, a, res) {
+  const t = a.erase ? TOOL_ERASE : a.tool;
+  const r = a.size - 1, r2 = r * r + r * 0.8;
+  const round = a.shape !== 'square', spray = a.shape === 'spray' && r > 0;
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    if (round && dx * dx + dy * dy > r2) continue;
+    if (spray && rnd() > 0.1) continue;
+    const x = cx + dx, y = cy + dy;
+    if (cmdCellFilter !== null && !cmdCellFilter(x, y, t)) continue;
+    const k = paintCell(x, y, t, a.replace);
+    if (k > 0) res.placed++; else if (k < 0) res.removed++;
+  }
+}
+let cmdCellFilter = null;  // 区域规则：返回 false 的格子笔刷不能动
+
+const COMMANDS = {
+  // 笔刷：从 (x0,y0) 画到 (x1,y1)，两点相同就是点一下
+  stroke(a) {
+    const res = { placed: 0, removed: 0 };
+    const dx = a.x1 - a.x0, dy = a.y1 - a.y0, dist = Math.max(Math.abs(dx), Math.abs(dy));
+    const stepLen = Math.max(1, a.size >> 1);
+    if (dist > 0) for (let s = 0; s <= dist; s += stepLen) { const k = s / dist; stampCells(Math.round(a.x0 + dx * k), Math.round(a.y0 + dy * k), a, res); }
+    stampCells(a.x1, a.y1, a, res);
+    return res;
+  },
+  strokeBegin() { structHold = true; return null; },
+  strokeEnd() { if (structHold) { structHold = false; clearPins(); markStructAll(); } return null; },
+  fillRect(a) { fillRect(a.mat, a.x0, a.y0, a.x1, a.y1); return null; },
+  fillCircle(a) { fillCircle(a.mat, a.cx, a.cy, a.r); return null; },
+  clear() { clearGrid(); return null; },
+  ignite(a) { setBurning(a.x, a.y); return null; },
+  explode(a) { startExplosion(a.x, a.y, a.r || 15, a.p || 1); return null; },
+  lightning(a) { lightning(a.x); return null; },
+  setWeather(a) { setWeather(a.key); updateSun(); return null; },
+  setEnv(a) {
+    const allowed = ['wind', 'windPower', 'temp', 'time', 'timeScale', 'dayNight', 'structure', 'moistPerMin', 'atmosCap'];
+    if (allowed.indexOf(a.key) < 0) throw new Error('setEnv 不允许修改 ' + a.key);
+    env[a.key] = a.value;
+    if (a.key === 'structure') markStructAll();
+    updateSun();
+    return null;
+  },
+  setGravity(a) { setGravity(a.dir); return null; },
+  loadScene(a) { buildScene(a.index); return null; },
+  restoreScene(a) { restoreScene(sceneFromJSON(a.json)); return null; },     // 撤销 / 读档（v3 风格的紧凑快照）
+  restoreFull(a) { deserializeWorld(a.json); return null; },               // 读完整存档
+  resize(a) {                                                             // 窗口变化：换网格尺寸，内容按底边居中保留
+    const snap = N > 0 ? captureScene() : null;
+    const keepTick = tick, keepPar = parity, keepRng = _rs;
+    allocGrid(a.w, a.h);
+    tick = keepTick; parity = keepPar; _rs = keepRng;
+    if (snap && snap.n > 0) restoreScene(snap);
+    return null;
+  },
+  spawn(a) { fillCircle(a.mat, a.x, a.y, a.r || 2); return null; },          // 生成灾难源（熔岩、火、克隆体……）
+};
+
+function execCmd(command, args) {
+  const fn = COMMANDS[command];
+  if (!fn) throw new Error('未知命令：' + command);
+  const a = args || {};
+  if (cmdRecording) cmdLog.push({ step: tick, command, args: a });
+  const res = fn(a);
+  if (cmdHook !== null) cmdHook(command, a, res);
+  return res;
+}
+
+// 新开一个世界：清空网格、步数归零、设定种子、清空录制
+function resetWorld(seedValue) {
+  for (const k of Object.keys(env)) delete env[k];
+  Object.assign(env, JSON.parse(JSON.stringify(ENV_DEFAULTS)));
+  sceneState = null;
+  clearGrid();
+  updateSun();
+  tick = 0; parity = 0; slowPhase = 0; pinTick = -100; fracTick = -100; structCooldown = 0; structHold = false;
+  seedRng(seedValue);
+  worldSeed = seedValue;
+  cmdLog = [];
+}
+
+// 回放：从 resetWorld(seed) 开始，按记录的步数执行命令，一直跑到 steps 步
+function replay(rec, steps) {
+  if (rec.w !== W || rec.h !== H) allocGrid(rec.w, rec.h);
+  const saveRec = cmdRecording;
+  cmdRecording = false;
+  resetWorld(rec.seed);
+  const log = rec.log;
+  let p = 0;
+  const end = steps === undefined ? rec.steps : steps;
+  while (tick < end || (p < log.length && log[p].step === tick)) {
+    while (p < log.length && log[p].step === tick) { const c = log[p++]; COMMANDS[c.command](c.args); }
+    if (tick >= end) break;
+    simStep();
+  }
+  cmdRecording = saveRec;
+  return worldHash();
+}
+
+function recordingOf(seedValue, w, h) { return { app: 'particle-sandbox', kind: 'recording', v: 41, seed: seedValue, w, h, steps: tick, log: cmdLog.slice() }; }
+
+/* =====================================================================
  * 2.15 预设场景（不依赖 DOM，自测和 soak 测试也用它）
  * ===================================================================== */
-let sceneScript = null;    // 场景自带的小脚本，每个模拟步调用一次（比如「入夜才喷发」）
+// 场景状态：场景自带的持续过程（比如火山喷发），每个模拟步由 stepScene 推进。
+// 它是纯数据，可以存档、可以算进哈希；不要在这里放函数或闭包。
+let sceneState = null;
+
+function stepScene() {
+  const s = sceneState;
+  if (s === null) return;
+  if (s.kind === 'eruption') {
+    if (s.armed) { if (env.el < -0.05) s.armed = false; else return; }
+    if (s.budget <= 0) return;
+    const cx = s.cx, mouth = s.mouth;
+    for (let x = cx - 2; x <= cx + 2; x++) {          // 火山口底下涌出新的熔岩，凝住的口子会被重新顶开
+      const y = mouth + 5, i = x + y * W, t = type[i];
+      if (t === LAVA) { if (temp[i] < 1400) temp[i] = 1500; wake(x, y); }
+      else if (t === 0 || t === STONE) { put(i, LAVA, x, y); s.budget--; }
+    }
+    for (let n = 0; n < 2; n++) {                     // 把岩浆柱往上顶
+      const tx = cx - 2 + rndi(5), ty = mouth + 4;
+      for (let y = ty; y > 2; y--) {
+        const j = tx + y * W;
+        if (type[j] === 0) { put(j, LAVA, tx, y); s.budget--; break; }
+        if (type[j] === STONE) { put(j, LAVA, tx, y); break; }
+        if (type[j] !== LAVA) break;
+      }
+    }
+  }
+}
 
 function setBurning(x, y) {
   if (!inb(x, y)) return;
@@ -2836,7 +3437,7 @@ function drawTree(x, ground, h, r) {
 
 function groundLine(amp, k1, k2, baseY) {
   const g = new Int32Array(W);
-  for (let x = 0; x < W; x++) g[x] = Math.floor(baseY + Math.sin(x * k1) * amp + Math.sin(x * k2 + 1.7) * amp * 0.6);
+  for (let x = 0; x < W; x++) g[x] = Math.floor(baseY + dsin(x * k1) * amp + dsin(x * k2 + 1.7) * amp * 0.6);
   return g;
 }
 
@@ -2846,7 +3447,7 @@ function buildVolcano(withSource) {
   const top = new Int32Array(W);
   for (let x = 0; x < W; x++) {
     const k = Math.max(0, 1 - Math.abs(x - cx) / half);
-    const h = Math.floor(Math.pow(k, 1.25) * peak + (k > 0 ? Math.sin(x * 0.31) * 2 + Math.sin(x * 0.11) * 3 : 0));
+    const h = Math.floor((k * Math.sqrt(Math.sqrt(k))) * peak + (k > 0 ? dsin(x * 0.31) * 2 + dsin(x * 0.11) * 3 : 0));
     top[x] = base - Math.max(0, h);
     for (let y = top[x]; y < base; y++) put(x + y * W, STONE, x, y);
     if (top[x] > sea - 4 && top[x] < base) for (let y = top[x] - 2; y < top[x]; y++) if (inb(x, y)) put(x + y * W, SAND, x, y);   // 海滩
@@ -2856,39 +3457,24 @@ function buildVolcano(withSource) {
   fillRect(LAVA, cx - 2, mouth + 4, cx + 2, mouth + depth);
   fillCircle(LAVA, cx, mouth + depth, 7);
   fillRect(EMPTY, cx - 2, mouth - 6, cx + 2, mouth + 3);
-  // 岩浆供给：火山口底下每隔几步涌出新的熔岩，凝住的口子会被重新顶开。总量有限（budget 格），喷完就停。
-  const eruption = budget => () => {
-    if (budget <= 0) return;
-    for (let x = cx - 2; x <= cx + 2; x++) {
-      const y = mouth + 5, i = x + y * W, t = type[i];
-      if (t === LAVA) { if (temp[i] < 1400) temp[i] = 1500; wake(x, y); }
-      else if (t === 0 || t === STONE) { put(i, LAVA, x, y); budget--; }
-    }
-    for (let n = 0; n < 2; n++) {                                         // 把岩浆柱往上顶
-    const tx = cx - 2 + rndi(5), ty = mouth + 4;
-    for (let y = ty; y > 2; y--) { const j = tx + y * W; if (type[j] === 0) { put(j, LAVA, tx, y); budget--; break; } if (type[j] === STONE) { put(j, LAVA, tx, y); break; } if (type[j] !== LAVA) break; }
-    }
-  };
-  const openVent = () => { sceneScript = eruption(withSource || 6000); };
-  if (withSource) openVent();
+  // 岩浆供给交给场景状态（可存档）：budget 格岩浆喷完就停；armed = 等太阳落山才开始
+  sceneState = { kind: 'eruption', cx, mouth, budget: withSource || 6000, armed: !withSource };
   for (let k = 0; k < 26; k++) {                        // 山腰点几丛植物
     const x = cx + (rnd() < 0.5 ? -1 : 1) * Math.floor(half * (0.45 + rnd() * 0.4));
     if (x < 1 || x >= W - 1 || top[x] >= sea) continue;
     for (let h = 1; h <= 2 + rndi(4); h++) if (inb(x, top[x] - h)) put(x + (top[x] - h) * W, PLANT, x, top[x] - h);
   }
-  return openVent;
 }
 
 function sceneVolcano() {
   env.time = 0.85; env.timeScale = 1; setWeather('clear'); env.wind = 0.3;
-  buildVolcano(5000);       // 一次喷发的岩浆总量有限，喷完火山就安静下来
+  buildVolcano(2500);       // 一次喷发的岩浆总量有限（约 5 分钟喷完），喷完火山就安静下来
 }
 
 function sceneVolcanoDayNight() {
   // 从下午开始，时间流速 10x（一昼夜 1 分钟）；太阳落山的那一刻火山口才打开
   env.time = 0.6; env.timeScale = 10; setWeather('clear'); env.wind = -0.3;
-  const openVent = buildVolcano(0);
-  sceneScript = () => { if (env.el < -0.05) openVent(); };      // 太阳落山：换成喷发脚本
+  buildVolcano(0);                                    // 太阳落山的那一刻才开始喷
 }
 
 function buildForest(density) {
@@ -3024,7 +3610,7 @@ function buildGarden() {
   const pondX = Math.floor(W * 0.68), pondR = Math.floor(W * 0.09);
   for (let x = 0; x < W; x++) {
     const d = Math.abs(x - pondX);
-    if (d < pondR) g[x] += Math.floor(Math.cos(d / pondR * 1.5708) * 9);       // 挖一个池塘
+    if (d < pondR) g[x] += Math.floor(dcos(d / pondR * 1.5708) * 9);       // 挖一个池塘
     for (let y = g[x]; y < H; y++) put(x + y * W, y > H - 4 ? STONE : SOIL, x, y);
   }
   const level = Math.min(g[Math.max(0, pondX - pondR)], g[Math.min(W - 1, pondX + pondR)]) + 1;
@@ -3057,7 +3643,7 @@ function sceneWaterfall() {
   const steps = [[0, 0.30, 0.34], [0.30, 0.52, 0.56], [0.52, 0.70, 0.76]];
   for (const [a, b, top] of steps) {
     const xa = Math.floor(W * a), xb = Math.floor(W * b), yt = Math.floor(H * top);
-    for (let x = xa; x < xb; x++) for (let y = yt + Math.floor(Math.sin(x * 0.4) * 1.5); y < base; y++) if (inb(x, y)) put(x + y * W, STONE, x, y);
+    for (let x = xa; x < xb; x++) for (let y = yt + Math.floor(dsin(x * 0.4) * 1.5); y < base; y++) if (inb(x, y)) put(x + y * W, STONE, x, y);
   }
   // 每级台阶上凿一个浅水槽，让水先蓄再溢
   for (const [a, b, top] of steps) {
@@ -3080,13 +3666,14 @@ function sceneWaterfall() {
 }
 
 function sceneWinterLake() {
-  env.time = 0.4; env.timeScale = 1; setWeather('snow'); env.wind = 0.4;
+  // 冬日午后，时间停住：日照升华恒定。大气含水到了容量天气就停止注入，降雪 = 升华，积雪量自己稳住
+  env.time = 0.42; env.timeScale = 0; setWeather('snow'); env.wind = 0.4;
   temp.fill(env.temp);
   const g = groundLine(3, 0.028, 0.07, H - 30);
   const lakeX = W >> 1, lakeR = Math.floor(W * 0.3);
   for (let x = 0; x < W; x++) {
     const d = Math.abs(x - lakeX);
-    if (d < lakeR) g[x] += Math.floor(Math.cos(d / lakeR * 1.5708) * 18);
+    if (d < lakeR) g[x] += Math.floor(dcos(d / lakeR * 1.5708) * 18);
     for (let y = g[x]; y < H; y++) { const i = x + y * W; put(i, y > H - 4 ? STONE : SOIL, x, y); temp[i] = -2; }
   }
   const level = Math.min(g[lakeX - lakeR], g[lakeX + lakeR]) + 2;
@@ -3105,6 +3692,7 @@ function sceneWinterLake() {
     for (let y = g[x] - h; y < g[x]; y++) for (let dx = 0; dx < 2; dx++) put(x + dx + y * W, WOOD, x + dx, y);
     for (let k = 1; k <= 4; k++) for (const d of [-1, 1]) { const bx = x + d * k + (d > 0 ? 1 : 0), by = g[x] - h + 2 + k; if (inb(bx, by)) put(bx + by * W, WOOD, bx, by); }
   }
+  soakSoil(145);                                         // 湖底和地面早就湿透了，不会把湖水吸干
   for (let c = 0; c < GW * GH; c++) if (altitudeOf((c / GW) | 0) > 0.75) cloud[c] = 1.5;
   env.waterIn += weatherWater();
 }
@@ -3124,16 +3712,18 @@ const SCENES = [
 
 // 清空并搭建第 k 个预设；每个场景自己设定时间、天气和风
 function buildScene(k) {
-  env.temp = AMBIENT; env.dayNight = true; env.structure = true; env.wind = 0.2; env.windPower = 0.3;
-  sceneScript = null;
+  env.temp = AMBIENT; env.dayNight = true; env.structure = true; env.plantAging = 1; env.wind = 0.2; env.windPower = 0.3;
+  sceneState = null;
   setWeather('clear');
   clearGrid();
   setGravity('down');
   updateSun();
   SCENES[k].fn();
+  // 场景里一开始就有的植物年龄随机铺满整个寿命：之后陆续老死、陆续长新的，不会同一时间整片枯掉
+  for (let i = 0; i < N; i++) if (type[i] === PLANT && !(flags[i] & F_TIP)) life[i] = rndi((plantLifespan(seed[i]) * 0.2) | 0);
   updateSun();
   temp.forEach((v, i) => { if (type[i] === 0) temp[i] = env.ambient; });
-  structDirty = true;
+  markStructAll();
   wakeAll();
 }
 
@@ -4470,27 +5060,14 @@ function hideTip() { $('tip').style.display = 'none'; }
 /* ---------------------------------------------------------------------
  * 5.2 笔刷
  * ------------------------------------------------------------------- */
-function stamp(cx, cy, erase) {
-  const t = erase ? TOOL_ERASE : tool;
-  const r = brush.size - 1, r2 = r * r + r * 0.8;
-  const round = brush.shape !== 'square', spray = brush.shape === 'spray' && r > 0;
-  const replace = brush.replace;
-  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-    if (round && dx * dx + dy * dy > r2) continue;
-    if (spray && rnd() > 0.1) continue;
-    paintCell(cx + dx, cy + dy, t, replace);
-  }
+// 笔刷：所有落笔都变成 stroke 命令（记进录制，可以回放）
+function brushArgs(x0, y0, x1, y1, erase) {
+  return { tool, x0, y0, x1, y1, size: brush.size, shape: brush.shape, replace: brush.replace, erase: !!erase };
 }
-
-function stampLine(x0, y0, x1, y1, erase) {
-  const dx = x1 - x0, dy = y1 - y0, dist = Math.max(Math.abs(dx), Math.abs(dy));
-  const stepLen = Math.max(1, brush.size >> 1);
-  for (let s = 0; s <= dist; s += stepLen) {
-    const k = dist === 0 ? 0 : s / dist;
-    stamp(Math.round(x0 + dx * k), Math.round(y0 + dy * k), erase);
-  }
-  stamp(x1, y1, erase);
-}
+function stamp(cx, cy, erase) { if (!uiLocked()) execCmd('stroke', brushArgs(cx, cy, cx, cy, erase)); }
+function stampLine(x0, y0, x1, y1, erase) { if (!uiLocked()) execCmd('stroke', brushArgs(x0, y0, x1, y1, erase)); }
+// 回放录制时不接受玩家输入
+function uiLocked() { return playback !== null; }
 
 function toCell(e) {
   const r = canvas.getBoundingClientRect();
@@ -4523,9 +5100,10 @@ function bindPointer() {
     closePops();
     try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 合成事件没有活动指针 */ }
     const p = toCell(e);
-    if (tool === TOOL_LIGHTNING && e.button === 0) { lightning(p.x); return; }      // 召唤闪电：点一下劈一道
+    if (uiLocked()) { toast('正在回放录制，按「停止回放」再操作'); return; }
+    if (tool === TOOL_LIGHTNING && e.button === 0) { execCmd('lightning', { x: p.x }); return; }      // 召唤闪电：点一下劈一道
     pushUndo();
-    structHold = true;                                   // 画的时候先不判定支撑，松手再算（否则画到一半就掉了）
+    execCmd('strokeBegin', {});                          // 画的时候先不判定支撑，松手再算（否则画到一半就掉了）
     pointer.down = true; pointer.erase = e.button === 2; pointer.inside = true;
     pointer.x = pointer.hx = p.x; pointer.y = pointer.hy = p.y;
     pointer.line = e.shiftKey; pointer.lx0 = p.x; pointer.ly0 = p.y;
@@ -4544,7 +5122,7 @@ function bindPointer() {
   const end = e => {
     if (pointer.down && pointer.line) stampLine(pointer.lx0, pointer.ly0, pointer.hx, pointer.hy, pointer.erase);   // Shift 直线：松手时落笔
     pointer.down = false; pointer.line = false;
-    if (structHold) { structHold = false; clearPins(); structDirty = true; }
+    if (structHold && !uiLocked()) execCmd('strokeEnd', {});
     if (e.pointerType === 'touch') { pointer.inside = false; pointer.hx = -1; }
     updateCursor();
   };
@@ -4552,7 +5130,7 @@ function bindPointer() {
   canvas.addEventListener('pointercancel', end);
   canvas.addEventListener('pointerleave', () => { if (!pointer.down) { pointer.inside = false; pointer.hx = -1; updateCursor(); } });
   canvas.addEventListener('contextmenu', e => e.preventDefault());
-  window.addEventListener('blur', () => { pointer.down = false; pointer.line = false; structHold = false; });
+  window.addEventListener('blur', () => { pointer.down = false; pointer.line = false; if (structHold && !uiLocked()) execCmd('strokeEnd', {}); });
 }
 
 /* ---------------------------------------------------------------------
@@ -4569,12 +5147,13 @@ function pushUndo() {
 }
 
 function undo() {
+  if (uiLocked()) return;
   if (undoLen === 0) { toast('没有可撤销的操作'); return; }
   undoHead = (undoHead + UNDO_MAX - 1) % UNDO_MAX;
   undoLen--;
   const s = undoRing[undoHead];
   undoRing[undoHead] = null;
-  restoreScene(s);
+  execCmd('restoreScene', { json: sceneToJSON(s) });
   syncGravityUI(); syncEnvUI();
   toast('已撤销（还可撤销 ' + undoLen + ' 步）');
 }
@@ -4582,10 +5161,33 @@ function undo() {
 /* ---------------------------------------------------------------------
  * 5.4 存档 / 导入导出 / 截图 / 录制
  * ------------------------------------------------------------------- */
-const SLOT_KEY = 'particle-sandbox-v3-slots';
+const SLOT_KEY = 'particle-sandbox-v41-slots';
 
 function readSlots() {
   try { return JSON.parse(localStorage.getItem(SLOT_KEY) || '{}') || {}; } catch (e) { return {}; }
+}
+
+// 完整存档有几百 KB，存进 localStorage 之前用浏览器自带的 gzip 压一下（没有 CompressionStream 就存原文）
+async function gzipToB64(str) {
+  if (typeof CompressionStream === 'undefined') return null;
+  const stream = new Blob([str]).stream().pipeThrough(new CompressionStream('gzip'));
+  return bytesToB64(new Uint8Array(await new Response(stream).arrayBuffer()));
+}
+async function gunzipB64(b64) {
+  const stream = new Blob([b64ToBytes(b64)]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return await new Response(stream).text();
+}
+async function slotText(v) { return typeof v === 'string' ? v : await gunzipB64(v.z); }
+
+// 读入任何一种存档文本：完整存档、v3/v4 的紧凑存档、录制文件
+function loadAnySave(text, label) {
+  const o = JSON.parse(text);
+  if (o && o.kind === 'recording') { startPlayback(o); return; }
+  pushUndo();
+  if (o && o.kind === 'full') execCmd('restoreFull', { json: text });
+  else execCmd('restoreScene', { json: text });
+  syncGravityUI(); syncEnvUI();
+  toast('已读取「' + label + '」');
 }
 
 function renderSlots() {
@@ -4599,8 +5201,9 @@ function renderSlots() {
     nm.className = 'nm'; nm.textContent = name;
     const load = document.createElement('button');
     load.textContent = '读取';
-    load.addEventListener('click', () => {
-      try { pushUndo(); restoreScene(sceneFromJSON(slots[name])); syncGravityUI(); syncEnvUI(); toast('已读取「' + name + '」'); closePops(); }
+    load.addEventListener('click', async () => {
+      if (uiLocked()) return;
+      try { loadAnySave(await slotText(slots[name]), name); closePops(); }
       catch (e) { toast('读取失败：' + e.message); }
     });
     const del = document.createElement('button');
@@ -4616,11 +5219,13 @@ function renderSlots() {
   }
 }
 
-function saveSlot() {
+async function saveSlot() {
   const name = $('slotName').value.trim() || '存档 ' + new Date().toLocaleTimeString();
   const slots = readSlots();
-  slots[name] = sceneToJSON(captureScene());
-  try { localStorage.setItem(SLOT_KEY, JSON.stringify(slots)); toast('已保存到「' + name + '」'); }
+  const text = serializeWorld();
+  const z = await gzipToB64(text);
+  slots[name] = z ? { z } : text;
+  try { localStorage.setItem(SLOT_KEY, JSON.stringify(slots)); toast('已保存到「' + name + '」（' + ((z ? z.length : text.length) / 1024).toFixed(0) + ' KB）'); }
   catch (e) { toast('保存失败：浏览器本地存储空间不足，请改用导出 JSON'); }
   $('slotName').value = '';
   renderSlots();
@@ -4638,13 +5243,50 @@ function stampName(ext) {
   return 'sandbox-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + '.' + ext;
 }
 
-function exportJSON() { downloadBlob(new Blob([sceneToJSON(captureScene())], { type: 'application/json' }), stampName('json')); }
+function exportJSON() { downloadBlob(new Blob([serializeWorld()], { type: 'application/json' }), stampName('json')); }
+
+// 录制：从这次开局（或上一次「新开局」）到现在的全部玩家操作
+function exportRecording() {
+  const rec = recordingOf(worldSeed, W, H);
+  downloadBlob(new Blob([JSON.stringify(rec)], { type: 'application/json' }), stampName('rec.json'));
+  toast('已导出录制：' + rec.log.length + ' 条命令、' + rec.steps + ' 步');
+}
+
+// 回放：从录制的种子重新开局，按步数把命令一条条喂进去；回放期间不接受玩家输入
+let playback = null;
+function startPlayback(rec) {
+  if (rec.w !== W || rec.h !== H) allocGrid(rec.w, rec.h), resizeRenderer();
+  cmdRecording = false;
+  resetWorld(rec.seed);
+  playback = { rec, p: 0 };
+  setPaused(false);
+  $('btnPlayStop').style.display = '';
+  toast('开始回放：' + rec.log.length + ' 条命令、' + rec.steps + ' 步');
+}
+function stopPlayback(done) {
+  if (!playback) return;
+  const rec = playback.rec;
+  playback = null;
+  cmdRecording = true;
+  cmdLog = rec.log.slice();                              // 回放完接着录：后面的操作接在原录制后面
+  $('btnPlayStop').style.display = 'none';
+  syncGravityUI(); syncEnvUI();
+  toast(done ? '回放完成，哈希 ' + worldHash() : '已停止回放');
+}
+// 主循环里每个模拟步之前调用：把这一步该执行的命令喂进去
+function playbackTick() {
+  const pb = playback;
+  if (!pb) return;
+  const log = pb.rec.log;
+  while (pb.p < log.length && log[pb.p].step === tick) { const c = log[pb.p++]; COMMANDS[c.command](c.args); }
+  if (pb.p >= log.length && tick >= pb.rec.steps) stopPlayback(true);
+}
 
 function importJSON(file) {
   return new Promise(resolve => {
     const fr = new FileReader();
     fr.onload = () => {
-      try { const s = sceneFromJSON(String(fr.result)); pushUndo(); restoreScene(s); syncGravityUI(); syncEnvUI(); toast('已导入 ' + file.name); resolve(true); }
+      try { loadAnySave(String(fr.result), file.name); resolve(true); }
       catch (e) { toast('导入失败：' + e.message); resolve(false); }
     };
     fr.onerror = () => { toast('读取文件失败'); resolve(false); };
@@ -4697,8 +5339,9 @@ function toggleRecord() {
  * 5.5 载入预设场景（场景本身在 2.15）
  * ------------------------------------------------------------------- */
 function loadScene(k) {
+  if (uiLocked()) return;
   pushUndo();
-  buildScene(k);
+  execCmd('loadScene', { index: k });
   syncGravityUI(); syncEnvUI();
   if (paused) setPaused(false);
   toast('场景：' + SCENES[k].name + ' — ' + SCENES[k].note);
@@ -4736,7 +5379,8 @@ function requestClear() {
   if (clearArmed) {
     clearTimeout(clearArmed); clearArmed = 0;
     b.textContent = '清空'; b.classList.remove('armed');
-    pushUndo(); clearGrid();
+    if (uiLocked()) return;
+    pushUndo(); execCmd('clear', {});
     toast('已清空（可撤销）');
     return;
   }
@@ -4786,7 +5430,7 @@ function syncEnvUI() {
   $('envWind').value = Math.round(env.wind * 100); $('envPower').value = Math.round(env.windPower * 100);
   $('envTemp').value = Math.round(env.temp); $('envTempVal').textContent = Math.round(env.temp) + '°C';
   $('envTime').value = Math.round(env.time * 100); $('envSpeed').value = String(env.timeScale);
-  $('envHumid').value = Math.round(Math.min(100, env.moistIn / 0.004 * 100));
+  $('envHumid').value = Math.round(Math.min(100, env.moistPerMin / 6));
   $('envDayNight').checked = env.dayNight; $('envStruct').checked = env.structure;
   document.querySelectorAll('#envWeather button').forEach(b => b.classList.toggle('on', b.dataset.w === env.weather));
 }
@@ -4796,17 +5440,18 @@ function buildEnvPanel() {
   for (const key in WEATHER_PRESETS) {
     const b = document.createElement('button');
     b.textContent = WEATHER_PRESETS[key].name; b.dataset.w = key; b.style.textAlign = 'center';
-    b.addEventListener('click', () => { setWeather(key); updateSun(); syncEnvUI(); toast('天气：' + WEATHER_PRESETS[key].name); });
+    b.addEventListener('click', () => { if (uiLocked()) return; execCmd('setWeather', { key }); syncEnvUI(); toast('天气：' + WEATHER_PRESETS[key].name); });
     host.appendChild(b);
   }
-  $('envWind').addEventListener('input', e => { env.wind = +e.target.value / 100; });
-  $('envPower').addEventListener('input', e => { env.windPower = +e.target.value / 100; });
-  $('envHumid').addEventListener('input', e => { env.moistIn = +e.target.value / 100 * 0.004; });
-  $('envTemp').addEventListener('input', e => { env.temp = +e.target.value; $('envTempVal').textContent = env.temp + '°C'; updateSun(); });
-  $('envTime').addEventListener('input', e => { env.time = Math.min(0.999, +e.target.value / 100); updateSun(); sceneDirty = true; });
-  $('envSpeed').addEventListener('change', e => { env.timeScale = +e.target.value; });
-  $('envDayNight').addEventListener('change', e => { env.dayNight = e.target.checked; updateSun(); sceneDirty = true; });
-  $('envStruct').addEventListener('change', e => { env.structure = e.target.checked; structDirty = true; });
+  const setE = (key, value) => { if (!uiLocked()) execCmd('setEnv', { key, value }); };
+  $('envWind').addEventListener('input', e => setE('wind', +e.target.value / 100));
+  $('envPower').addEventListener('input', e => setE('windPower', +e.target.value / 100));
+  $('envHumid').addEventListener('input', e => { setE('moistPerMin', +e.target.value * 6); if (env.atmosCap < 1.2) setE('atmosCap', 3); });
+  $('envTemp').addEventListener('input', e => { setE('temp', +e.target.value); $('envTempVal').textContent = env.temp + '°C'; });
+  $('envTime').addEventListener('input', e => { setE('time', Math.min(0.999, +e.target.value / 100)); sceneDirty = true; });
+  $('envSpeed').addEventListener('change', e => setE('timeScale', +e.target.value));
+  $('envDayNight').addEventListener('change', e => { setE('dayNight', e.target.checked); sceneDirty = true; });
+  $('envStruct').addEventListener('change', e => setE('structure', e.target.checked));
   $('envBolt').addEventListener('click', () => { selectTool(TOOL_LIGHTNING); closePops(); toast('闪电工具：在画面上点一下'); });
   $('selQuality').addEventListener('change', e => setQuality(e.target.value));
   $('selScale').addEventListener('change', e => { CELL = +e.target.value; fitGrid(true); toast('每格 ' + CELL + ' 像素，网格 ' + W + '×' + H); });
@@ -4817,7 +5462,7 @@ function buildControls() {
   $('btnPause').addEventListener('click', () => setPaused(!paused));
   $('btnStep').addEventListener('click', () => { setPaused(true); stepOnce = true; });
   $('selSpeed').addEventListener('change', e => { speed = +e.target.value; });
-  document.querySelectorAll('#gravGrp button').forEach(b => b.addEventListener('click', () => { setGravity(b.dataset.g); syncGravityUI(); }));
+  document.querySelectorAll('#gravGrp button').forEach(b => b.addEventListener('click', () => { if (uiLocked()) return; execCmd('setGravity', { dir: b.dataset.g }); syncGravityUI(); }));
   document.querySelectorAll('[data-shape]').forEach(b => b.addEventListener('click', () => {
     brush.shape = b.dataset.shape;
     document.querySelectorAll('[data-shape]').forEach(o => o.classList.toggle('on', o === b));
@@ -4874,6 +5519,8 @@ function buildControls() {
   $('btnSlotSave').addEventListener('click', saveSlot);
   $('slotName').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') saveSlot(); });
   $('btnExport').addEventListener('click', exportJSON);
+  $('btnRecExport').addEventListener('click', exportRecording);
+  $('btnPlayStop').addEventListener('click', () => stopPlayback(false));
   $('btnImport').addEventListener('click', () => $('fileImport').click());
   $('fileImport').addEventListener('change', e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; });
 }
@@ -4890,7 +5537,7 @@ function bindKeys() {
     const k = e.key;
     if (k === ' ') { e.preventDefault(); if (e.target.blur && tag === 'BUTTON') e.target.blur(); setPaused(!paused); }
     else if (k === '.') { setPaused(true); stepOnce = true; }
-    else if (k === 'g' || k === 'G') { setGravity(GRAV_CYCLE[(GRAV_CYCLE.indexOf(gravity) + 1) % 4]); syncGravityUI(); }
+    else if (k === 'g' || k === 'G') { if (!uiLocked()) { execCmd('setGravity', { dir: GRAV_CYCLE[(GRAV_CYCLE.indexOf(gravity) + 1) % 4] }); syncGravityUI(); } }
     else if (k === 'v' || k === 'V') setView(viewMode + 1);
     else if (k === 'c' || k === 'C') requestClear();
     else if (k === '[') setBrushSize(brush.size - 1);
@@ -4907,9 +5554,8 @@ function bindKeys() {
 function fitGrid(force) {
   const w = Math.max(48, Math.floor(stage.clientWidth / CELL)), h = Math.max(48, Math.floor(stage.clientHeight / CELL));
   if (!force && w === W && h === H) return;
-  const snap = N > 0 ? captureScene() : null;
-  allocGrid(w, h);
-  if (snap && snap.n > 0) restoreScene(snap);
+  if (N === 0) allocGrid(w, h);
+  else execCmd('resize', { w, h });                      // 换网格尺寸也记进录制，回放时网格会跟着变
   resizeRenderer();
   undoLen = 0; undoHead = 0;
 }
@@ -4997,7 +5643,7 @@ function runSteps(n) { for (let k = 0; k < n; k++) simStep(); }
 
 function tArena() {
   // 自测默认环境：恒为正午、20°C、无风、晴，结构力学关闭（很多用例把容器悬在半空）。需要的用例自己打开。
-  env.dayNight = false; env.temp = AMBIENT; env.wind = 0; env.windPower = 0; env.structure = false; sceneScript = null;
+  env.dayNight = false; env.temp = AMBIENT; env.wind = 0; env.windPower = 0; env.structure = false; env.plantAging = 1; sceneState = null;
   setWeather('clear'); env.windPower = 0; env.cloudFade = 0; updateSun();
   clearGrid(); setGravity('down'); seedRng(20240607);
   return { cx: W >> 1, cy: H >> 1 };
@@ -5037,7 +5683,9 @@ for (const r of RULES) {
       (r.b2 !== r.b && r.b2 !== EMPTY && countType(r.b2) > b20) ||
       (r.b2 === EMPTY && countType(r.b) < b0) ||
       (r.a2 === EMPTY && countType(r.a) < a0);
-    const n = tUntil(Math.min(8000, Math.ceil(60 / r.p)), 2, cond);
+    // 带温度条件的规则：全程把主动方维持在条件温度以下（比如过冷水），否则潜热会把它钉回冰点
+    const hold = r.maxT === undefined ? null : () => { for (let y = y0 + 1; y < y0 + 3; y++) for (let x = x0 + 1; x < x1; x++) { const i = x + y * W; if (type[i] === r.a) temp[i] = r.maxT - 3; } };
+    const n = tUntil(Math.min(8000, Math.ceil(60 / r.p)), 2, () => { if (hold) hold(); return cond(); });
     return { ok: n > 0, info: n > 0 ? n + ' 步出现产物' : '超时未出现产物' };
   });
 }
@@ -5593,6 +6241,7 @@ defTest('植物：有株高上限、生物量有上限、走完整个生命周�
   tFloor(gy0 + 3, STONE);
   fillRect(SOIL, cx - 40, gy0, cx + 40, gy0 + 2);
   for (let x = cx - 36; x <= cx + 36; x += 6) put(x + (gy0 - 1) * W, SEED, x, gy0 - 1);
+  env.plantAging = 8;                                    // 正常寿命是 40~80 分钟，用例里让它老得快 8 倍
   let maxPlant = 0, maxH = 0, sawFlower = false, sawSeed = false, sawDead = false, sawSoilFromDead = false;
   const hist = [];
   const soil0 = countType(SOIL);
@@ -5985,6 +6634,7 @@ defTest('昼夜：夜里更冷、蒸发更慢；时间流速可调', () => {
 /* =====================================================================
  * 6c. 长时间稳定性测试（soak）：每个预设跑 10 分钟模拟时间（36000 步），每 10 秒记一次
  * ===================================================================== */
+const SOAK_TRANSIENT = [FIRE, SMOKE, STEAM, EMBER, SPARK, FOAM];
 const SOAK_MATS = [WATER, PLANT, DEADPLANT, WOOD, CHARCOAL, ASH, SOIL, LAVA, STONE, SEED, FLOWER, SNOW, ICE, SMOKE, STEAM];
 
 function soakSample() {
@@ -6028,9 +6678,222 @@ function soakVerdict(k, samples) {
   const peakChunks = samples.reduce((m, s) => Math.max(m, s.chunks), 0);
   const peakBurn = samples.reduce((m, s) => Math.max(m, s.burning + s.fire), 0);
   const heapGrowth = avg(late, s => s.heap) - avg(samples.slice(1, Math.max(2, Math.floor(n * 0.25))), s => s.heap);
-  return { name: SCENES[k].name, first, last, samples, growing, peakChunks, peakBurn, heapGrowth,
+  // v4.1 判定：最后 2 分钟（最后 13 个采样点，相隔 10 秒）里，每种材料首尾数量的变化 < 2%。
+  // 数量很少的材料允许 ±5 格的抖动（几十格的东西 2% 还不到一格，单个粒子进出就会超标）；火、烟、蒸汽、余烬、电火花、泡沫这类转瞬即逝的东西只记录不判定。
+  const win = samples.slice(Math.max(0, n - 13));
+  const unstable = [], drift = {};
+  for (let t = 1; t < NT; t++) {
+    if (SOAK_TRANSIENT.indexOf(t) >= 0) continue;
+    const a = win[0].cnt[t], b = win[win.length - 1].cnt[t];
+    const mean = win.reduce((s, x) => s + x.cnt[t], 0) / win.length;
+    if (mean === 0) continue;
+    const d = Math.abs(b - a), pct = d / mean;
+    drift[MATERIALS[t].name] = +(pct * 100).toFixed(2);
+    if (pct >= 0.02 && d > 5) unstable.push(MATERIALS[t].name + ' ' + a + '→' + b + '（' + (pct * 100).toFixed(1) + '%）');
+  }
+  return { name: SCENES[k].name, first, last, samples, growing, peakChunks, peakBurn, heapGrowth, unstable, drift,
            lateChunks: avg(late, s => s.chunks), lateBurn: avg(late, s => s.burning + s.fire) };
 }
+
+/* =====================================================================
+ * 6e. v4.1 新增用例：平衡、确定性、存档完整性、风影、刚体炸药、增量支撑
+ * ===================================================================== */
+function groupCentroidX(t, xFrom, xTo) {
+  let s = 0, n = 0;
+  for (let y = 0; y < H; y++) for (let x = Math.max(0, xFrom); x <= Math.min(W - 1, xTo); x++) if (type[x + y * W] === t) { s += x; n++; }
+  return n ? s / n : NaN;
+}
+
+defTest('风影：墙后面的烟飘得明显比开阔地慢', () => {
+  const { cx, cy } = tArena();
+  env.wind = 1; env.windPower = 1;
+  fillRect(STONE, cx - 3, cy - 24, cx + 4, H - 1);           // 一堵 8 格厚、比烟高的墙
+  runSteps(200);                                             // 让粗网格的固体比例和风场都稳定下来
+  const put5 = x0 => { for (let y = cy - 4; y <= cy + 4; y++) for (let x = x0; x < x0 + 3; x++) { const i = x + y * W; put(i, SMOKE, x, y); life[i] = 600; } };
+  put5(cx - 70); put5(cx + 8);
+  const open0 = groupCentroidX(SMOKE, 0, cx - 4), lee0 = groupCentroidX(SMOKE, cx + 5, W - 1);
+  runSteps(40);
+  const open1 = groupCentroidX(SMOKE, 0, cx - 4), lee1 = groupCentroidX(SMOKE, cx + 5, W - 1);
+  const dOpen = open1 - open0, dLee = lee1 - lee0;
+  const shade = windShade[((cx + 10) >> 3) + (cy >> 3) * GW];
+  return { ok: dOpen > 4 && dLee < dOpen * 0.5, info: '40 步里开阔地的烟飘了 ' + dOpen.toFixed(1) + ' 格，墙后 ' + dLee.toFixed(1) + ' 格（墙后风影 ' + shade.toFixed(2) + '）' };
+});
+
+defTest('刚体里的炸药：下落途中被爆炸波及、被火点着，都会照样引爆', () => {
+  const run = how => {
+    const { cx, cy } = tArena();
+    env.structure = true;
+    const fy = Math.min(H - 3, cy + 45);
+    tFloor(fy, STONE);
+    for (let x = 0; x < W; x += 30) put(x + (fy + 1) * W, ANCHOR, x, fy + 1);
+    fillRect(STONE, cx - 6, cy - 40, cx + 6, cy - 33);
+    fillRect(TNT, cx - 1, cy - 37, cx + 1, cy - 36);
+    if (how === 'fire') fillRect(TNT, cx + 7, cy - 37, cx + 7, cy - 36);   // 露在外面的一小块炸药，好让火碰到
+    let booms = 0, inBody = 0, lit = false;
+    const prev = onBoom;
+    onBoom = () => { booms++; if (bodyCount > 0) inBody++; };
+    for (let s = 0; s < 600; s++) {
+      simStep();
+      if (s === 6 && bodyCount > 0) {
+        if (how === 'blast') startExplosion(cx - 12, cy - 33, 12, 0.8);
+        else {
+          let tx = -1, ty = -1;                               // 找到刚体里那块外露炸药现在的位置，在它旁边点火
+          for (let i = 0; i < N; i++) if (type[i] === TNT && (flags[i] & F_BODY) && (i % W) > cx + 4) { tx = i % W; ty = (i / W) | 0; }
+          if (tx >= 0) for (let dy = -1; dy <= 1; dy++) if (inb(tx + 1, ty + dy) && type[tx + 1 + (ty + dy) * W] === 0) put(tx + 1 + (ty + dy) * W, FIRE, tx + 1, ty + dy);
+        }
+      }
+      for (let k = 0; k < BODY_MAX; k++) if (bodies[k] && bodies[k].fuses.length > 0) lit = true;
+    }
+    onBoom = prev;
+    return { booms, inBody, lit, tnt: countType(TNT) };
+  };
+  const a = run('blast'), b = run('fire');
+  return { ok: a.lit && a.booms >= 2 && b.lit && b.booms >= 1 && a.tnt === 0,
+           info: '被爆炸波及：引信点着 ' + a.lit + '，共 ' + a.booms + ' 次爆炸（刚体还在时 ' + a.inBody + ' 次），剩余炸药 ' + a.tnt +
+                 '；被火点着：引信点着 ' + b.lit + '，共 ' + b.booms + ' 次爆炸，剩余炸药 ' + b.tnt };
+});
+
+defTest('闪电从云的实际位置（云底）劈下来，不是从画面顶部', () => {
+  const { cx, cy } = tArena();
+  fillRect(STONE, 0, H - 3, W - 1, H - 1);
+  const row = (cy >> 3) - 2;                                 // 云放在画面中间偏上，不在顶部
+  for (let c = 0; c < GW; c++) { cloud[c + row * GW] = 2; cloud[c + (row + 1) * GW] = 2; }
+  lightning();
+  const sy = lastBolt.sy, expect = ((row + 1) << 3) + 7;
+  return { ok: sy === expect && sy > 20, info: '云底在 y = ' + expect + '，闪电起点 y = ' + sy };
+});
+
+defTest('增量支撑检测：200 栋独立小楼，拆掉一栋只做局部搜索（< 1ms）', () => {
+  tArena();
+  env.structure = true;
+  const rows = 10, cols = 20, hw = 4, hh = 5, gap = 2, shelfGap = hh + 4;
+  let houses = 0;
+  for (let r = 0; r < rows; r++) {
+    const sy = H - 2 - r * shelfGap;
+    if (sy - hh < 2) break;
+    fillRect(STONE, 0, sy, W - 1, sy);                       // 一层隔板，两端钉锚点
+    put(sy * W, ANCHOR, 0, sy); put(W - 1 + sy * W, ANCHOR, W - 1, sy);
+    for (let c = 0; c < cols; c++) {
+      const x0 = 2 + c * (hw + gap + 4);
+      if (x0 + hw >= W - 1) break;
+      fillRect(BRICK, x0, sy - hh, x0 + hw - 1, sy - 1);
+      houses++;
+    }
+  }
+  runSteps(30);
+  const settled = bodyCount === 0;
+  // 先拆一栋热身，再拆一栋计时：把楼的中间一层挖掉，上半截失去支撑
+  const cut = (r, c) => { const sy = H - 2 - r * shelfGap, x0 = 2 + c * (hw + gap + 4); fillRect(EMPTY, x0, sy - 3, x0 + hw - 1, sy - 3); };
+  cut(3, 5); structCooldown = 0; stepStructure();
+  runSteps(10);
+  cut(6, 11);
+  const marked = sdCount;
+  const t0 = performance.now();
+  checkLocal();
+  const ms = performance.now() - t0;
+  const made = bodyCount;
+  const t1 = performance.now();
+  markStructAll(); checkStructure();
+  const fullMs = performance.now() - t1;
+  return { ok: settled && houses >= 150 && ms < 1 && made >= 1,
+           info: houses + ' 栋楼，拆一栋后脏格 ' + marked + ' 个，局部检测 ' + ms.toFixed(3) + 'ms（全图检测 ' + fullMs.toFixed(2) + 'ms），上半截变成刚体 ' + made + ' 个' };
+});
+
+defTest('冬季湖泊：冰层隔热、结冰放潜热，10 分钟只冻住表面，冻不实', () => {
+  seedRng(77);
+  buildScene(8);
+  const water0 = countType(WATER), ice0 = countType(ICE);
+  runSteps(36000);
+  const water1 = countType(WATER), ice1 = countType(ICE);
+  return { ok: water1 >= water0 * 0.6 && ice1 >= ice0 * 0.8,
+           info: '湖水 ' + water0 + ' → ' + water1 + ' 格，冰 ' + ice0 + ' → ' + ice1 + ' 格（10 分钟模拟时间）' };
+});
+
+defTest('水汽不穿墙：密闭玻璃箱里的蒸汽在箱子里凝结，不会漏到外面成云', () => {
+  const { cx, cy } = tArena();
+  tBox(cx - 10, cy - 10, cx + 10, cy + 10, GLASS);
+  fillRect(STEAM, cx - 6, cy - 6, cx + 6, cy + 2);
+  const steam0 = countType(STEAM);
+  const w0 = totalWater();
+  runSteps(4000);
+  const inside = countType(WATER, cx - 9, cy - 9, cx + 9, cy + 9) + countType(STEAM, cx - 9, cy - 9, cx + 9, cy + 9);
+  let air = 0;
+  for (let c = 0; c < GW * GH; c++) air += vapor[c] + cloud[c];
+  return { ok: inside >= steam0 * 0.85 && air < steam0 * 0.15 && Math.abs(totalWater() - w0) / w0 < 0.02,
+           info: steam0 + ' 格蒸汽，4000 步后箱内剩 ' + inside + ' 格水 / 蒸汽，箱外水汽 + 云 ' + air.toFixed(1) };
+});
+
+defTest('确定性：同一种子跑两遍逐格一致，换种子结果不同', () => {
+  const run = s => {
+    allocGrid(W, H); resetWorld(s);
+    buildScene(6);
+    runSteps(3000);
+    return worldHash();
+  };
+  const a = run(1234), b = run(1234), c = run(4321);
+  return { ok: a === b && a !== c, info: '种子 1234：' + a + ' / ' + b + '；种子 4321：' + c };
+});
+
+defTest('输入录制：录一段操作再回放，哈希逐位一致', () => {
+  allocGrid(W, H);
+  resetWorld(2024);
+  const cx = W >> 1, cy = H >> 1;
+  execCmd('loadScene', { index: 1 });
+  runSteps(60);
+  execCmd('strokeBegin', {});
+  execCmd('stroke', { tool: WATER, x0: cx - 30, y0: cy - 20, x1: cx + 30, y1: cy - 20, size: 4, shape: 'spray', replace: false, erase: false });
+  execCmd('stroke', { tool: SAND, x0: cx, y0: cy - 30, x1: cx, y1: cy - 30, size: 6, shape: 'circle', replace: false, erase: false });
+  execCmd('strokeEnd', {});
+  runSteps(100);
+  execCmd('setWeather', { key: 'storm' });
+  execCmd('explode', { x: cx + 20, y: cy, r: 10, p: 0.8 });
+  runSteps(40);
+  execCmd('lightning', { x: cx - 40 });
+  execCmd('setEnv', { key: 'wind', value: -0.7 });
+  execCmd('setGravity', { dir: 'left' });
+  runSteps(300);
+  const live = worldHash(), rec = recordingOf(2024, W, H);
+  const replayed = replay(JSON.parse(JSON.stringify(rec)));
+  return { ok: live === replayed && rec.log.length === 10, info: rec.log.length + ' 条命令、' + rec.steps + ' 步；实时 ' + live + '，回放 ' + replayed };
+});
+
+defTest('存档完整：爆炸进行中、刚体正在下落时存档，读档后哈希一致，继续跑 1000 步也一致', () => {
+  allocGrid(W, H);
+  resetWorld(99);
+  env.structure = true;
+  buildDemolition(true);
+  let s = 0;
+  while (s < 2000 && !(bodyCount >= 3 && (exActive > 0 || fpCount > 50))) { simStep(); s++; }
+  const during = { bodies: bodyCount, ex: exActive, fp: fpCount, step: s };
+  const json = serializeWorld();
+  const h0 = worldHash();
+  runSteps(1000);
+  const h1 = worldHash();
+  resetWorld(1); buildScene(3); runSteps(20);                // 先弄乱
+  deserializeWorld(json);
+  const r0 = worldHash();
+  runSteps(1000);
+  const r1 = worldHash();
+  return { ok: during.bodies >= 3 && h0 === r0 && h1 === r1,
+           info: '第 ' + during.step + ' 步存档（刚体 ' + during.bodies + '、爆炸 ' + during.ex + '、飞行粒子 ' + during.fp + '，存档 ' + (json.length / 1024).toFixed(0) +
+                 ' KB）；读档 ' + (h0 === r0 ? '一致' : h0 + '≠' + r0) + '，再跑 1000 步 ' + (h1 === r1 ? '一致' : h1 + '≠' + r1) };
+});
+
+defTest('静态扫描：模拟代码里没有 Math.random / 超越函数 / 时钟', () => {
+  if (typeof require !== 'function' || !globalThis.__SRC_DIR) return { ok: true, info: '浏览器里没有源码文件，跳过（Node 端已检查）' };
+  const fs = require('fs'), path = require('path');
+  const files = ['10-core.js', '20-sim.js', '22-struct.js', '23-weather.js', '25-codec.js', '26-state.js', '27-scenes.js'];
+  const bad = [];
+  for (const f of files) {
+    const src = fs.readFileSync(path.join(globalThis.__SRC_DIR, f), 'utf8').split('\n');
+    src.forEach((line, k) => {
+      if (/^\s*(\*|\/\*)/.test(line)) return;                // 块注释
+      const code = line.replace(/\/\/.*$/, '').replace(/'[^']*'/g, "''");
+      if (/Math\.(random|sin|cos|tan|asin|acos|atan2?|exp|expm1|pow|log|log2|log10|log1p|hypot|cbrt|sinh|cosh|tanh)\b|Date\.|performance\.now|new Date/.test(code)) bad.push(f + ':' + (k + 1));
+    });
+  }
+  return { ok: bad.length === 0, info: bad.length ? '发现 ' + bad.join(', ') : files.length + ' 个模拟源文件都干净' };
+});
 
 /* =====================================================================
  * 6d. 只能在浏览器里跑的用例：读像素验证渲染效果、离线渲染验证音效、Blob 往返验证导入导出
@@ -6152,7 +7015,7 @@ if (typeof document !== 'undefined') {
  * ------------------------------------------------------------------- */
 // 性能场景：全部新系统一起上 —— 约 5 万粒子（沙 + 水）+ 埋在里面的 10 个 TNT + 上面一栋会被炸塌的楼 + 雷暴天气
 function buildPerfScene() {
-  env.dayNight = true; env.time = 0.9; env.timeScale = 1; env.structure = true; env.temp = AMBIENT; sceneScript = null;
+  env.dayNight = true; env.time = 0.9; env.timeScale = 1; env.structure = true; env.temp = AMBIENT; sceneState = null;
   setWeather('storm'); env.wind = 0.6;
   clearGrid(); setGravity('down'); seedRng(4242); updateSun();
   const rows = Math.max(20, Math.min(Math.floor(H * 0.45), Math.ceil(50000 / W)));
@@ -6315,9 +7178,9 @@ function loop(now) {
     const stepMs = 1000 / SIM_HZ, maxSteps = Math.max(2, Math.ceil(speed * 2));
     simAcc += Math.min(dt, 100) * speed;
     let n = 0;
-    while (simAcc >= stepMs && n < maxSteps) { simStep(); simAcc -= stepMs; n++; }
+    while (simAcc >= stepMs && n < maxSteps) { playbackTick(); simStep(); simAcc -= stepMs; n++; }
     if (simAcc > stepMs * 2) simAcc = 0;               // 跟不上就丢步，不追帧
-  } else if (stepOnce) simStep();
+  } else if (stepOnce) { playbackTick(); simStep(); }
   stepOnce = false;
 
   renderFrame(now, Math.min(dt, 100));
@@ -6340,16 +7203,120 @@ function loop(now) {
   updateHud(now);
 }
 
+/* ---------------------------------------------------------------------
+ * 7.1 冷启动热身：加载时在一个看不见的小世界里先跑一遍爆炸、倒塌、闪电，
+ *     让 JIT 把这些代码路径都编译好；着色器在这之后的真实画布上各画几帧。
+ *     热身完全在 resetWorld 之前，不影响这一局的确定性。
+ * ------------------------------------------------------------------- */
+let warmMs = 0;
+function warmUp() {
+  const t0 = performance.now();
+  const keepRec = cmdRecording;
+  cmdRecording = false;
+  allocGrid(200, 130);
+  resetWorld(7);
+  env.structure = true; env.time = 0.9; setWeather('storm'); updateSun();
+  buildDemolition(true, 100);
+  fillRect(WATER, 0, 106, W - 1, 112);
+  fillRect(SAND, 0, 113, W - 1, H - 1);
+  for (let k = 0; k < 4; k++) { const x = 30 + k * 40, i = x + 118 * W; put(i, TNT, x, 118); flags[i] |= F_BURN; life[i] = 10 + k * 6; }
+  for (let c = 0; c < GW * 4; c++) cloud[c] = 2.4;
+  for (let s = 0; s < 360; s++) { simStep(); if (s % 90 === 30) lightning(); }
+  worldHash(); serializeWorld();
+  cmdRecording = keepRec;
+  warmMs = performance.now() - t0;
+}
+function warmRender() { for (let k = 0; k < 3; k++) renderFrame(performance.now(), 16.7); if (gl) gl.finish(); }
+
+/* ---- ?coldboom=1：刷新后第一次大爆炸的耗时（加 &nowarm=1 对比不热身） ---- */
+function coldBoom() {
+  const box = $('testbox');
+  box.style.display = 'block';
+  testRunning = true;
+  const count = buildPerfScene();
+  const frames = [];
+  let firstBoom = -1, booms = 0;
+  const prev = onBoom;
+  onBoom = (x, y, R, P) => { booms++; if (firstBoom < 0) firstBoom = frames.length; if (prev) prev(x, y, R, P); };
+  const ch = new MessageChannel();
+  ch.port1.onmessage = () => {
+    const t0 = performance.now();
+    simStep(); renderFrame(performance.now(), 16.7); if (gl) gl.finish();
+    frames.push(performance.now() - t0);
+    if (frames.length < 260) { ch.port2.postMessage(0); return; }
+    onBoom = prev;
+    const win = frames.slice(Math.max(0, firstBoom), firstBoom + 60);
+    const r = { warm: !QS.has('nowarm'), warmMs: +warmMs.toFixed(0), count, booms, firstBoomFrame: firstBoom,
+                firstBoomMax: +Math.max.apply(null, win).toFixed(1), allMax: +Math.max.apply(null, frames).toFixed(1),
+                avg: +(frames.reduce((a, b) => a + b, 0) / frames.length).toFixed(2) };
+    window.__coldBoom = r;
+    box.innerHTML = '<h4>冷启动第一次大爆炸</h4><div class="' + (r.firstBoomMax <= 16 ? 'ok' : 'bad') + '">' + (r.warm ? '已热身（' + r.warmMs + 'ms）' : '未热身') +
+      '：第一次爆炸后 60 帧里最慢 ' + r.firstBoomMax + 'ms，全程最慢 ' + r.allMax + 'ms，平均 ' + r.avg + 'ms</div>';
+    console.log('冷启动', JSON.stringify(r));
+    testRunning = false;
+  };
+  ch.port2.postMessage(0);
+}
+
+/* ---- ?soak=1：10 个场景各跑 10 分钟模拟时间，页面里显示结果表 ---- */
+async function soakInPage() {
+  testRunning = true;
+  const box = $('testbox');
+  box.style.display = 'block';
+  const yieldCh = new MessageChannel();
+  const tick0 = () => new Promise(r => { yieldCh.port1.onmessage = () => r(); yieldCh.port2.postMessage(0); });
+  const steps = +(QS.get('steps') || 36000), rows = [];
+  const draw = cur => {
+    box.innerHTML = '<h4>soak：每个场景 ' + steps + ' 步' + (cur ? '（进行中：' + cur + '）' : '') + '</h4>' + rows.map(r =>
+      '<div class="' + (r.unstable.length ? 'bad' : 'ok') + '">' + r.name + ' <span class="dim">总量 ' + r.first.total + '→' + r.last.total +
+      '，末段活跃块 ' + r.lateChunks.toFixed(1) + '，末段燃烧 ' + r.lateBurn.toFixed(0) + (r.unstable.length ? '；不稳定：' + r.unstable.join('，') : '；最后 2 分钟各材料变化都 < 2%') + '</span></div>').join('');
+  };
+  for (let k = 0; k < SCENES.length; k++) {
+    seedRng(1000 + k); buildScene(k);
+    const samples = [soakSample()];
+    for (let s = 1; s <= steps; s++) {
+      simStep();
+      if (s % 600 === 0) { samples.push(soakSample()); draw(SCENES[k].name + ' ' + Math.round(s / steps * 100) + '%'); sceneDirty = true; renderFrame(performance.now(), 16.7); await tick0(); }
+    }
+    rows.push(soakVerdict(k, samples));
+    draw();
+  }
+  window.__soakResults = rows.map(r => ({ name: r.name, unstable: r.unstable, drift: r.drift }));
+  console.log('soak', JSON.stringify(window.__soakResults));
+  testRunning = false;
+}
+
+/* ---- ?bench=1：只跑性能测试 ---- */
+async function benchInPage() {
+  testRunning = true;
+  const box = $('testbox');
+  box.style.display = 'block';
+  box.innerHTML = '<h4>性能测试进行中……</h4>';
+  const p = await perfTest();
+  window.__bench = p;
+  box.innerHTML = '<h4>性能测试</h4><div>' + p.count + ' 粒子，最慢一帧 ' + p.allMax.toFixed(1) + 'ms，99% ≤ ' + p.p99.toFixed(1) + 'ms，中位数 ' + p.p50.toFixed(1) + 'ms，平均 ' + p.avgWork.toFixed(1) + 'ms</div>';
+  testRunning = false;
+}
+
 function main() {
   buildPalette();
   selectTool(SAND);
   createRenderer(viewport);
+  setSimClock(() => performance.now());                  // 只给调试面板计时用，模拟本身不读时钟
+  if (!QS.has('nowarm')) warmUp();
   onBoom = (x, y, R, P) => { fxBoom(x, y, R, P); audioBoom(P * R / 15); };
   onThunder = (x, y) => { fxThunder(); audioThunder(thunderDelay(x, y)); };      // 先闪后响，离得越远响得越晚
+  N = 0;
   fitGrid(true);
+  // 这一局的种子：地址栏 ?seed= 指定，否则随机。种子 + 录制下来的命令 = 能逐格复现的一局
+  resetWorld(QS.has('seed') ? (+QS.get('seed') | 0) : ((Math.random() * 2147483647) | 0) || 1);
+  if (!QS.has('nowarm')) warmRender();
   buildControls(); buildEnvPanel(); bindPointer(); bindKeys(); bindResize();
   document.addEventListener('visibilitychange', () => { lastFrameT = performance.now(); simAcc = 0; });
   if (QS.has('test')) setTimeout(runAllTests, 400);
+  else if (QS.has('coldboom')) setTimeout(coldBoom, 50);
+  else if (QS.has('soak')) setTimeout(soakInPage, 400);
+  else if (QS.has('bench')) setTimeout(benchInPage, 400);
   else if (QS.has('scene')) loadScene(Math.max(0, Math.min(SCENES.length - 1, (+QS.get('scene') || 1) - 1)));
   else toast('左键绘制 · 右键擦除 · 「场景」里有 10 个预设');
   requestAnimationFrame(loop);

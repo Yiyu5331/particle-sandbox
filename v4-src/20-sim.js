@@ -1109,7 +1109,7 @@ function slowWater(x, y, i) {
   let k = 1 + (env.ambient - 20) / 25;
   k = k < 0.2 ? 0.2 : k > 3 ? 3 : k;
   const wv = windX[(x >> 3) + (y >> 3) * GW];
-  if (rnd() < 0.0012 * (0.4 + 1.6 * env.sun) * k * (1 + (wv < 0 ? -wv : wv))) { clearCell(i, x, y); vaporAdd(x, y, 1); WL.evapSurface++; }
+  if (rnd() < 0.003 * (0.4 + 1.6 * env.sun) * k * (1 + (wv < 0 ? -wv : wv))) { clearCell(i, x, y); vaporAdd(x, y, 1); WL.evapSurface++; }
 }
 
 function slowPlant(x, y, i) {
@@ -1158,7 +1158,7 @@ function slowPlant(x, y, i) {
 function slowFlower(x, y, i) {
   const age = life[i] + env.plantAging;
   life[i] = age;
-  if (age > 300 && rnd() < 0.02) {                     // 开五分钟左右才谢                       // 谢了：六成落下一粒种子，基因来自母株并略有变异
+  if (age > 300 && rnd() < 0.004) {                    // 开五分钟以后才陆续谢（平均再开四分钟），不会同时谢光                       // 谢了：六成落下一粒种子，基因来自母株并略有变异
     if (rnd() < 0.6) {
       let g = rndi(256);
       for (let k = 0; k < 4; k++) {
@@ -1175,7 +1175,7 @@ function slowFlower(x, y, i) {
 function slowSeed(x, y, i) {
   const age = life[i] + env.plantAging;
   life[i] = age;
-  if (age > 1200 && rnd() < 0.01) { clearCell(i, x, y); return; }     // 二十分钟都没发芽：烂掉
+  if (age > 180 && rnd() < 0.01) { clearCell(i, x, y); return; }      // 三分钟内没发芽（太挤、太干、没光）：大多烂掉
   const bx = x + gx, by = y + gy;
   if (bx < 0 || bx >= W || by < 0 || by >= H) return;
   const bj = bx + by * W, b = type[bj];

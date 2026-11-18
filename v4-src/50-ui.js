@@ -135,27 +135,14 @@ function hideTip() { $('tip').style.display = 'none'; }
 /* ---------------------------------------------------------------------
  * 5.2 笔刷
  * ------------------------------------------------------------------- */
-function stamp(cx, cy, erase) {
-  const t = erase ? TOOL_ERASE : tool;
-  const r = brush.size - 1, r2 = r * r + r * 0.8;
-  const round = brush.shape !== 'square', spray = brush.shape === 'spray' && r > 0;
-  const replace = brush.replace;
-  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-    if (round && dx * dx + dy * dy > r2) continue;
-    if (spray && rnd() > 0.1) continue;
-    paintCell(cx + dx, cy + dy, t, replace);
-  }
+// 笔刷：所有落笔都变成 stroke 命令（记进录制，可以回放）
+function brushArgs(x0, y0, x1, y1, erase) {
+  return { tool, x0, y0, x1, y1, size: brush.size, shape: brush.shape, replace: brush.replace, erase: !!erase };
 }
-
-function stampLine(x0, y0, x1, y1, erase) {
-  const dx = x1 - x0, dy = y1 - y0, dist = Math.max(Math.abs(dx), Math.abs(dy));
-  const stepLen = Math.max(1, brush.size >> 1);
-  for (let s = 0; s <= dist; s += stepLen) {
-    const k = dist === 0 ? 0 : s / dist;
-    stamp(Math.round(x0 + dx * k), Math.round(y0 + dy * k), erase);
-  }
-  stamp(x1, y1, erase);
-}
+function stamp(cx, cy, erase) { if (!uiLocked()) execCmd('stroke', brushArgs(cx, cy, cx, cy, erase)); }
+function stampLine(x0, y0, x1, y1, erase) { if (!uiLocked()) execCmd('stroke', brushArgs(x0, y0, x1, y1, erase)); }
+// 回放录制时不接受玩家输入
+function uiLocked() { return playback !== null; }
 
 function toCell(e) {
   const r = canvas.getBoundingClientRect();
@@ -188,9 +175,10 @@ function bindPointer() {
     closePops();
     try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 合成事件没有活动指针 */ }
     const p = toCell(e);
-    if (tool === TOOL_LIGHTNING && e.button === 0) { lightning(p.x); return; }      // 召唤闪电：点一下劈一道
+    if (uiLocked()) { toast('正在回放录制，按「停止回放」再操作'); return; }
+    if (tool === TOOL_LIGHTNING && e.button === 0) { execCmd('lightning', { x: p.x }); return; }      // 召唤闪电：点一下劈一道
     pushUndo();
-    structHold = true;                                   // 画的时候先不判定支撑，松手再算（否则画到一半就掉了）
+    execCmd('strokeBegin', {});                          // 画的时候先不判定支撑，松手再算（否则画到一半就掉了）
     pointer.down = true; pointer.erase = e.button === 2; pointer.inside = true;
     pointer.x = pointer.hx = p.x; pointer.y = pointer.hy = p.y;
     pointer.line = e.shiftKey; pointer.lx0 = p.x; pointer.ly0 = p.y;
@@ -209,7 +197,7 @@ function bindPointer() {
   const end = e => {
     if (pointer.down && pointer.line) stampLine(pointer.lx0, pointer.ly0, pointer.hx, pointer.hy, pointer.erase);   // Shift 直线：松手时落笔
     pointer.down = false; pointer.line = false;
-    if (structHold) { structHold = false; clearPins(); structDirty = true; }
+    if (structHold && !uiLocked()) execCmd('strokeEnd', {});
     if (e.pointerType === 'touch') { pointer.inside = false; pointer.hx = -1; }
     updateCursor();
   };
@@ -217,7 +205,7 @@ function bindPointer() {
   canvas.addEventListener('pointercancel', end);
   canvas.addEventListener('pointerleave', () => { if (!pointer.down) { pointer.inside = false; pointer.hx = -1; updateCursor(); } });
   canvas.addEventListener('contextmenu', e => e.preventDefault());
-  window.addEventListener('blur', () => { pointer.down = false; pointer.line = false; structHold = false; });
+  window.addEventListener('blur', () => { pointer.down = false; pointer.line = false; if (structHold && !uiLocked()) execCmd('strokeEnd', {}); });
 }
 
 /* ---------------------------------------------------------------------
@@ -234,12 +222,13 @@ function pushUndo() {
 }
 
 function undo() {
+  if (uiLocked()) return;
   if (undoLen === 0) { toast('没有可撤销的操作'); return; }
   undoHead = (undoHead + UNDO_MAX - 1) % UNDO_MAX;
   undoLen--;
   const s = undoRing[undoHead];
   undoRing[undoHead] = null;
-  restoreScene(s);
+  execCmd('restoreScene', { json: sceneToJSON(s) });
   syncGravityUI(); syncEnvUI();
   toast('已撤销（还可撤销 ' + undoLen + ' 步）');
 }
@@ -247,10 +236,33 @@ function undo() {
 /* ---------------------------------------------------------------------
  * 5.4 存档 / 导入导出 / 截图 / 录制
  * ------------------------------------------------------------------- */
-const SLOT_KEY = 'particle-sandbox-v3-slots';
+const SLOT_KEY = 'particle-sandbox-v41-slots';
 
 function readSlots() {
   try { return JSON.parse(localStorage.getItem(SLOT_KEY) || '{}') || {}; } catch (e) { return {}; }
+}
+
+// 完整存档有几百 KB，存进 localStorage 之前用浏览器自带的 gzip 压一下（没有 CompressionStream 就存原文）
+async function gzipToB64(str) {
+  if (typeof CompressionStream === 'undefined') return null;
+  const stream = new Blob([str]).stream().pipeThrough(new CompressionStream('gzip'));
+  return bytesToB64(new Uint8Array(await new Response(stream).arrayBuffer()));
+}
+async function gunzipB64(b64) {
+  const stream = new Blob([b64ToBytes(b64)]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return await new Response(stream).text();
+}
+async function slotText(v) { return typeof v === 'string' ? v : await gunzipB64(v.z); }
+
+// 读入任何一种存档文本：完整存档、v3/v4 的紧凑存档、录制文件
+function loadAnySave(text, label) {
+  const o = JSON.parse(text);
+  if (o && o.kind === 'recording') { startPlayback(o); return; }
+  pushUndo();
+  if (o && o.kind === 'full') execCmd('restoreFull', { json: text });
+  else execCmd('restoreScene', { json: text });
+  syncGravityUI(); syncEnvUI();
+  toast('已读取「' + label + '」');
 }
 
 function renderSlots() {
@@ -264,8 +276,9 @@ function renderSlots() {
     nm.className = 'nm'; nm.textContent = name;
     const load = document.createElement('button');
     load.textContent = '读取';
-    load.addEventListener('click', () => {
-      try { pushUndo(); restoreScene(sceneFromJSON(slots[name])); syncGravityUI(); syncEnvUI(); toast('已读取「' + name + '」'); closePops(); }
+    load.addEventListener('click', async () => {
+      if (uiLocked()) return;
+      try { loadAnySave(await slotText(slots[name]), name); closePops(); }
       catch (e) { toast('读取失败：' + e.message); }
     });
     const del = document.createElement('button');
@@ -281,11 +294,13 @@ function renderSlots() {
   }
 }
 
-function saveSlot() {
+async function saveSlot() {
   const name = $('slotName').value.trim() || '存档 ' + new Date().toLocaleTimeString();
   const slots = readSlots();
-  slots[name] = sceneToJSON(captureScene());
-  try { localStorage.setItem(SLOT_KEY, JSON.stringify(slots)); toast('已保存到「' + name + '」'); }
+  const text = serializeWorld();
+  const z = await gzipToB64(text);
+  slots[name] = z ? { z } : text;
+  try { localStorage.setItem(SLOT_KEY, JSON.stringify(slots)); toast('已保存到「' + name + '」（' + ((z ? z.length : text.length) / 1024).toFixed(0) + ' KB）'); }
   catch (e) { toast('保存失败：浏览器本地存储空间不足，请改用导出 JSON'); }
   $('slotName').value = '';
   renderSlots();
@@ -303,13 +318,50 @@ function stampName(ext) {
   return 'sandbox-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + '.' + ext;
 }
 
-function exportJSON() { downloadBlob(new Blob([sceneToJSON(captureScene())], { type: 'application/json' }), stampName('json')); }
+function exportJSON() { downloadBlob(new Blob([serializeWorld()], { type: 'application/json' }), stampName('json')); }
+
+// 录制：从这次开局（或上一次「新开局」）到现在的全部玩家操作
+function exportRecording() {
+  const rec = recordingOf(worldSeed, W, H);
+  downloadBlob(new Blob([JSON.stringify(rec)], { type: 'application/json' }), stampName('rec.json'));
+  toast('已导出录制：' + rec.log.length + ' 条命令、' + rec.steps + ' 步');
+}
+
+// 回放：从录制的种子重新开局，按步数把命令一条条喂进去；回放期间不接受玩家输入
+let playback = null;
+function startPlayback(rec) {
+  if (rec.w !== W || rec.h !== H) allocGrid(rec.w, rec.h), resizeRenderer();
+  cmdRecording = false;
+  resetWorld(rec.seed);
+  playback = { rec, p: 0 };
+  setPaused(false);
+  $('btnPlayStop').style.display = '';
+  toast('开始回放：' + rec.log.length + ' 条命令、' + rec.steps + ' 步');
+}
+function stopPlayback(done) {
+  if (!playback) return;
+  const rec = playback.rec;
+  playback = null;
+  cmdRecording = true;
+  cmdLog = rec.log.slice();                              // 回放完接着录：后面的操作接在原录制后面
+  $('btnPlayStop').style.display = 'none';
+  syncGravityUI(); syncEnvUI();
+  toast(done ? '回放完成，哈希 ' + worldHash() : '已停止回放');
+}
+// 主循环里每个模拟步之前调用：把这一步该执行的命令喂进去
+function playbackTick() {
+  const pb = playback;
+  if (!pb) return;
+  const log = pb.rec.log;
+  while (pb.p < log.length && log[pb.p].step === tick) { const c = log[pb.p++]; COMMANDS[c.command](c.args); }
+  if (pb.p >= log.length && tick >= pb.rec.steps) stopPlayback(true);
+}
 
 function importJSON(file) {
   return new Promise(resolve => {
     const fr = new FileReader();
     fr.onload = () => {
-      try { const s = sceneFromJSON(String(fr.result)); pushUndo(); restoreScene(s); syncGravityUI(); syncEnvUI(); toast('已导入 ' + file.name); resolve(true); }
+      try { loadAnySave(String(fr.result), file.name); resolve(true); }
       catch (e) { toast('导入失败：' + e.message); resolve(false); }
     };
     fr.onerror = () => { toast('读取文件失败'); resolve(false); };
@@ -362,8 +414,9 @@ function toggleRecord() {
  * 5.5 载入预设场景（场景本身在 2.15）
  * ------------------------------------------------------------------- */
 function loadScene(k) {
+  if (uiLocked()) return;
   pushUndo();
-  buildScene(k);
+  execCmd('loadScene', { index: k });
   syncGravityUI(); syncEnvUI();
   if (paused) setPaused(false);
   toast('场景：' + SCENES[k].name + ' — ' + SCENES[k].note);
@@ -401,7 +454,8 @@ function requestClear() {
   if (clearArmed) {
     clearTimeout(clearArmed); clearArmed = 0;
     b.textContent = '清空'; b.classList.remove('armed');
-    pushUndo(); clearGrid();
+    if (uiLocked()) return;
+    pushUndo(); execCmd('clear', {});
     toast('已清空（可撤销）');
     return;
   }
@@ -461,17 +515,18 @@ function buildEnvPanel() {
   for (const key in WEATHER_PRESETS) {
     const b = document.createElement('button');
     b.textContent = WEATHER_PRESETS[key].name; b.dataset.w = key; b.style.textAlign = 'center';
-    b.addEventListener('click', () => { setWeather(key); updateSun(); syncEnvUI(); toast('天气：' + WEATHER_PRESETS[key].name); });
+    b.addEventListener('click', () => { if (uiLocked()) return; execCmd('setWeather', { key }); syncEnvUI(); toast('天气：' + WEATHER_PRESETS[key].name); });
     host.appendChild(b);
   }
-  $('envWind').addEventListener('input', e => { env.wind = +e.target.value / 100; });
-  $('envPower').addEventListener('input', e => { env.windPower = +e.target.value / 100; });
-  $('envHumid').addEventListener('input', e => { env.moistPerMin = +e.target.value * 6; if (env.atmosCap < 0.8) env.atmosCap = 1.6; });
-  $('envTemp').addEventListener('input', e => { env.temp = +e.target.value; $('envTempVal').textContent = env.temp + '°C'; updateSun(); });
-  $('envTime').addEventListener('input', e => { env.time = Math.min(0.999, +e.target.value / 100); updateSun(); sceneDirty = true; });
-  $('envSpeed').addEventListener('change', e => { env.timeScale = +e.target.value; });
-  $('envDayNight').addEventListener('change', e => { env.dayNight = e.target.checked; updateSun(); sceneDirty = true; });
-  $('envStruct').addEventListener('change', e => { env.structure = e.target.checked; structDirty = true; });
+  const setE = (key, value) => { if (!uiLocked()) execCmd('setEnv', { key, value }); };
+  $('envWind').addEventListener('input', e => setE('wind', +e.target.value / 100));
+  $('envPower').addEventListener('input', e => setE('windPower', +e.target.value / 100));
+  $('envHumid').addEventListener('input', e => { setE('moistPerMin', +e.target.value * 6); if (env.atmosCap < 1.2) setE('atmosCap', 3); });
+  $('envTemp').addEventListener('input', e => { setE('temp', +e.target.value); $('envTempVal').textContent = env.temp + '°C'; });
+  $('envTime').addEventListener('input', e => { setE('time', Math.min(0.999, +e.target.value / 100)); sceneDirty = true; });
+  $('envSpeed').addEventListener('change', e => setE('timeScale', +e.target.value));
+  $('envDayNight').addEventListener('change', e => { setE('dayNight', e.target.checked); sceneDirty = true; });
+  $('envStruct').addEventListener('change', e => setE('structure', e.target.checked));
   $('envBolt').addEventListener('click', () => { selectTool(TOOL_LIGHTNING); closePops(); toast('闪电工具：在画面上点一下'); });
   $('selQuality').addEventListener('change', e => setQuality(e.target.value));
   $('selScale').addEventListener('change', e => { CELL = +e.target.value; fitGrid(true); toast('每格 ' + CELL + ' 像素，网格 ' + W + '×' + H); });
@@ -482,7 +537,7 @@ function buildControls() {
   $('btnPause').addEventListener('click', () => setPaused(!paused));
   $('btnStep').addEventListener('click', () => { setPaused(true); stepOnce = true; });
   $('selSpeed').addEventListener('change', e => { speed = +e.target.value; });
-  document.querySelectorAll('#gravGrp button').forEach(b => b.addEventListener('click', () => { setGravity(b.dataset.g); syncGravityUI(); }));
+  document.querySelectorAll('#gravGrp button').forEach(b => b.addEventListener('click', () => { if (uiLocked()) return; execCmd('setGravity', { dir: b.dataset.g }); syncGravityUI(); }));
   document.querySelectorAll('[data-shape]').forEach(b => b.addEventListener('click', () => {
     brush.shape = b.dataset.shape;
     document.querySelectorAll('[data-shape]').forEach(o => o.classList.toggle('on', o === b));
@@ -539,6 +594,8 @@ function buildControls() {
   $('btnSlotSave').addEventListener('click', saveSlot);
   $('slotName').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') saveSlot(); });
   $('btnExport').addEventListener('click', exportJSON);
+  $('btnRecExport').addEventListener('click', exportRecording);
+  $('btnPlayStop').addEventListener('click', () => stopPlayback(false));
   $('btnImport').addEventListener('click', () => $('fileImport').click());
   $('fileImport').addEventListener('change', e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; });
 }
@@ -555,7 +612,7 @@ function bindKeys() {
     const k = e.key;
     if (k === ' ') { e.preventDefault(); if (e.target.blur && tag === 'BUTTON') e.target.blur(); setPaused(!paused); }
     else if (k === '.') { setPaused(true); stepOnce = true; }
-    else if (k === 'g' || k === 'G') { setGravity(GRAV_CYCLE[(GRAV_CYCLE.indexOf(gravity) + 1) % 4]); syncGravityUI(); }
+    else if (k === 'g' || k === 'G') { if (!uiLocked()) { execCmd('setGravity', { dir: GRAV_CYCLE[(GRAV_CYCLE.indexOf(gravity) + 1) % 4] }); syncGravityUI(); } }
     else if (k === 'v' || k === 'V') setView(viewMode + 1);
     else if (k === 'c' || k === 'C') requestClear();
     else if (k === '[') setBrushSize(brush.size - 1);
@@ -572,9 +629,8 @@ function bindKeys() {
 function fitGrid(force) {
   const w = Math.max(48, Math.floor(stage.clientWidth / CELL)), h = Math.max(48, Math.floor(stage.clientHeight / CELL));
   if (!force && w === W && h === H) return;
-  const snap = N > 0 ? captureScene() : null;
-  allocGrid(w, h);
-  if (snap && snap.n > 0) restoreScene(snap);
+  if (N === 0) allocGrid(w, h);
+  else execCmd('resize', { w, h });                      // 换网格尺寸也记进录制，回放时网格会跟着变
   resizeRenderer();
   undoLen = 0; undoHead = 0;
 }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>粒子沙盘 v4</title>
+<title>粒子沙盘 v4.1</title>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -160,7 +160,7 @@
 <body>
 <div id="app">
   <header id="topbar" class="glass">
-    <span id="brand">粒子沙盘<small>v4</small></span>
+    <span id="brand">粒子沙盘<small>v4.1</small></span>
     <div class="grp">
       <button id="btnPause" title="暂停 / 继续（空格）">❚❚ 暂停</button>
       <button id="btnStep" class="sq" title="单步（.）" aria-label="单步">▸|</button>
@@ -237,6 +237,9 @@
   <div class="col" id="slotList" style="margin-top:8px"></div>
   <h4 style="margin-top:12px">文件</h4>
   <div class="row"><button id="btnExport" style="text-align:center">导出 JSON</button><button id="btnImport" style="text-align:center">导入 JSON</button></div>
+  <h4 style="margin-top:12px">录制</h4>
+  <div class="row"><button id="btnRecExport" style="text-align:center">导出录制</button><button id="btnPlayStop" style="text-align:center;display:none">停止回放</button></div>
+  <div class="note">「导入 JSON」也能读录制文件：读进来就从头回放。</div>
   <input type="file" id="fileImport" accept=".json,application/json" hidden>
 </div>
 <div id="popSettings" class="pop">

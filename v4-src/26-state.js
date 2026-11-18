@@ -57,7 +57,7 @@ function stateArrays() {
 function stateScalars() {
   return {
     W, H, tick, parity, gravity, rng: _rs, fpHead, fpCount, exActive, elecCount, slowPhase,
-    structDirty, structFull, structCooldown, structHold, bodyCount, fracVX, fracVY, fracTick, pinTick, solidRow, sdCount,
+    structDirty, structFull, structCooldown, structHold, bodyCount, fracVX, fracVY, fracTick, pinTick, solidRow, sdCount, structSettle,
   };
 }
 
@@ -143,7 +143,7 @@ function deserializeWorld(str) {
   fpHead = sc.fpHead; fpCount = sc.fpCount; exActive = sc.exActive; elecCount = el.length; slowPhase = sc.slowPhase;
   structDirty = sc.structDirty; structFull = sc.structFull; structCooldown = sc.structCooldown; structHold = sc.structHold;
   bodyCount = sc.bodyCount; fracVX = sc.fracVX; fracVY = sc.fracVY; fracTick = sc.fracTick; pinTick = sc.pinTick;
-  solidRow = sc.solidRow;
+  solidRow = sc.solidRow; structSettle = sc.structSettle;
   for (const k of Object.keys(env)) delete env[k];
   Object.assign(env, o.env);
   sceneState = o.sceneState;
@@ -155,8 +155,10 @@ function deserializeWorld(str) {
 /* ---------------------------------------------------------------------
  * 命令：所有改变世界的玩家操作都走 execCmd，按 {step, command, args} 记下来
  * ------------------------------------------------------------------- */
+const ENV_DEFAULTS = JSON.parse(JSON.stringify(env));     // 开局时的环境（resetWorld 恢复成这样，回放才对得上）
 let cmdLog = [];
 let cmdRecording = true;
+let worldSeed = 1;          // 这一局的种子（录制文件里要带上）
 let cmdHook = null;        // 宿主可以挂一个回调：命令执行后通知（区域规则、预算、UI 同步）
 
 // 一个笔刷印章：返回 {placed, removed}（实际改动了多少格），给预算系统用
@@ -229,9 +231,14 @@ function execCmd(command, args) {
 
 // 新开一个世界：清空网格、步数归零、设定种子、清空录制
 function resetWorld(seedValue) {
+  for (const k of Object.keys(env)) delete env[k];
+  Object.assign(env, JSON.parse(JSON.stringify(ENV_DEFAULTS)));
+  sceneState = null;
   clearGrid();
+  updateSun();
   tick = 0; parity = 0; slowPhase = 0; pinTick = -100; fracTick = -100; structCooldown = 0; structHold = false;
   seedRng(seedValue);
+  worldSeed = seedValue;
   cmdLog = [];
 }
 

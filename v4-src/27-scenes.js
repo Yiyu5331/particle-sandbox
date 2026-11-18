@@ -92,7 +92,7 @@ function buildVolcano(withSource) {
 
 function sceneVolcano() {
   env.time = 0.85; env.timeScale = 1; setWeather('clear'); env.wind = 0.3;
-  buildVolcano(5000);       // 一次喷发的岩浆总量有限，喷完火山就安静下来
+  buildVolcano(2500);       // 一次喷发的岩浆总量有限（约 5 分钟喷完），喷完火山就安静下来
 }
 
 function sceneVolcanoDayNight() {

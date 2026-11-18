@@ -167,9 +167,9 @@ function loop(now) {
     const stepMs = 1000 / SIM_HZ, maxSteps = Math.max(2, Math.ceil(speed * 2));
     simAcc += Math.min(dt, 100) * speed;
     let n = 0;
-    while (simAcc >= stepMs && n < maxSteps) { simStep(); simAcc -= stepMs; n++; }
+    while (simAcc >= stepMs && n < maxSteps) { playbackTick(); simStep(); simAcc -= stepMs; n++; }
     if (simAcc > stepMs * 2) simAcc = 0;               // 跟不上就丢步，不追帧
-  } else if (stepOnce) simStep();
+  } else if (stepOnce) { playbackTick(); simStep(); }
   stepOnce = false;
 
   renderFrame(now, Math.min(dt, 100));
@@ -192,16 +192,120 @@ function loop(now) {
   updateHud(now);
 }
 
+/* ---------------------------------------------------------------------
+ * 7.1 冷启动热身：加载时在一个看不见的小世界里先跑一遍爆炸、倒塌、闪电，
+ *     让 JIT 把这些代码路径都编译好；着色器在这之后的真实画布上各画几帧。
+ *     热身完全在 resetWorld 之前，不影响这一局的确定性。
+ * ------------------------------------------------------------------- */
+let warmMs = 0;
+function warmUp() {
+  const t0 = performance.now();
+  const keepRec = cmdRecording;
+  cmdRecording = false;
+  allocGrid(200, 130);
+  resetWorld(7);
+  env.structure = true; env.time = 0.9; setWeather('storm'); updateSun();
+  buildDemolition(true, 100);
+  fillRect(WATER, 0, 106, W - 1, 112);
+  fillRect(SAND, 0, 113, W - 1, H - 1);
+  for (let k = 0; k < 4; k++) { const x = 30 + k * 40, i = x + 118 * W; put(i, TNT, x, 118); flags[i] |= F_BURN; life[i] = 10 + k * 6; }
+  for (let c = 0; c < GW * 4; c++) cloud[c] = 2.4;
+  for (let s = 0; s < 360; s++) { simStep(); if (s % 90 === 30) lightning(); }
+  worldHash(); serializeWorld();
+  cmdRecording = keepRec;
+  warmMs = performance.now() - t0;
+}
+function warmRender() { for (let k = 0; k < 3; k++) renderFrame(performance.now(), 16.7); if (gl) gl.finish(); }
+
+/* ---- ?coldboom=1：刷新后第一次大爆炸的耗时（加 &nowarm=1 对比不热身） ---- */
+function coldBoom() {
+  const box = $('testbox');
+  box.style.display = 'block';
+  testRunning = true;
+  const count = buildPerfScene();
+  const frames = [];
+  let firstBoom = -1, booms = 0;
+  const prev = onBoom;
+  onBoom = (x, y, R, P) => { booms++; if (firstBoom < 0) firstBoom = frames.length; if (prev) prev(x, y, R, P); };
+  const ch = new MessageChannel();
+  ch.port1.onmessage = () => {
+    const t0 = performance.now();
+    simStep(); renderFrame(performance.now(), 16.7); if (gl) gl.finish();
+    frames.push(performance.now() - t0);
+    if (frames.length < 260) { ch.port2.postMessage(0); return; }
+    onBoom = prev;
+    const win = frames.slice(Math.max(0, firstBoom), firstBoom + 60);
+    const r = { warm: !QS.has('nowarm'), warmMs: +warmMs.toFixed(0), count, booms, firstBoomFrame: firstBoom,
+                firstBoomMax: +Math.max.apply(null, win).toFixed(1), allMax: +Math.max.apply(null, frames).toFixed(1),
+                avg: +(frames.reduce((a, b) => a + b, 0) / frames.length).toFixed(2) };
+    window.__coldBoom = r;
+    box.innerHTML = '<h4>冷启动第一次大爆炸</h4><div class="' + (r.firstBoomMax <= 16 ? 'ok' : 'bad') + '">' + (r.warm ? '已热身（' + r.warmMs + 'ms）' : '未热身') +
+      '：第一次爆炸后 60 帧里最慢 ' + r.firstBoomMax + 'ms，全程最慢 ' + r.allMax + 'ms，平均 ' + r.avg + 'ms</div>';
+    console.log('冷启动', JSON.stringify(r));
+    testRunning = false;
+  };
+  ch.port2.postMessage(0);
+}
+
+/* ---- ?soak=1：10 个场景各跑 10 分钟模拟时间，页面里显示结果表 ---- */
+async function soakInPage() {
+  testRunning = true;
+  const box = $('testbox');
+  box.style.display = 'block';
+  const yieldCh = new MessageChannel();
+  const tick0 = () => new Promise(r => { yieldCh.port1.onmessage = () => r(); yieldCh.port2.postMessage(0); });
+  const steps = +(QS.get('steps') || 36000), rows = [];
+  const draw = cur => {
+    box.innerHTML = '<h4>soak：每个场景 ' + steps + ' 步' + (cur ? '（进行中：' + cur + '）' : '') + '</h4>' + rows.map(r =>
+      '<div class="' + (r.unstable.length ? 'bad' : 'ok') + '">' + r.name + ' <span class="dim">总量 ' + r.first.total + '→' + r.last.total +
+      '，末段活跃块 ' + r.lateChunks.toFixed(1) + '，末段燃烧 ' + r.lateBurn.toFixed(0) + (r.unstable.length ? '；不稳定：' + r.unstable.join('，') : '；最后 2 分钟各材料变化都 < 2%') + '</span></div>').join('');
+  };
+  for (let k = 0; k < SCENES.length; k++) {
+    seedRng(1000 + k); buildScene(k);
+    const samples = [soakSample()];
+    for (let s = 1; s <= steps; s++) {
+      simStep();
+      if (s % 600 === 0) { samples.push(soakSample()); draw(SCENES[k].name + ' ' + Math.round(s / steps * 100) + '%'); sceneDirty = true; renderFrame(performance.now(), 16.7); await tick0(); }
+    }
+    rows.push(soakVerdict(k, samples));
+    draw();
+  }
+  window.__soakResults = rows.map(r => ({ name: r.name, unstable: r.unstable, drift: r.drift }));
+  console.log('soak', JSON.stringify(window.__soakResults));
+  testRunning = false;
+}
+
+/* ---- ?bench=1：只跑性能测试 ---- */
+async function benchInPage() {
+  testRunning = true;
+  const box = $('testbox');
+  box.style.display = 'block';
+  box.innerHTML = '<h4>性能测试进行中……</h4>';
+  const p = await perfTest();
+  window.__bench = p;
+  box.innerHTML = '<h4>性能测试</h4><div>' + p.count + ' 粒子，最慢一帧 ' + p.allMax.toFixed(1) + 'ms，99% ≤ ' + p.p99.toFixed(1) + 'ms，中位数 ' + p.p50.toFixed(1) + 'ms，平均 ' + p.avgWork.toFixed(1) + 'ms</div>';
+  testRunning = false;
+}
+
 function main() {
   buildPalette();
   selectTool(SAND);
   createRenderer(viewport);
+  setSimClock(() => performance.now());                  // 只给调试面板计时用，模拟本身不读时钟
+  if (!QS.has('nowarm')) warmUp();
   onBoom = (x, y, R, P) => { fxBoom(x, y, R, P); audioBoom(P * R / 15); };
   onThunder = (x, y) => { fxThunder(); audioThunder(thunderDelay(x, y)); };      // 先闪后响，离得越远响得越晚
+  N = 0;
   fitGrid(true);
+  // 这一局的种子：地址栏 ?seed= 指定，否则随机。种子 + 录制下来的命令 = 能逐格复现的一局
+  resetWorld(QS.has('seed') ? (+QS.get('seed') | 0) : ((Math.random() * 2147483647) | 0) || 1);
+  if (!QS.has('nowarm')) warmRender();
   buildControls(); buildEnvPanel(); bindPointer(); bindKeys(); bindResize();
   document.addEventListener('visibilitychange', () => { lastFrameT = performance.now(); simAcc = 0; });
   if (QS.has('test')) setTimeout(runAllTests, 400);
+  else if (QS.has('coldboom')) setTimeout(coldBoom, 50);
+  else if (QS.has('soak')) setTimeout(soakInPage, 400);
+  else if (QS.has('bench')) setTimeout(benchInPage, 400);
   else if (QS.has('scene')) loadScene(Math.max(0, Math.min(SCENES.length - 1, (+QS.get('scene') || 1) - 1)));
   else toast('左键绘制 · 右键擦除 · 「场景」里有 10 个预设');
   requestAnimationFrame(loop);
