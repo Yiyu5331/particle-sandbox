@@ -1,0 +1,1722 @@
+{
+"CELL": [
+"host",
+"let"
+],
+"QS": [
+"host",
+"const"
+],
+"CHUNK": [
+"engine/grid.js",
+"const"
+],
+"WAKE_TTL": [
+"engine/grid.js",
+"const"
+],
+"SIM_HZ": [
+"engine/grid.js",
+"const"
+],
+"F_PAR": [
+"engine/grid.js",
+"const"
+],
+"F_BURN": [
+"engine/grid.js",
+"const"
+],
+"F_SCORCH": [
+"engine/grid.js",
+"const"
+],
+"F_TIP": [
+"engine/grid.js",
+"const"
+],
+"F_BODY": [
+"engine/grid.js",
+"const"
+],
+"F_PIN": [
+"engine/grid.js",
+"const"
+],
+"F_FALL": [
+"engine/grid.js",
+"const"
+],
+"F_SAVE": [
+"engine/grid.js",
+"const"
+],
+"STALE_MAX": [
+"engine/grid.js",
+"const"
+],
+"W": [
+"engine/grid.js",
+"let"
+],
+"H": [
+"engine/grid.js",
+"let"
+],
+"N": [
+"engine/grid.js",
+"let"
+],
+"type": [
+"engine/grid.js",
+"let"
+],
+"seed": [
+"engine/grid.js",
+"let"
+],
+"flags": [
+"engine/grid.js",
+"let"
+],
+"charge": [
+"engine/grid.js",
+"let"
+],
+"chargeE": [
+"engine/grid.js",
+"let"
+],
+"life": [
+"engine/grid.js",
+"let"
+],
+"temp": [
+"engine/grid.js",
+"let"
+],
+"wet": [
+"engine/grid.js",
+"let"
+],
+"aux": [
+"engine/grid.js",
+"let"
+],
+"fuel": [
+"engine/grid.js",
+"let"
+],
+"CW": [
+"engine/grid.js",
+"let"
+],
+"CHN": [
+"engine/grid.js",
+"let"
+],
+"chunkTTL": [
+"engine/grid.js",
+"let"
+],
+"chunkCount": [
+"engine/grid.js",
+"let"
+],
+"parity": [
+"engine/grid.js",
+"let"
+],
+"tick": [
+"engine/grid.js",
+"let"
+],
+"gravity": [
+"engine/grid.js",
+"let"
+],
+"gx": [
+"engine/grid.js",
+"let"
+],
+"gy": [
+"engine/grid.js",
+"let"
+],
+"lx": [
+"engine/grid.js",
+"let"
+],
+"ly": [
+"engine/grid.js",
+"let"
+],
+"sceneDirty": [
+"engine/grid.js",
+"let"
+],
+"structDirty": [
+"engine/grid.js",
+"let"
+],
+"allocGrid": [
+"engine/grid.js",
+"function"
+],
+"clearGrid": [
+"engine/grid.js",
+"function"
+],
+"wakeAll": [
+"engine/grid.js",
+"function"
+],
+"inb": [
+"engine/grid.js",
+"function"
+],
+"wake": [
+"engine/grid.js",
+"function"
+],
+"initLife": [
+"engine/grid.js",
+"function"
+],
+"initFuel": [
+"engine/grid.js",
+"function"
+],
+"put": [
+"engine/grid.js",
+"function"
+],
+"clearCell": [
+"engine/grid.js",
+"function"
+],
+"morph": [
+"engine/grid.js",
+"function"
+],
+"swapCells": [
+"engine/grid.js",
+"function"
+],
+"setGravity": [
+"engine/grid.js",
+"function"
+],
+"ripples": [
+"engine/grid.js",
+"const"
+],
+"rippleHead": [
+"engine/grid.js",
+"let"
+],
+"addRipple": [
+"engine/grid.js",
+"function"
+],
+"DX4": [
+"engine/grid.js",
+"const"
+],
+"DY4": [
+"engine/grid.js",
+"const"
+],
+"DX8": [
+"engine/grid.js",
+"const"
+],
+"DY8": [
+"engine/grid.js",
+"const"
+],
+"AMBIENT": [
+"engine/materials.js",
+"const"
+],
+"S_EMPTY": [
+"engine/materials.js",
+"const"
+],
+"S_SOLID": [
+"engine/materials.js",
+"const"
+],
+"S_POWDER": [
+"engine/materials.js",
+"const"
+],
+"S_LIQUID": [
+"engine/materials.js",
+"const"
+],
+"S_GAS": [
+"engine/materials.js",
+"const"
+],
+"S_ENERGY": [
+"engine/materials.js",
+"const"
+],
+"STATE_NAMES": [
+"engine/materials.js",
+"const"
+],
+"EMPTY": [
+"engine/materials.js",
+"const"
+],
+"SAND": [
+"engine/materials.js",
+"const"
+],
+"WATER": [
+"engine/materials.js",
+"const"
+],
+"FIRE": [
+"engine/materials.js",
+"const"
+],
+"WOOD": [
+"engine/materials.js",
+"const"
+],
+"STONE": [
+"engine/materials.js",
+"const"
+],
+"LAVA": [
+"engine/materials.js",
+"const"
+],
+"PLANT": [
+"engine/materials.js",
+"const"
+],
+"ICE": [
+"engine/materials.js",
+"const"
+],
+"ACID": [
+"engine/materials.js",
+"const"
+],
+"SMOKE": [
+"engine/materials.js",
+"const"
+],
+"STEAM": [
+"engine/materials.js",
+"const"
+],
+"EMBER": [
+"engine/materials.js",
+"const"
+],
+"TNT": [
+"engine/materials.js",
+"const"
+],
+"METAL": [
+"engine/materials.js",
+"const"
+],
+"CLONE": [
+"engine/materials.js",
+"const"
+],
+"VOID": [
+"engine/materials.js",
+"const"
+],
+"OIL": [
+"engine/materials.js",
+"const"
+],
+"GUNPOWDER": [
+"engine/materials.js",
+"const"
+],
+"GLASS": [
+"engine/materials.js",
+"const"
+],
+"ASH": [
+"engine/materials.js",
+"const"
+],
+"CHARCOAL": [
+"engine/materials.js",
+"const"
+],
+"SALT": [
+"engine/materials.js",
+"const"
+],
+"SALTWATER": [
+"engine/materials.js",
+"const"
+],
+"SPARK": [
+"engine/materials.js",
+"const"
+],
+"SEED": [
+"engine/materials.js",
+"const"
+],
+"FLOWER": [
+"engine/materials.js",
+"const"
+],
+"SOIL": [
+"engine/materials.js",
+"const"
+],
+"BRICK": [
+"engine/materials.js",
+"const"
+],
+"CONCRETE": [
+"engine/materials.js",
+"const"
+],
+"STEEL": [
+"engine/materials.js",
+"const"
+],
+"ANCHOR": [
+"engine/materials.js",
+"const"
+],
+"ROPE": [
+"engine/materials.js",
+"const"
+],
+"DEADPLANT": [
+"engine/materials.js",
+"const"
+],
+"FOAM": [
+"engine/materials.js",
+"const"
+],
+"SNOW": [
+"engine/materials.js",
+"const"
+],
+"NT": [
+"engine/materials.js",
+"const"
+],
+"TOOL_ERASE": [
+"engine/materials.js",
+"const"
+],
+"TOOL_HEAT": [
+"engine/materials.js",
+"const"
+],
+"TOOL_COOL": [
+"engine/materials.js",
+"const"
+],
+"TOOL_LIGHTNING": [
+"engine/materials.js",
+"const"
+],
+"MAT_DEFAULTS": [
+"engine/materials.js",
+"const"
+],
+"MATERIALS": [
+"engine/materials.js",
+"const"
+],
+"defMat": [
+"engine/materials.js",
+"function"
+],
+"M_STATE": [
+"engine/materials.js",
+"const"
+],
+"M_DENS": [
+"engine/materials.js",
+"const"
+],
+"M_VISC": [
+"engine/materials.js",
+"const"
+],
+"M_DISP": [
+"engine/materials.js",
+"const"
+],
+"M_FLAM": [
+"engine/materials.js",
+"const"
+],
+"M_IGN": [
+"engine/materials.js",
+"const"
+],
+"M_BURNINTO": [
+"engine/materials.js",
+"const"
+],
+"M_BURNTIME": [
+"engine/materials.js",
+"const"
+],
+"M_BURNTEMP": [
+"engine/materials.js",
+"const"
+],
+"M_FLAME": [
+"engine/materials.js",
+"const"
+],
+"M_RESIDUE": [
+"engine/materials.js",
+"const"
+],
+"M_MELT": [
+"engine/materials.js",
+"const"
+],
+"M_MELTINTO": [
+"engine/materials.js",
+"const"
+],
+"M_LATENT": [
+"engine/materials.js",
+"const"
+],
+"M_LATK": [
+"engine/materials.js",
+"const"
+],
+"M_BOIL": [
+"engine/materials.js",
+"const"
+],
+"M_BOILINTO": [
+"engine/materials.js",
+"const"
+],
+"M_FREEZE": [
+"engine/materials.js",
+"const"
+],
+"M_FREEZEINTO": [
+"engine/materials.js",
+"const"
+],
+"M_FLATENT": [
+"engine/materials.js",
+"const"
+],
+"M_IHC": [
+"engine/materials.js",
+"const"
+],
+"M_RELAX": [
+"engine/materials.js",
+"const"
+],
+"M_HARD": [
+"engine/materials.js",
+"const"
+],
+"M_SPAWN": [
+"engine/materials.js",
+"const"
+],
+"M_LIFE0": [
+"engine/materials.js",
+"const"
+],
+"M_LIFE1": [
+"engine/materials.js",
+"const"
+],
+"M_DECAY": [
+"engine/materials.js",
+"const"
+],
+"M_DECAYP": [
+"engine/materials.js",
+"const"
+],
+"M_BLAST": [
+"engine/materials.js",
+"const"
+],
+"M_BPOW": [
+"engine/materials.js",
+"const"
+],
+"M_ELEC": [
+"engine/materials.js",
+"const"
+],
+"M_ABSORB": [
+"engine/materials.js",
+"const"
+],
+"M_SAP": [
+"engine/materials.js",
+"const"
+],
+"M_SLIDE": [
+"engine/materials.js",
+"const"
+],
+"M_WIND": [
+"engine/materials.js",
+"const"
+],
+"M_RIGID": [
+"engine/materials.js",
+"const"
+],
+"M_BOND": [
+"engine/materials.js",
+"const"
+],
+"M_FRAC": [
+"engine/materials.js",
+"const"
+],
+"AIRLIKE": [
+"engine/materials.js",
+"const"
+],
+"KTAB": [
+"engine/materials.js",
+"const"
+],
+"SINKP": [
+"engine/materials.js",
+"const"
+],
+"hexToRgb": [
+"engine/materials.js",
+"function"
+],
+"_rs": [
+"engine/rng.js",
+"let"
+],
+"rngState": [
+"engine/rng.js",
+"function"
+],
+"setRngState": [
+"engine/rng.js",
+"function"
+],
+"rnd": [
+"engine/rng.js",
+"function"
+],
+"rndi": [
+"engine/rng.js",
+"function"
+],
+"seedRng": [
+"engine/rng.js",
+"function"
+],
+"TAU": [
+"engine/dmath.js",
+"const"
+],
+"HALF_PI": [
+"engine/dmath.js",
+"const"
+],
+"dsin": [
+"engine/dmath.js",
+"function"
+],
+"dcos": [
+"engine/dmath.js",
+"function"
+],
+"ACID_SOLUBLE": [
+"engine/rules.js",
+"const"
+],
+"RULES": [
+"engine/rules.js",
+"const"
+],
+"RX": [
+"engine/rules.js",
+"const"
+],
+"HASRX": [
+"engine/rules.js",
+"const"
+],
+"DAY_STEPS": [
+"engine/env.js",
+"const"
+],
+"env": [
+"engine/env.js",
+"const"
+],
+"LEDGER_KEYS": [
+"engine/env.js",
+"const"
+],
+"WL": [
+"engine/env.js",
+"const"
+],
+"ledgerReset": [
+"engine/env.js",
+"function"
+],
+"st": [
+"engine/env.js",
+"const"
+],
+"onBoom": [
+"engine/env.js",
+"let"
+],
+"onThunder": [
+"engine/env.js",
+"let"
+],
+"onCrash": [
+"engine/env.js",
+"let"
+],
+"ENV_DEFAULTS": [
+"engine/env.js",
+"const"
+],
+"windPush": [
+"engine/fluids.js",
+"function"
+],
+"foamAt": [
+"engine/fluids.js",
+"function"
+],
+"splash": [
+"engine/fluids.js",
+"function"
+],
+"movePowder": [
+"engine/fluids.js",
+"function"
+],
+"liquidCanSink": [
+"engine/fluids.js",
+"function"
+],
+"moveLiquid": [
+"engine/fluids.js",
+"function"
+],
+"moveGas": [
+"engine/fluids.js",
+"function"
+],
+"openSky": [
+"engine/combustion.js",
+"function"
+],
+"hasOxygen": [
+"engine/combustion.js",
+"function"
+],
+"ignite": [
+"engine/combustion.js",
+"function"
+],
+"emitFlame": [
+"engine/combustion.js",
+"function"
+],
+"emitSmoke": [
+"engine/combustion.js",
+"function"
+],
+"burnStep": [
+"engine/combustion.js",
+"function"
+],
+"plantLifespan": [
+"engine/plants.js",
+"function"
+],
+"geneHeight": [
+"engine/plants.js",
+"function"
+],
+"geneBranch": [
+"engine/plants.js",
+"function"
+],
+"geneLeaf": [
+"engine/plants.js",
+"function"
+],
+"skyOpen": [
+"engine/plants.js",
+"function"
+],
+"biomass": [
+"engine/plants.js",
+"function"
+],
+"stemHeight": [
+"engine/plants.js",
+"function"
+],
+"drawSap": [
+"engine/plants.js",
+"function"
+],
+"bloom": [
+"engine/plants.js",
+"function"
+],
+"growTip": [
+"engine/plants.js",
+"function"
+],
+"sprout": [
+"engine/plants.js",
+"function"
+],
+"canGrow": [
+"engine/cells.js",
+"function"
+],
+"scorchNeighbors": [
+"engine/cells.js",
+"function"
+],
+"hookFire": [
+"engine/cells.js",
+"function"
+],
+"hookEmber": [
+"engine/cells.js",
+"function"
+],
+"hookLava": [
+"engine/cells.js",
+"function"
+],
+"hookWater": [
+"engine/cells.js",
+"function"
+],
+"hookSteam": [
+"engine/cells.js",
+"function"
+],
+"hookFoam": [
+"engine/cells.js",
+"function"
+],
+"hookPlant": [
+"engine/cells.js",
+"function"
+],
+"hookClone": [
+"engine/cells.js",
+"function"
+],
+"hookVoid": [
+"engine/cells.js",
+"function"
+],
+"hookSpark": [
+"engine/cells.js",
+"function"
+],
+"HOOK": [
+"engine/cells.js",
+"const"
+],
+"applyRule": [
+"engine/cells.js",
+"function"
+],
+"updateCell": [
+"engine/cells.js",
+"function"
+],
+"EX_MAX": [
+"engine/explosion.js",
+"const"
+],
+"EX_RAYS": [
+"engine/explosion.js",
+"const"
+],
+"exA": [
+"engine/explosion.js",
+"const"
+],
+"exX": [
+"engine/explosion.js",
+"const"
+],
+"exY": [
+"engine/explosion.js",
+"const"
+],
+"exR": [
+"engine/explosion.js",
+"const"
+],
+"exP": [
+"engine/explosion.js",
+"const"
+],
+"exCur": [
+"engine/explosion.js",
+"const"
+],
+"exN": [
+"engine/explosion.js",
+"const"
+],
+"exPhase": [
+"engine/explosion.js",
+"const"
+],
+"exRays": [
+"engine/explosion.js",
+"const"
+],
+"exActive": [
+"engine/explosion.js",
+"let"
+],
+"exClear": [
+"engine/explosion.js",
+"function"
+],
+"startExplosion": [
+"engine/explosion.js",
+"function"
+],
+"stepExplosion": [
+"engine/explosion.js",
+"function"
+],
+"stepExplosions": [
+"engine/explosion.js",
+"function"
+],
+"FP_MAX": [
+"engine/particles.js",
+"const"
+],
+"fpAlive": [
+"engine/particles.js",
+"const"
+],
+"fpType": [
+"engine/particles.js",
+"const"
+],
+"fpSeed": [
+"engine/particles.js",
+"const"
+],
+"fpAge": [
+"engine/particles.js",
+"const"
+],
+"fpTemp": [
+"engine/particles.js",
+"const"
+],
+"fpX": [
+"engine/particles.js",
+"const"
+],
+"fpY": [
+"engine/particles.js",
+"const"
+],
+"fpVX": [
+"engine/particles.js",
+"const"
+],
+"fpVY": [
+"engine/particles.js",
+"const"
+],
+"fpPX": [
+"engine/particles.js",
+"const"
+],
+"fpPY": [
+"engine/particles.js",
+"const"
+],
+"fpQX": [
+"engine/particles.js",
+"const"
+],
+"fpQY": [
+"engine/particles.js",
+"const"
+],
+"fpHead": [
+"engine/particles.js",
+"let"
+],
+"fpCount": [
+"engine/particles.js",
+"let"
+],
+"fpClear": [
+"engine/particles.js",
+"function"
+],
+"spawnFree": [
+"engine/particles.js",
+"function"
+],
+"fpSolidAt": [
+"engine/particles.js",
+"function"
+],
+"landFree": [
+"engine/particles.js",
+"function"
+],
+"stepFree": [
+"engine/particles.js",
+"function"
+],
+"elecCur": [
+"engine/electric.js",
+"let"
+],
+"elecNext": [
+"engine/electric.js",
+"let"
+],
+"elecCount": [
+"engine/electric.js",
+"let"
+],
+"addCharge": [
+"engine/electric.js",
+"function"
+],
+"stepElectric": [
+"engine/electric.js",
+"function"
+],
+"stepThermal": [
+"engine/temperature.js",
+"function"
+],
+"SLOW_STRIDE": [
+"engine/slow.js",
+"const"
+],
+"slowPhase": [
+"engine/slow.js",
+"let"
+],
+"slowWet": [
+"engine/slow.js",
+"function"
+],
+"slowWater": [
+"engine/slow.js",
+"function"
+],
+"slowPlant": [
+"engine/slow.js",
+"function"
+],
+"flowerNear": [
+"engine/slow.js",
+"function"
+],
+"slowFlower": [
+"engine/slow.js",
+"function"
+],
+"slowSeed": [
+"engine/slow.js",
+"function"
+],
+"slowSoil": [
+"engine/slow.js",
+"function"
+],
+"slowAsh": [
+"engine/slow.js",
+"function"
+],
+"slowDead": [
+"engine/slow.js",
+"function"
+],
+"slowIce": [
+"engine/slow.js",
+"function"
+],
+"SLOW": [
+"engine/slow.js",
+"const"
+],
+"slowTick": [
+"engine/slow.js",
+"function"
+],
+"perf": [
+"engine/step.js",
+"const"
+],
+"simStepsTotal": [
+"engine/step.js",
+"let"
+],
+"sweepCells": [
+"engine/step.js",
+"function"
+],
+"simClock": [
+"engine/step.js",
+"let"
+],
+"setSimClock": [
+"engine/step.js",
+"function"
+],
+"simStep": [
+"engine/step.js",
+"function"
+],
+"paintCell": [
+"engine/paint.js",
+"function"
+],
+"fillRect": [
+"engine/paint.js",
+"function"
+],
+"fillCircle": [
+"engine/paint.js",
+"function"
+],
+"countType": [
+"engine/paint.js",
+"function"
+],
+"totalWater": [
+"engine/paint.js",
+"function"
+],
+"BOND_MIN": [
+"engine/structure.js",
+"const"
+],
+"BODY_MAX": [
+"engine/structure.js",
+"const"
+],
+"stMark": [
+"engine/structure.js",
+"let"
+],
+"stQueue": [
+"engine/structure.js",
+"let"
+],
+"structCooldown": [
+"engine/structure.js",
+"let"
+],
+"structHold": [
+"engine/structure.js",
+"let"
+],
+"bodies": [
+"engine/structure.js",
+"const"
+],
+"bodyCount": [
+"engine/structure.js",
+"let"
+],
+"colX": [
+"engine/structure.js",
+"let"
+],
+"colY": [
+"engine/structure.js",
+"let"
+],
+"fracVX": [
+"engine/structure.js",
+"let"
+],
+"fracVY": [
+"engine/structure.js",
+"let"
+],
+"fracTick": [
+"engine/structure.js",
+"let"
+],
+"structStats": [
+"engine/structure.js",
+"const"
+],
+"sdList": [
+"engine/structure.js",
+"let"
+],
+"sdSeen": [
+"engine/structure.js",
+"let"
+],
+"sdCount": [
+"engine/structure.js",
+"let"
+],
+"structFull": [
+"engine/structure.js",
+"let"
+],
+"structSettle": [
+"engine/structure.js",
+"let"
+],
+"stBuf": [
+"engine/structure.js",
+"let"
+],
+"stGrp": [
+"engine/structure.js",
+"let"
+],
+"allocStruct": [
+"engine/structure.js",
+"function"
+],
+"markStruct": [
+"engine/structure.js",
+"function"
+],
+"markStructAround": [
+"engine/structure.js",
+"function"
+],
+"markStructAll": [
+"engine/structure.js",
+"function"
+],
+"clearStructDirty": [
+"engine/structure.js",
+"function"
+],
+"isAnchor": [
+"engine/structure.js",
+"function"
+],
+"canSupport": [
+"engine/structure.js",
+"function"
+],
+"checkLocal": [
+"engine/structure.js",
+"function"
+],
+"bodiesClear": [
+"engine/structure.js",
+"function"
+],
+"checkStructure": [
+"engine/structure.js",
+"function"
+],
+"makeBodies": [
+"engine/structure.js",
+"function"
+],
+"debrisCell": [
+"engine/structure.js",
+"function"
+],
+"makeBody": [
+"engine/structure.js",
+"function"
+],
+"stampBody": [
+"engine/structure.js",
+"function"
+],
+"unstampBody": [
+"engine/structure.js",
+"function"
+],
+"colStatic": [
+"engine/structure.js",
+"let"
+],
+"colBody": [
+"engine/structure.js",
+"let"
+],
+"collide": [
+"engine/structure.js",
+"function"
+],
+"pinTick": [
+"engine/structure.js",
+"let"
+],
+"clearPins": [
+"engine/structure.js",
+"function"
+],
+"freezeBody": [
+"engine/structure.js",
+"function"
+],
+"fractureBody": [
+"engine/structure.js",
+"function"
+],
+"bodyImpulse": [
+"engine/structure.js",
+"function"
+],
+"stepBody": [
+"engine/structure.js",
+"function"
+],
+"fuseLeft": [
+"engine/structure.js",
+"function"
+],
+"lightBodyCell": [
+"engine/structure.js",
+"function"
+],
+"lightBodyAt": [
+"engine/structure.js",
+"function"
+],
+"stepFuses": [
+"engine/structure.js",
+"function"
+],
+"bodyOrder": [
+"engine/structure.js",
+"const"
+],
+"stepStructure": [
+"engine/structure.js",
+"function"
+],
+"RAIN_THR": [
+"engine/weather.js",
+"const"
+],
+"GW": [
+"engine/weather.js",
+"let"
+],
+"GH": [
+"engine/weather.js",
+"let"
+],
+"windX": [
+"engine/weather.js",
+"let"
+],
+"heatC": [
+"engine/weather.js",
+"let"
+],
+"vapor": [
+"engine/weather.js",
+"let"
+],
+"vaporB": [
+"engine/weather.js",
+"let"
+],
+"cloud": [
+"engine/weather.js",
+"let"
+],
+"cloudB": [
+"engine/weather.js",
+"let"
+],
+"solidC": [
+"engine/weather.js",
+"let"
+],
+"windShade": [
+"engine/weather.js",
+"let"
+],
+"solidRow": [
+"engine/weather.js",
+"let"
+],
+"lastBolt": [
+"engine/weather.js",
+"let"
+],
+"allocWeather": [
+"engine/weather.js",
+"function"
+],
+"clearWeather": [
+"engine/weather.js",
+"function"
+],
+"refreshSolid": [
+"engine/weather.js",
+"function"
+],
+"vaporAdd": [
+"engine/weather.js",
+"function"
+],
+"weatherWater": [
+"engine/weather.js",
+"function"
+],
+"updateSun": [
+"engine/weather.js",
+"function"
+],
+"altitudeOf": [
+"engine/weather.js",
+"function"
+],
+"spawnPrecip": [
+"engine/weather.js",
+"function"
+],
+"stepVapor": [
+"engine/weather.js",
+"function"
+],
+"stepWeather": [
+"engine/weather.js",
+"function"
+],
+"boltPath": [
+"engine/weather.js",
+"function"
+],
+"drawBolt": [
+"engine/weather.js",
+"function"
+],
+"lightning": [
+"engine/weather.js",
+"function"
+],
+"thunderDelay": [
+"engine/weather.js",
+"function"
+],
+"WEATHER_PRESETS": [
+"engine/weather.js",
+"const"
+],
+"setWeather": [
+"engine/weather.js",
+"function"
+],
+"rleEncode": [
+"engine/serialize.js",
+"function"
+],
+"rleDecode": [
+"engine/serialize.js",
+"function"
+],
+"captureScene": [
+"engine/serialize.js",
+"function"
+],
+"restoreScene": [
+"engine/serialize.js",
+"function"
+],
+"bytesToB64": [
+"engine/serialize.js",
+"function"
+],
+"b64ToBytes": [
+"engine/serialize.js",
+"function"
+],
+"SCENE_STREAMS": [
+"engine/serialize.js",
+"const"
+],
+"sceneToJSON": [
+"engine/serialize.js",
+"function"
+],
+"sceneFromJSON": [
+"engine/serialize.js",
+"function"
+],
+"_h1": [
+"engine/serialize.js",
+"let"
+],
+"_h2": [
+"engine/serialize.js",
+"let"
+],
+"hashReset": [
+"engine/serialize.js",
+"function"
+],
+"hashWord": [
+"engine/serialize.js",
+"function"
+],
+"_hf": [
+"engine/serialize.js",
+"const"
+],
+"_hu": [
+"engine/serialize.js",
+"const"
+],
+"hashNum": [
+"engine/serialize.js",
+"function"
+],
+"hashStr": [
+"engine/serialize.js",
+"function"
+],
+"hashBytes": [
+"engine/serialize.js",
+"function"
+],
+"hashValue": [
+"engine/serialize.js",
+"function"
+],
+"hex8": [
+"engine/serialize.js",
+"function"
+],
+"stateArrays": [
+"engine/serialize.js",
+"function"
+],
+"stateScalars": [
+"engine/serialize.js",
+"function"
+],
+"bodyState": [
+"engine/serialize.js",
+"function"
+],
+"worldHash": [
+"engine/serialize.js",
+"function"
+],
+"taToB64": [
+"engine/serialize.js",
+"function"
+],
+"b64ToTA": [
+"engine/serialize.js",
+"function"
+],
+"encodeValue": [
+"engine/serialize.js",
+"function"
+],
+"TA_CTORS": [
+"engine/serialize.js",
+"const"
+],
+"decodeValue": [
+"engine/serialize.js",
+"function"
+],
+"serializeWorld": [
+"engine/serialize.js",
+"function"
+],
+"deserializeWorld": [
+"engine/serialize.js",
+"function"
+],
+"cmdLog": [
+"engine/commands.js",
+"let"
+],
+"cmdRecording": [
+"engine/commands.js",
+"let"
+],
+"worldSeed": [
+"engine/commands.js",
+"let"
+],
+"cmdHook": [
+"engine/commands.js",
+"let"
+],
+"stampCells": [
+"engine/commands.js",
+"function"
+],
+"cmdCellFilter": [
+"engine/commands.js",
+"let"
+],
+"COMMANDS": [
+"engine/commands.js",
+"const"
+],
+"execCmd": [
+"engine/commands.js",
+"function"
+],
+"resetWorld": [
+"engine/commands.js",
+"function"
+],
+"replay": [
+"engine/commands.js",
+"function"
+],
+"recordingOf": [
+"engine/commands.js",
+"function"
+],
+"sceneState": [
+"engine/scenes.js",
+"let"
+],
+"stepScene": [
+"engine/scenes.js",
+"function"
+],
+"setBurning": [
+"engine/scenes.js",
+"function"
+],
+"soakSoil": [
+"engine/scenes.js",
+"function"
+],
+"cloneSource": [
+"engine/scenes.js",
+"function"
+],
+"drawTree": [
+"engine/scenes.js",
+"function"
+],
+"groundLine": [
+"engine/scenes.js",
+"function"
+],
+"buildVolcano": [
+"engine/scenes.js",
+"function"
+],
+"sceneVolcano": [
+"engine/scenes.js",
+"function"
+],
+"sceneVolcanoDayNight": [
+"engine/scenes.js",
+"function"
+],
+"buildForest": [
+"engine/scenes.js",
+"function"
+],
+"sceneForest": [
+"engine/scenes.js",
+"function"
+],
+"sceneStormForest": [
+"engine/scenes.js",
+"function"
+],
+"sceneHourglass": [
+"engine/scenes.js",
+"function"
+],
+"drawBeaker": [
+"engine/scenes.js",
+"function"
+],
+"sceneLab": [
+"engine/scenes.js",
+"function"
+],
+"buildDemolition": [
+"engine/scenes.js",
+"function"
+],
+"sceneDemolition": [
+"engine/scenes.js",
+"function"
+],
+"buildGarden": [
+"engine/scenes.js",
+"function"
+],
+"sceneRain": [
+"engine/scenes.js",
+"function"
+],
+"sceneWaterfall": [
+"engine/scenes.js",
+"function"
+],
+"sceneWinterLake": [
+"engine/scenes.js",
+"function"
+],
+"SCENES": [
+"engine/scenes.js",
+"const"
+],
+"buildScene": [
+"engine/scenes.js",
+"function"
+]
+}
