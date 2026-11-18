@@ -16,6 +16,7 @@ for (let k = from; k <= to; k++) {
     burnPeak: v.peakBurn, burnLate: +v.lateBurn.toFixed(1), chunksPeak: v.peakChunks, chunksLate: +v.lateChunks.toFixed(1),
     heapGrowthMB: +v.heapGrowth.toFixed(1), growing: v.growing, unstable: v.unstable, drift: v.drift,
     mats: Object.fromEntries(SOAK_MATS.map(t => [MATERIALS[t].name, [v.first.cnt[t], v.samples[v.samples.length>>1].cnt[t], v.last.cnt[t]]]).filter(e => e[1][0]+e[1][1]+e[1][2] > 0)),
+    last13: Object.fromEntries(SOAK_MATS.map(t => [MATERIALS[t].name, v.samples.slice(-13).map(x => x.cnt[t])]).filter(e => e[1].some(z => z > 0))),
     series: v.samples.filter((_, i) => i % 6 === 0).map(s => ({ total: s.total, burn: s.burning + s.fire, chunks: s.chunks, plant: s.cnt[PLANT], water: s.cnt[WATER], cloud: +s.cloud.toFixed(1), heap: +s.heap.toFixed(0) })) };
   out.push(row);
   console.log(JSON.stringify({ scene: row.scene, wallSec: row.wallSec, total: row.total, burnLate: row.burnLate, chunksLate: row.chunksLate, heap: row.heapGrowthMB, unstable: row.unstable }));

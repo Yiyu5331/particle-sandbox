@@ -1872,9 +1872,10 @@ function slowWater(x, y, i) {
   }
   const ux = x - gx, uy = y - gy;
   if (ux < 0 || ux >= W || uy < 0 || uy >= H || type[ux + uy * W] !== 0) return;
-  // 水面蒸发：白天快、夜里慢，越热越快，有风更快
-  let k = 1 + (env.ambient - 20) / 25;
-  k = k < 0.2 ? 0.2 : k > 3 ? 3 : k;
+  // 水面蒸发：白天快、夜里慢，水越热越快（接近冰点的水几乎不蒸发），有风更快
+  const Tw = temp[i];
+  let k = Tw <= 0 ? 0.03 : Tw < 10 ? 0.03 + 0.04 * Tw : 1 + (Tw - 20) / 25;
+  k = k > 3 ? 3 : k < 0.03 ? 0.03 : k;
   const wv = windX[(x >> 3) + (y >> 3) * GW];
   if (rnd() < 0.003 * (0.4 + 1.6 * env.sun) * k * (1 + (wv < 0 ? -wv : wv))) { clearCell(i, x, y); vaporAdd(x, y, 1); WL.evapSurface++; }
 }
@@ -3643,7 +3644,7 @@ function buildGarden() {
   }
   const level = Math.min(g[Math.max(0, pondX - pondR)], g[Math.min(W - 1, pondX + pondR)]) + 1;
   for (let x = pondX - pondR; x <= pondX + pondR; x++) for (let y = level; y < g[x]; y++) if (inb(x, y)) put(x + y * W, WATER, x, y);
-  put(pondX + level * W, VOID, pondX, level);            // 水面高度处的溢流口：池塘满了才排水
+  // 池塘不放溢流口：黑洞的吸力半径有 5 格，会把水面以下的水也慢慢吸走。满了的水自然漫到两侧的排水口
   for (let x = 10; x < W - 8; x += 21 + rndi(12)) if (Math.abs(x - pondX) > pondR + 6) drawTree(x, g[x], 12 + rndi(12), 5 + rndi(3));
   for (let x = 2; x < W - 2; x++) {
     if (Math.abs(x - pondX) <= pondR) continue;
@@ -6682,7 +6683,7 @@ function soakSample() {
 
 // 同步跑一个场景；onSample(k, sample) 每 10 秒模拟时间回调一次。返回结论。
 function soakScene(k, steps, onSample) {
-  seedRng(1000 + k);
+  resetWorld(1000 + k);                                  // 每个场景都从干净的世界、第 0 步开始，单独跑和连着跑结果一样
   buildScene(k);
   const samples = [soakSample()];
   for (let s = 1; s <= steps; s++) {
@@ -6707,7 +6708,7 @@ function soakVerdict(k, samples) {
   const peakChunks = samples.reduce((m, s) => Math.max(m, s.chunks), 0);
   const peakBurn = samples.reduce((m, s) => Math.max(m, s.burning + s.fire), 0);
   const heapGrowth = avg(late, s => s.heap) - avg(samples.slice(1, Math.max(2, Math.floor(n * 0.25))), s => s.heap);
-  // v4.1 判定：最后 2 分钟（最后 13 个采样点，相隔 10 秒）里，每种材料首尾数量的变化 < 2%。
+  // v4.1 判定：最后 2 分钟（最后 13 个采样点，相隔 10 秒）里，每种材料数量的趋势变化 < 2%。
   // 数量很少的材料允许 ±5 格的抖动（几十格的东西 2% 还不到一格，单个粒子进出就会超标）；火、烟、蒸汽、余烬、电火花、泡沫这类转瞬即逝的东西只记录不判定。
   const win = samples.slice(Math.max(0, n - 13));
   const unstable = [], drift = {};
@@ -6716,9 +6717,13 @@ function soakVerdict(k, samples) {
     const a = win[0].cnt[t], b = win[win.length - 1].cnt[t];
     const mean = win.reduce((s, x) => s + x.cnt[t], 0) / win.length;
     if (mean === 0) continue;
-    const d = Math.abs(b - a), pct = d / mean;
+    // 用最小二乘拟合这 13 个点的直线，按斜率算 2 分钟里的趋势变化（下落中的雨滴这类逐点噪声不算）
+    const m = win.length, xm = (m - 1) / 2;
+    let sxy = 0, sxx = 0;
+    for (let q = 0; q < m; q++) { sxy += (q - xm) * (win[q].cnt[t] - mean); sxx += (q - xm) * (q - xm); }
+    const d = Math.abs(sxy / sxx * (m - 1)), pct = d / mean;
     drift[MATERIALS[t].name] = +(pct * 100).toFixed(2);
-    if (pct >= 0.02 && d > 5) unstable.push(MATERIALS[t].name + ' ' + a + '→' + b + '（' + (pct * 100).toFixed(1) + '%）');
+    if (pct >= 0.02 && d > 5) unstable.push(MATERIALS[t].name + ' ' + a + '→' + b + '（趋势 ' + (pct * 100).toFixed(1) + '%）');
   }
   return { name: SCENES[k].name, first, last, samples, growing, peakChunks, peakBurn, heapGrowth, unstable, drift,
            lateChunks: avg(late, s => s.chunks), lateBurn: avg(late, s => s.burning + s.fire) };
@@ -7301,7 +7306,7 @@ async function soakInPage() {
       '，末段活跃块 ' + r.lateChunks.toFixed(1) + '，末段燃烧 ' + r.lateBurn.toFixed(0) + (r.unstable.length ? '；不稳定：' + r.unstable.join('，') : '；最后 2 分钟各材料变化都 < 2%') + '</span></div>').join('');
   };
   for (let k = 0; k < SCENES.length; k++) {
-    seedRng(1000 + k); buildScene(k);
+    resetWorld(1000 + k); buildScene(k);
     const samples = [soakSample()];
     for (let s = 1; s <= steps; s++) {
       simStep();

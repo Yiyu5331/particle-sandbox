@@ -1110,9 +1110,10 @@ function slowWater(x, y, i) {
   }
   const ux = x - gx, uy = y - gy;
   if (ux < 0 || ux >= W || uy < 0 || uy >= H || type[ux + uy * W] !== 0) return;
-  // 水面蒸发：白天快、夜里慢，越热越快，有风更快
-  let k = 1 + (env.ambient - 20) / 25;
-  k = k < 0.2 ? 0.2 : k > 3 ? 3 : k;
+  // 水面蒸发：白天快、夜里慢，水越热越快（接近冰点的水几乎不蒸发），有风更快
+  const Tw = temp[i];
+  let k = Tw <= 0 ? 0.03 : Tw < 10 ? 0.03 + 0.04 * Tw : 1 + (Tw - 20) / 25;
+  k = k > 3 ? 3 : k < 0.03 ? 0.03 : k;
   const wv = windX[(x >> 3) + (y >> 3) * GW];
   if (rnd() < 0.003 * (0.4 + 1.6 * env.sun) * k * (1 + (wv < 0 ? -wv : wv))) { clearCell(i, x, y); vaporAdd(x, y, 1); WL.evapSurface++; }
 }

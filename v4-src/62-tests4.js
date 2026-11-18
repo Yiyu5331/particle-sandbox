@@ -585,7 +585,7 @@ function soakSample() {
 
 // 同步跑一个场景；onSample(k, sample) 每 10 秒模拟时间回调一次。返回结论。
 function soakScene(k, steps, onSample) {
-  seedRng(1000 + k);
+  resetWorld(1000 + k);                                  // 每个场景都从干净的世界、第 0 步开始，单独跑和连着跑结果一样
   buildScene(k);
   const samples = [soakSample()];
   for (let s = 1; s <= steps; s++) {
@@ -610,7 +610,7 @@ function soakVerdict(k, samples) {
   const peakChunks = samples.reduce((m, s) => Math.max(m, s.chunks), 0);
   const peakBurn = samples.reduce((m, s) => Math.max(m, s.burning + s.fire), 0);
   const heapGrowth = avg(late, s => s.heap) - avg(samples.slice(1, Math.max(2, Math.floor(n * 0.25))), s => s.heap);
-  // v4.1 判定：最后 2 分钟（最后 13 个采样点，相隔 10 秒）里，每种材料首尾数量的变化 < 2%。
+  // v4.1 判定：最后 2 分钟（最后 13 个采样点，相隔 10 秒）里，每种材料数量的趋势变化 < 2%。
   // 数量很少的材料允许 ±5 格的抖动（几十格的东西 2% 还不到一格，单个粒子进出就会超标）；火、烟、蒸汽、余烬、电火花、泡沫这类转瞬即逝的东西只记录不判定。
   const win = samples.slice(Math.max(0, n - 13));
   const unstable = [], drift = {};
@@ -619,9 +619,13 @@ function soakVerdict(k, samples) {
     const a = win[0].cnt[t], b = win[win.length - 1].cnt[t];
     const mean = win.reduce((s, x) => s + x.cnt[t], 0) / win.length;
     if (mean === 0) continue;
-    const d = Math.abs(b - a), pct = d / mean;
+    // 用最小二乘拟合这 13 个点的直线，按斜率算 2 分钟里的趋势变化（下落中的雨滴这类逐点噪声不算）
+    const m = win.length, xm = (m - 1) / 2;
+    let sxy = 0, sxx = 0;
+    for (let q = 0; q < m; q++) { sxy += (q - xm) * (win[q].cnt[t] - mean); sxx += (q - xm) * (q - xm); }
+    const d = Math.abs(sxy / sxx * (m - 1)), pct = d / mean;
     drift[MATERIALS[t].name] = +(pct * 100).toFixed(2);
-    if (pct >= 0.02 && d > 5) unstable.push(MATERIALS[t].name + ' ' + a + '→' + b + '（' + (pct * 100).toFixed(1) + '%）');
+    if (pct >= 0.02 && d > 5) unstable.push(MATERIALS[t].name + ' ' + a + '→' + b + '（趋势 ' + (pct * 100).toFixed(1) + '%）');
   }
   return { name: SCENES[k].name, first, last, samples, growing, peakChunks, peakBurn, heapGrowth, unstable, drift,
            lateChunks: avg(late, s => s.chunks), lateBurn: avg(late, s => s.burning + s.fire) };

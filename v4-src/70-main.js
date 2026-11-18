@@ -261,7 +261,7 @@ async function soakInPage() {
       '，末段活跃块 ' + r.lateChunks.toFixed(1) + '，末段燃烧 ' + r.lateBurn.toFixed(0) + (r.unstable.length ? '；不稳定：' + r.unstable.join('，') : '；最后 2 分钟各材料变化都 < 2%') + '</span></div>').join('');
   };
   for (let k = 0; k < SCENES.length; k++) {
-    seedRng(1000 + k); buildScene(k);
+    resetWorld(1000 + k); buildScene(k);
     const samples = [soakSample()];
     for (let s = 1; s <= steps; s++) {
       simStep();

@@ -239,7 +239,7 @@ function buildGarden() {
   }
   const level = Math.min(g[Math.max(0, pondX - pondR)], g[Math.min(W - 1, pondX + pondR)]) + 1;
   for (let x = pondX - pondR; x <= pondX + pondR; x++) for (let y = level; y < g[x]; y++) if (inb(x, y)) put(x + y * W, WATER, x, y);
-  put(pondX + level * W, VOID, pondX, level);            // 水面高度处的溢流口：池塘满了才排水
+  // 池塘不放溢流口：黑洞的吸力半径有 5 格，会把水面以下的水也慢慢吸走。满了的水自然漫到两侧的排水口
   for (let x = 10; x < W - 8; x += 21 + rndi(12)) if (Math.abs(x - pondX) > pondR + 6) drawTree(x, g[x], 12 + rndi(12), 5 + rndi(3));
   for (let x = 2; x < W - 2; x++) {
     if (Math.abs(x - pondX) <= pondR) continue;
