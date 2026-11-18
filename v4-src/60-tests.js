@@ -12,6 +12,7 @@ function tArena() {
   setWeather('clear'); env.windPower = 0; env.cloudFade = 0; updateSun();
   clearGrid(); setGravity('down'); seedRng(20240607);
   tick = 0; parity = 0; slowPhase = 0; structCooldown = 0; structSettle = false; pinTick = -100; fracTick = -100;   // 每个用例都从第 0 步开始，结果不受前面用例的影响
+  if (typeof fx !== 'undefined') { fx.flash = 0; fx.shake = 0; fx.ca = 0; for (const s of fx.shocks) s.power = 0; }   // 前面用例的爆炸留下的闪白、震动、冲击波也清掉
   return { cx: W >> 1, cy: H >> 1 };
 }
 
