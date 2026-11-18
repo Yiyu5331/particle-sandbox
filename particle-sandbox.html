@@ -3623,6 +3623,10 @@ function buildDemolition(lit, floorY) {
   for (let st2 = 0; st2 < storeys - 1; st2++) {
     const f = floor - 1 - st2 * sh;
     for (let k = 0; k <= cols; k++) for (const dy of [3, 9, 15]) fillRect(TNT, colX(k), f - dy - 1, colX(k) + colW - 1, f - dy + 1);
+    if (st2 > 0) for (let k = 0; k < cols; k++) {        // 承重墙也要预先削弱：墙脚每隔约 12 格埋一包（楼越宽，包越多）
+      const xa = colX(k) + colW, xb = colX(k + 1) - 1, n = Math.max(1, Math.round((xb - xa) / 12));
+      for (let q = 0; q < n; q++) { const x = Math.round(xa + (q + 0.5) * (xb - xa) / n); fillRect(TNT, x - 1, f - 3, x + 1, f - 1); }
+    }
   }
   fillRect(GUNPOWDER, 6, floor - 1, x0 + bw - 1, floor - 1);
   if (lit) { setBurning(6, floor - 1); setBurning(7, floor - 1); }
