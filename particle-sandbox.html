@@ -1863,6 +1863,11 @@ function slowWater(x, y, i) {
       const isW = (px, py) => px >= 0 && px < W && py >= 0 && py < H && (type[px + py * W] === WATER || type[px + py * W] === SALTWATER);
       const thin = !isW(ux, uy) && !isW(x + lx, y + ly) && !isW(x - lx, y - ly);      // 孤立的一小摊水，不是湖边
       if (thin && rnd() < 0.01) { env.waterOut += 1; WL.seep += 1; clearCell(i, x, y); return; }
+    } else if ((o === PLANT || o === FLOWER || o === DEADPLANT || o === WOOD) && !(flags[j] & F_BODY)) {
+      // 截留：落在枝叶、树干上的水，没吸饱就被吸进去；吸饱了就挂在叶子上较快地蒸发掉，不会在树冠上越积越多
+      const cap = M_ABSORB[o];
+      if (cap - wet[j] >= 25) { wet[j] = Math.min(cap, wet[j] + 100); clearCell(i, x, y); return; }
+      if (rnd() < 0.03) { clearCell(i, x, y); vaporAdd(x, y, 1); WL.evapSurface++; return; }
     }
   }
   const ux = x - gx, uy = y - gy;
@@ -1910,17 +1915,26 @@ function slowPlant(x, y, i) {
   if (age < 160 * env.plantAging && w >= 50 && rnd() < 0.02 && skyOpen(x, y) && stemHeight(x, y) < geneHeight(g) && biomass(x, y, 3) < 24) {
     flags[i] |= F_TIP; life[i] = Math.min(2 + rndi(4), geneHeight(g) - stemHeight(x, y));   // 水分充足的幼株顶端再抽一小段，不超过株高上限
     wake(x, y);
-  } else if (age > 30 * env.plantAging && w >= 30 && rnd() < 0.006 && skyOpen(x, y)) {
+  } else if (age > 30 * env.plantAging && w >= 30 && rnd() < 0.006 && skyOpen(x, y) && !flowerNear(x, y)) {
     const j = ux + uy * W;                             // 成株开花
     put(j, FLOWER, ux, uy); seed[j] = rndi(5) * 51 + 8 + rndi(34);
     wet[i] = w - 20; env.waterSink += 0.2; WL.plantUse += 0.2;
   }
 }
 
+// 附近 7×7 范围里已经有花了：不再开（花的数量很快饱和，不会越开越多）
+function flowerNear(x, y) {
+  for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+    const nx = x + dx, ny = y + dy;
+    if (nx >= 0 && nx < W && ny >= 0 && ny < H && type[nx + ny * W] === FLOWER) return true;
+  }
+  return false;
+}
+
 function slowFlower(x, y, i) {
   const age = life[i] + env.plantAging;
   life[i] = age;
-  if (age > 300 && rnd() < 0.004) {                    // 开五分钟以后才陆续谢（平均再开四分钟），不会同时谢光                       // 谢了：六成落下一粒种子，基因来自母株并略有变异
+  if (age > 600 && rnd() < 0.002) {                    // 开十分钟以后才陆续谢（平均再开八分钟），不会同时谢光                       // 谢了：六成落下一粒种子，基因来自母株并略有变异
     if (rnd() < 0.6) {
       let g = rndi(256);
       for (let k = 0; k < 4; k++) {
@@ -2377,6 +2391,13 @@ function makeBodies(cells) {
 
 function debrisCell(c, vx, vy) {
   const x = c % W, y = (c / W) | 0;
+  if (M_BLAST[type[c]] && (flags[c] & F_BURN)) {         // 引信在烧的炸药：不变成碎渣，当场引爆
+    const t = type[c];
+    type[c] = 0; flags[c] = parity; life[c] = 0; aux[c] = 0; wet[c] = 0; fuel[c] = 0;
+    markStructAround(c);
+    startExplosion(x, y, M_BLAST[t], M_BPOW[t]);
+    return;
+  }
   if (fpCount < FP_MAX - 20) spawnFree(type[c], x + 0.5, y + 0.5, vx + (rnd() - 0.5) * 1.2, vy + (rnd() - 0.5) * 1.2, temp[c], seed[c]);
   type[c] = 0; flags[c] = parity; life[c] = 0; aux[c] = 0; wet[c] = 0; fuel[c] = 0;
   markStructAround(c);                               // 挂在它上面 / 下面的东西要重新评估
@@ -2403,13 +2424,14 @@ function makeBody(cells) {
   }
   const comX = mx / mass, comY = my / mass, lw = maxx - minx + 1, lh = maxy - miny + 1;
   const lt = new Uint8Array(lw * lh), ls = new Uint8Array(lw * lh), lf = new Uint8Array(lw * lh), lT = new Float32Array(lw * lh);
-  const pts = new Float32Array(n * 2);
+  const pts = new Float32Array(n * 2), litL = [];
   let I = 0, r = 0, mat = 0;
   for (let t = 1; t < NT; t++) if (cnt[t] > cnt[mat]) mat = t;
   for (let k = 0; k < n; k++) {
     const c = cells[k], x = c % W, y = (c / W) | 0, li = (x - minx) + (y - miny) * lw;
     const px = x + 0.5 - comX, py = y + 0.5 - comY, d2 = px * px + py * py;
     lt[li] = type[c]; ls[li] = seed[c]; lf[li] = flags[c] & F_SCORCH; lT[li] = temp[c];
+    if (M_BLAST[type[c]] && (flags[c] & F_BURN)) { lf[li] |= F_BURN; litL.push([li, life[c] > 1 ? life[c] : 1]); }   // 引信在烧的炸药：带着引信一起掉
     pts[k * 2] = px; pts[k * 2 + 1] = py;
     I += M_DENS[type[c]] * (d2 + 0.17);
     if (d2 > r) r = d2;
@@ -2421,6 +2443,7 @@ function makeBody(cells) {
               stamp: new Int32Array(n * 2 + 64), stampL: new Int32Array(n * 2 + 64), stampN: 0, rest: 0, age: 0, sub: 0, subDens: 0, stuck: 0, sx: comX, sy: comY,
               blast: 0, fuses: [] };
   for (let t = 1; t < NT; t++) if (M_BLAST[t]) b.blast += cnt[t];
+  b.fuses = litL;
   if (tick - fracTick <= 4) { b.vx = fracVX; b.vy = fracVY; }      // 碎裂出来的块继承原来的速度
   bodies[id] = b; bodyCount++;
   structStats.made++;
@@ -2552,6 +2575,11 @@ function fractureBody(b, impact) {
       const l = li + lj * b.lw, t = b.lt[l];
       if (!t || fpCount >= FP_MAX - 20) continue;
       const px = li + 0.5 - b.cx, py = lj + 0.5 - b.cy;
+      if (M_BLAST[t] && (b.lf[l] & F_BURN)) {         // 引信在烧的炸药被摔碎：当场引爆
+        const ex = Math.floor(b.x + c * px - s * py), ey = Math.floor(b.y + s * px + c * py);
+        if (ex >= 0 && ex < W && ey >= 0 && ey < H) startExplosion(ex, ey, M_BLAST[t], M_BPOW[t]);
+        continue;
+      }
       spawnFree(t, b.x + c * px - s * py, b.y + s * px + c * py, b.vx * 0.5 + (rnd() - 0.5) * 2.6, b.vy * 0.3 + (rnd() - 0.5) * 2.6, b.lT[l], b.ls[l]);
     }
     bodies[b.id] = null; bodyCount--;
@@ -2968,7 +2996,7 @@ function lightning(tx) {
     const x = bx + dx, y = by + dy;
     if (!inb(x, y) || dx * dx + dy * dy > 5) continue;
     const j = x + y * W;
-    temp[j] = Math.min(2500, temp[j] + 1500);
+    temp[j] = Math.min(1100, temp[j] + 1500);          // 封顶 1100°C：点得着树，但熔不了石头
     if (M_ELEC[type[j]]) addCharge(j, 255);
     wake(x, y);
   }
@@ -3493,14 +3521,14 @@ function buildForest(density) {
 }
 
 function sceneForest() {
-  env.time = 0.86; env.timeScale = 1; setWeather('clear'); env.wind = 0.5; env.windPower = 0.4;
+  env.time = 0.92; env.timeScale = 0; setWeather('clear'); env.wind = 0.5; env.windPower = 0.4;     // 夜里的森林大火，时间定格
   const g = buildForest(1);
   for (let x = 12; x < 20; x++) for (let y = g[14] - 6; y < g[14]; y++) setBurning(x, y);   // 左边第一棵树的树根处点火
 }
 
 function sceneStormForest() {
   // 雷暴：闪电自己劈下来点着树，雨再把火浇灭；两侧各有一个排水口，积水不会无限涨
-  env.time = 0.9; env.timeScale = 1; setWeather('storm'); env.wind = 0.6;
+  env.time = 0.36; env.timeScale = 0; setWeather('storm'); env.wind = 0.6;     // 白天的雷暴：烧过的地方见得到光，才长得回来
   const g = buildForest(1.3);
   for (const x of [0, W - 1]) for (let y = g[x] - 4; y < g[x] + 2; y++) if (inb(x, y)) { const i = x + y * W; put(i, VOID, x, y); }
   for (let c = 0; c < GW * GH; c++) if (altitudeOf((c / GW) | 0) > 0.75) cloud[c] = 1.6;      // 开场就有云
@@ -3590,8 +3618,8 @@ function buildDemolition(lit, floorY) {
   }
   const roof = floor - storeys * sh;
   fillRect(CONCRETE, x0 - 1, roof - 2, x0 + bw, roof - 1);
-  // 炸药：最下面两层的每根柱子各三包，上下间隔不超过 8 格，一包炸了会殉爆相邻的 → 自下而上连锁。地面一条火药导爆索
-  for (let st2 = 0; st2 < Math.min(2, storeys - 1); st2++) {
+  // 炸药：除顶层以外每一层的每根柱子各三包，上下间隔不超过 8 格，一包炸了会殉爆相邻的 → 自下而上连锁。地面一条火药导爆索
+  for (let st2 = 0; st2 < storeys - 1; st2++) {
     const f = floor - 1 - st2 * sh;
     for (let k = 0; k <= cols; k++) for (const dy of [3, 9, 15]) fillRect(TNT, colX(k), f - dy - 1, colX(k) + colW - 1, f - dy + 1);
   }
@@ -3629,14 +3657,14 @@ function buildGarden() {
 }
 
 function sceneRain() {
-  env.time = 0.92; env.timeScale = 1; setWeather('rain'); env.wind = -0.4;
+  env.time = 0.95; env.timeScale = 0; setWeather('rain'); env.wind = -0.4;     // 雨夜，时间定格在夜里
   buildGarden();
   for (let c = 0; c < GW * GH; c++) if (altitudeOf((c / GW) | 0) > 0.75) cloud[c] = 1.8;
   env.waterIn += weatherWater();
 }
 
 function sceneWaterfall() {
-  env.time = 0.4; env.timeScale = 1; setWeather('clear'); env.wind = 0.15;
+  env.time = 0.4; env.timeScale = 0; setWeather('clear'); env.wind = 0.15;     // 瀑布：晴天上午，时间定格
   const base = H - 5;
   fillRect(STONE, 0, base, W - 1, H - 1);
   // 左高右低的三级石阶
@@ -5646,6 +5674,7 @@ function tArena() {
   env.dayNight = false; env.temp = AMBIENT; env.wind = 0; env.windPower = 0; env.structure = false; env.plantAging = 1; sceneState = null;
   setWeather('clear'); env.windPower = 0; env.cloudFade = 0; updateSun();
   clearGrid(); setGravity('down'); seedRng(20240607);
+  tick = 0; parity = 0; slowPhase = 0; structCooldown = 0; structSettle = false; pinTick = -100; fracTick = -100;   // 每个用例都从第 0 步开始，结果不受前面用例的影响
   return { cx: W >> 1, cy: H >> 1 };
 }
 

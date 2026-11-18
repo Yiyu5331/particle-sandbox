@@ -211,6 +211,13 @@ function makeBodies(cells) {
 
 function debrisCell(c, vx, vy) {
   const x = c % W, y = (c / W) | 0;
+  if (M_BLAST[type[c]] && (flags[c] & F_BURN)) {         // 引信在烧的炸药：不变成碎渣，当场引爆
+    const t = type[c];
+    type[c] = 0; flags[c] = parity; life[c] = 0; aux[c] = 0; wet[c] = 0; fuel[c] = 0;
+    markStructAround(c);
+    startExplosion(x, y, M_BLAST[t], M_BPOW[t]);
+    return;
+  }
   if (fpCount < FP_MAX - 20) spawnFree(type[c], x + 0.5, y + 0.5, vx + (rnd() - 0.5) * 1.2, vy + (rnd() - 0.5) * 1.2, temp[c], seed[c]);
   type[c] = 0; flags[c] = parity; life[c] = 0; aux[c] = 0; wet[c] = 0; fuel[c] = 0;
   markStructAround(c);                               // 挂在它上面 / 下面的东西要重新评估
@@ -237,13 +244,14 @@ function makeBody(cells) {
   }
   const comX = mx / mass, comY = my / mass, lw = maxx - minx + 1, lh = maxy - miny + 1;
   const lt = new Uint8Array(lw * lh), ls = new Uint8Array(lw * lh), lf = new Uint8Array(lw * lh), lT = new Float32Array(lw * lh);
-  const pts = new Float32Array(n * 2);
+  const pts = new Float32Array(n * 2), litL = [];
   let I = 0, r = 0, mat = 0;
   for (let t = 1; t < NT; t++) if (cnt[t] > cnt[mat]) mat = t;
   for (let k = 0; k < n; k++) {
     const c = cells[k], x = c % W, y = (c / W) | 0, li = (x - minx) + (y - miny) * lw;
     const px = x + 0.5 - comX, py = y + 0.5 - comY, d2 = px * px + py * py;
     lt[li] = type[c]; ls[li] = seed[c]; lf[li] = flags[c] & F_SCORCH; lT[li] = temp[c];
+    if (M_BLAST[type[c]] && (flags[c] & F_BURN)) { lf[li] |= F_BURN; litL.push([li, life[c] > 1 ? life[c] : 1]); }   // 引信在烧的炸药：带着引信一起掉
     pts[k * 2] = px; pts[k * 2 + 1] = py;
     I += M_DENS[type[c]] * (d2 + 0.17);
     if (d2 > r) r = d2;
@@ -255,6 +263,7 @@ function makeBody(cells) {
               stamp: new Int32Array(n * 2 + 64), stampL: new Int32Array(n * 2 + 64), stampN: 0, rest: 0, age: 0, sub: 0, subDens: 0, stuck: 0, sx: comX, sy: comY,
               blast: 0, fuses: [] };
   for (let t = 1; t < NT; t++) if (M_BLAST[t]) b.blast += cnt[t];
+  b.fuses = litL;
   if (tick - fracTick <= 4) { b.vx = fracVX; b.vy = fracVY; }      // 碎裂出来的块继承原来的速度
   bodies[id] = b; bodyCount++;
   structStats.made++;
@@ -386,6 +395,11 @@ function fractureBody(b, impact) {
       const l = li + lj * b.lw, t = b.lt[l];
       if (!t || fpCount >= FP_MAX - 20) continue;
       const px = li + 0.5 - b.cx, py = lj + 0.5 - b.cy;
+      if (M_BLAST[t] && (b.lf[l] & F_BURN)) {         // 引信在烧的炸药被摔碎：当场引爆
+        const ex = Math.floor(b.x + c * px - s * py), ey = Math.floor(b.y + s * px + c * py);
+        if (ex >= 0 && ex < W && ey >= 0 && ey < H) startExplosion(ex, ey, M_BLAST[t], M_BPOW[t]);
+        continue;
+      }
       spawnFree(t, b.x + c * px - s * py, b.y + s * px + c * py, b.vx * 0.5 + (rnd() - 0.5) * 2.6, b.vy * 0.3 + (rnd() - 0.5) * 2.6, b.lT[l], b.ls[l]);
     }
     bodies[b.id] = null; bodyCount--;

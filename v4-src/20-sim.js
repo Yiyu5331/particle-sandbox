@@ -1101,6 +1101,11 @@ function slowWater(x, y, i) {
       const isW = (px, py) => px >= 0 && px < W && py >= 0 && py < H && (type[px + py * W] === WATER || type[px + py * W] === SALTWATER);
       const thin = !isW(ux, uy) && !isW(x + lx, y + ly) && !isW(x - lx, y - ly);      // 孤立的一小摊水，不是湖边
       if (thin && rnd() < 0.01) { env.waterOut += 1; WL.seep += 1; clearCell(i, x, y); return; }
+    } else if ((o === PLANT || o === FLOWER || o === DEADPLANT || o === WOOD) && !(flags[j] & F_BODY)) {
+      // 截留：落在枝叶、树干上的水，没吸饱就被吸进去；吸饱了就挂在叶子上较快地蒸发掉，不会在树冠上越积越多
+      const cap = M_ABSORB[o];
+      if (cap - wet[j] >= 25) { wet[j] = Math.min(cap, wet[j] + 100); clearCell(i, x, y); return; }
+      if (rnd() < 0.03) { clearCell(i, x, y); vaporAdd(x, y, 1); WL.evapSurface++; return; }
     }
   }
   const ux = x - gx, uy = y - gy;
@@ -1148,17 +1153,26 @@ function slowPlant(x, y, i) {
   if (age < 160 * env.plantAging && w >= 50 && rnd() < 0.02 && skyOpen(x, y) && stemHeight(x, y) < geneHeight(g) && biomass(x, y, 3) < 24) {
     flags[i] |= F_TIP; life[i] = Math.min(2 + rndi(4), geneHeight(g) - stemHeight(x, y));   // 水分充足的幼株顶端再抽一小段，不超过株高上限
     wake(x, y);
-  } else if (age > 30 * env.plantAging && w >= 30 && rnd() < 0.006 && skyOpen(x, y)) {
+  } else if (age > 30 * env.plantAging && w >= 30 && rnd() < 0.006 && skyOpen(x, y) && !flowerNear(x, y)) {
     const j = ux + uy * W;                             // 成株开花
     put(j, FLOWER, ux, uy); seed[j] = rndi(5) * 51 + 8 + rndi(34);
     wet[i] = w - 20; env.waterSink += 0.2; WL.plantUse += 0.2;
   }
 }
 
+// 附近 7×7 范围里已经有花了：不再开（花的数量很快饱和，不会越开越多）
+function flowerNear(x, y) {
+  for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+    const nx = x + dx, ny = y + dy;
+    if (nx >= 0 && nx < W && ny >= 0 && ny < H && type[nx + ny * W] === FLOWER) return true;
+  }
+  return false;
+}
+
 function slowFlower(x, y, i) {
   const age = life[i] + env.plantAging;
   life[i] = age;
-  if (age > 300 && rnd() < 0.004) {                    // 开五分钟以后才陆续谢（平均再开四分钟），不会同时谢光                       // 谢了：六成落下一粒种子，基因来自母株并略有变异
+  if (age > 600 && rnd() < 0.002) {                    // 开十分钟以后才陆续谢（平均再开八分钟），不会同时谢光                       // 谢了：六成落下一粒种子，基因来自母株并略有变异
     if (rnd() < 0.6) {
       let g = rndi(256);
       for (let k = 0; k < 4; k++) {

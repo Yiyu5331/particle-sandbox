@@ -117,14 +117,14 @@ function buildForest(density) {
 }
 
 function sceneForest() {
-  env.time = 0.86; env.timeScale = 1; setWeather('clear'); env.wind = 0.5; env.windPower = 0.4;
+  env.time = 0.92; env.timeScale = 0; setWeather('clear'); env.wind = 0.5; env.windPower = 0.4;     // 夜里的森林大火，时间定格
   const g = buildForest(1);
   for (let x = 12; x < 20; x++) for (let y = g[14] - 6; y < g[14]; y++) setBurning(x, y);   // 左边第一棵树的树根处点火
 }
 
 function sceneStormForest() {
   // 雷暴：闪电自己劈下来点着树，雨再把火浇灭；两侧各有一个排水口，积水不会无限涨
-  env.time = 0.9; env.timeScale = 1; setWeather('storm'); env.wind = 0.6;
+  env.time = 0.36; env.timeScale = 0; setWeather('storm'); env.wind = 0.6;     // 白天的雷暴：烧过的地方见得到光，才长得回来
   const g = buildForest(1.3);
   for (const x of [0, W - 1]) for (let y = g[x] - 4; y < g[x] + 2; y++) if (inb(x, y)) { const i = x + y * W; put(i, VOID, x, y); }
   for (let c = 0; c < GW * GH; c++) if (altitudeOf((c / GW) | 0) > 0.75) cloud[c] = 1.6;      // 开场就有云
@@ -214,8 +214,8 @@ function buildDemolition(lit, floorY) {
   }
   const roof = floor - storeys * sh;
   fillRect(CONCRETE, x0 - 1, roof - 2, x0 + bw, roof - 1);
-  // 炸药：最下面两层的每根柱子各三包，上下间隔不超过 8 格，一包炸了会殉爆相邻的 → 自下而上连锁。地面一条火药导爆索
-  for (let st2 = 0; st2 < Math.min(2, storeys - 1); st2++) {
+  // 炸药：除顶层以外每一层的每根柱子各三包，上下间隔不超过 8 格，一包炸了会殉爆相邻的 → 自下而上连锁。地面一条火药导爆索
+  for (let st2 = 0; st2 < storeys - 1; st2++) {
     const f = floor - 1 - st2 * sh;
     for (let k = 0; k <= cols; k++) for (const dy of [3, 9, 15]) fillRect(TNT, colX(k), f - dy - 1, colX(k) + colW - 1, f - dy + 1);
   }
@@ -253,14 +253,14 @@ function buildGarden() {
 }
 
 function sceneRain() {
-  env.time = 0.92; env.timeScale = 1; setWeather('rain'); env.wind = -0.4;
+  env.time = 0.95; env.timeScale = 0; setWeather('rain'); env.wind = -0.4;     // 雨夜，时间定格在夜里
   buildGarden();
   for (let c = 0; c < GW * GH; c++) if (altitudeOf((c / GW) | 0) > 0.75) cloud[c] = 1.8;
   env.waterIn += weatherWater();
 }
 
 function sceneWaterfall() {
-  env.time = 0.4; env.timeScale = 1; setWeather('clear'); env.wind = 0.15;
+  env.time = 0.4; env.timeScale = 0; setWeather('clear'); env.wind = 0.15;     // 瀑布：晴天上午，时间定格
   const base = H - 5;
   fillRect(STONE, 0, base, W - 1, H - 1);
   // 左高右低的三级石阶

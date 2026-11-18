@@ -229,7 +229,7 @@ function lightning(tx) {
     const x = bx + dx, y = by + dy;
     if (!inb(x, y) || dx * dx + dy * dy > 5) continue;
     const j = x + y * W;
-    temp[j] = Math.min(2500, temp[j] + 1500);
+    temp[j] = Math.min(1100, temp[j] + 1500);          // 封顶 1100°C：点得着树，但熔不了石头
     if (M_ELEC[type[j]]) addCharge(j, 255);
     wake(x, y);
   }

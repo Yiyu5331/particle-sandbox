@@ -11,6 +11,7 @@ function tArena() {
   env.dayNight = false; env.temp = AMBIENT; env.wind = 0; env.windPower = 0; env.structure = false; env.plantAging = 1; sceneState = null;
   setWeather('clear'); env.windPower = 0; env.cloudFade = 0; updateSun();
   clearGrid(); setGravity('down'); seedRng(20240607);
+  tick = 0; parity = 0; slowPhase = 0; structCooldown = 0; structSettle = false; pinTick = -100; fracTick = -100;   // 每个用例都从第 0 步开始，结果不受前面用例的影响
   return { cx: W >> 1, cy: H >> 1 };
 }
 
