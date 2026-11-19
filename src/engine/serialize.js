@@ -247,7 +247,8 @@ export function serializeWorld() {
 }
 
 export function deserializeWorld(str) {
-  const o = typeof str === 'string' ? JSON.parse(str) : str;
+  let o = typeof str === 'string' ? JSON.parse(str) : str;
+  if (o && o.app === 'particle-sandbox' && o.kind === 'world') o = o.engine;      // world.serialize() 的存档：区域由 world.deserialize 处理
   if (!o || o.app !== 'particle-sandbox' || o.kind !== 'full') throw new Error('不是完整存档');
   const sc = o.scalars;
   allocGrid(sc.W, sc.H);

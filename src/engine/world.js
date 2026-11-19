@@ -1,19 +1,19 @@
 'use strict';
-import { cmdRecording, commandsLoad, commandsSave, commandsSet, execCmd, recordingOf, replay, resetWorld, worldSeed } from './commands.js';
-import { electricLoad, electricSave } from './electric.js';
-import { ENV_DEFAULTS, env, envLoad, envSave } from './env.js';
+import { COMMANDS, cmdRecording, commandsLoad, commandsSave, commandsSet, execCmd, recordingOf, replay, resetWorld, worldSeed } from './commands.js';
+import { elecCount, electricLoad, electricSave } from './electric.js';
+import { ENV_DEFAULTS, env, envLoad, envSave, envSet, st } from './env.js';
 import { eventsCollect, eventsLoad, eventsSave, scanNewMaterials } from './events.js';
-import { explosionLoad, explosionSave } from './explosion.js';
-import { F_BODY, F_BURN, H, W, allocGrid, aux, charge, flags, fuel, gridLoad, gridSave, life, seed, temp, tick, type, wet } from './grid.js';
+import { exActive, explosionLoad, explosionSave } from './explosion.js';
+import { CHN, CW, F_BODY, F_BURN, H, N, W, allocGrid, aux, charge, chunkCount, chunkTTL, flags, fuel, gravity, gridEpoch, gridLoad, gridSave, gx, gy, life, rippleHead, ripples, seed, temp, tick, type, wet } from './grid.js';
 import { MATERIALS, NT, TOOL_ERASE } from './materials.js';
-import { particlesLoad, particlesSave } from './particles.js';
+import { fpAlive, fpCount, fpPX, fpPY, fpQX, fpQY, fpSeed, fpTemp, fpType, fpX, fpY, particlesLoad, particlesSave } from './particles.js';
 import { rngLoad, rngSave } from './rng.js';
-import { scenesLoad, scenesSave } from './scenes.js';
-import { deserializeWorld, serializeLoad, serializeSave, serializeWorld, worldHash } from './serialize.js';
+import { sceneState, scenesLoad, scenesSave } from './scenes.js';
+import { captureScene, deserializeWorld, sceneToJSON, serializeLoad, serializeSave, serializeWorld, worldHash } from './serialize.js';
 import { slowLoad, slowSave } from './slow.js';
-import { simStep, stepLoad, stepSave } from './step.js';
-import { structureLoad, structureSave } from './structure.js';
-import { GH, GW, cloud, heatC, vapor, weatherLoad, weatherSave, windX } from './weather.js';
+import { perf, setSimClock, simStep, simStepsTotal, stepLoad, stepSave } from './step.js';
+import { bodies, bodyCount, structHold, structStats, structureLoad, structureSave } from './structure.js';
+import { GH, GW, cloud, heatC, lastBolt, vapor, weatherLoad, weatherSave, windX } from './weather.js';
 /* =====================================================================
  * 公开世界 API（docs/API.md）。
  *
@@ -91,13 +91,40 @@ function normArea(a) {
   return r;
 }
 
+
+/* ---------- 宿主用的只读状态 ---------- */
+// 渲染器 / 音频 / 调试面板每帧取一次：全是活的引用（不复制），只能读。世界换尺寸后数组会换，所以每帧重新取。
+function renderStateOfActive() {
+  return {
+    W, H, N, CW, CHN, chunkTTL, chunkCount, tick, gx, gy, gravity, gridEpoch, type, temp, flags, seed, life, fuel, wet, aux, charge, ripples, rippleHead,
+    fpAlive, fpType, fpSeed, fpTemp, fpX, fpY, fpPX, fpPY, fpQX, fpQY, fpCount, GW, GH, cloud, vapor, windX, heatC, lastBolt,
+    env, st, perf, simStepsTotal, exActive, elecCount, bodyCount, bodies, structHold, structStats, sceneState,
+  };
+}
+// 只读视图：每个属性都是 getter，读的时候自动把这个世界换上台。热循环里请先取到局部变量。
+const VIEW_KEYS = ['W', 'H', 'N', 'CW', 'CHN', 'chunkTTL', 'chunkCount', 'tick', 'gx', 'gy', 'gravity', 'gridEpoch', 'type', 'temp', 'flags', 'seed', 'life', 'fuel', 'wet', 'aux', 'charge',
+  'ripples', 'rippleHead', 'fpAlive', 'fpType', 'fpSeed', 'fpTemp', 'fpX', 'fpY', 'fpPX', 'fpPY', 'fpQX', 'fpQY', 'fpCount', 'GW', 'GH', 'cloud', 'vapor', 'windX', 'heatC', 'lastBolt',
+  'env', 'st', 'perf', 'simStepsTotal', 'exActive', 'elecCount', 'bodyCount', 'bodies', 'structHold', 'structStats', 'sceneState'];
+function makeView(w) {
+  const v = {};
+  for (const k of VIEW_KEYS) Object.defineProperty(v, k, { enumerable: true, get() { activate(w); return renderStateOfActive()[k]; } });
+  return Object.freeze(v);
+}
+// 宿主默认世界的“伪世界”：浏览器自测、soak、性能测试在默认世界上跑时，渲染器从这里取状态
+export const HOST_WORLD = Object.freeze({
+  isHost: true,
+  renderState() { activate(null); return renderStateOfActive(); },
+  get view() { return HOST_VIEW; },
+});
+const HOST_VIEW = makeView(null);
+
 /**
  * 新建一个世界。
  * @param {{width:number,height:number,seed?:number}} opts
  */
 export function createWorld(opts) {
   const o = opts || {};
-  const width = o.width | 0, height = o.height | 0, seedValue = o.seed === undefined ? 1 : o.seed >>> 0;
+  const width = o.width | 0, height = o.height | 0, seedValue = o.seed === undefined ? 1 : o.seed;
   if (width < 16 || height < 16) throw new Error('世界至少 16×16');
   const w = new World();
   w._state = cloneState(PRISTINE);
@@ -116,7 +143,43 @@ class World {
     this._state = null; this.disposed = false;
     this._regions = []; this._nextRegion = 1;
     this._handlers = new Map(); this._dispatching = false;
+    this._pb = null; this._view = null;
   }
+  /** 渲染器 / 音频用：全部只读状态的活引用（见 docs/API.md「宿主只读状态」）。每帧取一次。 */
+  renderState() { activate(this); return renderStateOfActive(); }
+  /** 只读视图：属性是 getter（W、H、tick、gravity、type、temp、env、perf……）。 */
+  get view() { if (!this._view) this._view = makeView(this); return this._view; }
+  /** 特效钩子（只给画面 / 声音用，不能改世界）：onBoom(x,y,R,P)、onThunder(x,y)、onCrash(...) */
+  setFxHooks(h) { activate(this); for (const k of ['onBoom', 'onThunder', 'onCrash']) if (h && k in h) envSet(k, h[k] || null); }
+  /** 调试面板计时用的时钟（模拟本身不读时钟）；传 null 关闭 */
+  setProfiler(clock) { activate(this); setSimClock(clock || null); }
+  /** 紧凑场景快照（撤销用）：返回 JSON 字符串，用 exec('restoreScene', {json}) 恢复（会被录制） */
+  captureScene() { activate(this); return sceneToJSON(captureScene()); }
+  /** 逐步回放（界面用）：replayBegin 之后，每个模拟步之前调 replayPump()；返回 true 表示放完了 */
+  replayBegin(rec) {
+    activate(this);
+    if (rec.w !== W || rec.h !== H) allocGrid(rec.w, rec.h);
+    if (rec.regions) this._setRegions(rec.regions.map(r => Object.assign({}, r, { mask: r.mask ? Uint8Array.from(r.mask) : null })));
+    commandsSet('cmdRecording', false);
+    resetWorld(rec.seed);
+    this._pb = { rec, p: 0 };
+  }
+  replayPump() {
+    activate(this);
+    const pb = this._pb;
+    if (!pb) return true;
+    const log = pb.rec.log;
+    while (pb.p < log.length && log[pb.p].step === tick) { const c = log[pb.p++]; COMMANDS[c.command](c.args); }
+    return pb.p >= log.length && tick >= pb.rec.steps;
+  }
+  /** 结束回放；keepLog=true 时接着这段录制继续录 */
+  replayEnd(keepLog) {
+    activate(this);
+    const pb = this._pb; this._pb = null;
+    commandsSet('cmdRecording', true);
+    if (pb && keepLog) commandsSet('cmdLog', pb.rec.log.slice());
+  }
+  get replaying() { return this._pb !== null; }
   get width() { activate(this); return W; }
   get height() { activate(this); return H; }
   /** 当前步数 */
@@ -300,7 +363,7 @@ class World {
     return h;
   }
   /** 重新开始：清空网格、步数归零、换种子（区域保留） */
-  reset(seedValue) { activate(this); resetWorld(seedValue === undefined ? worldSeed : seedValue >>> 0); }
+  reset(seedValue) { activate(this); resetWorld(seedValue === undefined ? worldSeed : seedValue); }
   setRecording(on) { activate(this); commandsSet('cmdRecording', !!on); }
   get recordingOn() { activate(this); return cmdRecording; }
 

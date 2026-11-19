@@ -11,7 +11,7 @@ function withWorlds(fn) {
   const mk = o => { const w = createWorld(o); made.push(w); return w; };
   try { return fn(mk); } finally { for (const w of made) w.dispose(); activateHostWorld(); }
 }
-const brush = (tool, x0, y0, x1, y1, size, extra) => Object.assign({ tool, x0, y0, x1, y1, size, shape: 'circle', replace: false, erase: false }, extra || {});
+const apiBrush = (tool, x0, y0, x1, y1, size, extra) => Object.assign({ tool, x0, y0, x1, y1, size, shape: 'circle', replace: false, erase: false }, extra || {});
 
 defTest('API：createWorld + loadScene 的哈希等于黄金快照（10 个场景第 0 步、爆破第 1000 步、回放 2）', () => withWorlds(mk => {
   const G = loadGoldenNode();
@@ -85,7 +85,7 @@ defTest('API：订阅事件（什么都不做的处理函数）不改变模拟�
   const c = mk({ width: 150, height: 100, seed: 5 });
   c.exec('loadScene', { index: 1 });
   let fired = 0;
-  c.on('ignite', e => { if (fired++ === 0) c.exec('stroke', brush(WATER, e.x, Math.max(0, e.y - 10), e.x, Math.max(0, e.y - 10), 4)); });
+  c.on('ignite', e => { if (fired++ === 0) c.exec('stroke', apiBrush(WATER, e.x, Math.max(0, e.y - 10), e.x, Math.max(0, e.y - 10), 4)); });
   c.step(400);
   const hc = c.hash(), rec = c.recording();
   const d = mk({ width: 150, height: 100, seed: 1 });
@@ -98,10 +98,10 @@ defTest('API：区域规则——保护区笔刷画不进、只许放沙、点�
   w.exec('fillRect', { mat: STONE, x0: 0, y0: 76, x1: 119, y1: 79 });
   const prot = w.addRegion({ tag: 'base', x: 10, y: 50, w: 20, h: 26, rules: { protect: true } });
   const sandOnly = w.addRegion({ tag: 'pit', x: 60, y: 40, w: 30, h: 36, rules: { allow: [SAND] }, track: true });
-  const r1 = w.exec('stroke', brush(WOOD, 5, 60, 40, 60, 3));
+  const r1 = w.exec('stroke', apiBrush(WOOD, 5, 60, 40, 60, 3));
   const inProt = w.queryRegion(prot).byKey.WOOD || 0;
-  const r2 = w.exec('stroke', brush(WATER, 65, 50, 85, 50, 3));
-  const r3 = w.exec('stroke', brush(SAND, 65, 50, 85, 50, 3, { limit: 25 }));
+  const r2 = w.exec('stroke', apiBrush(WATER, 65, 50, 85, 50, 3));
+  const r3 = w.exec('stroke', apiBrush(SAND, 65, 50, 85, 50, 3, { limit: 25 }));
   const rej = w.exec('ignite', { x: 15, y: 60 });
   let changed = 0; w.on('regionChanged', e => { if (e.region === sandOnly) changed++; });
   w.step(30);
@@ -115,7 +115,7 @@ defTest('API：getCell / getField / queryRegion / materialFirstCreated', () => w
   const firsts = [];
   w.on('materialFirstCreated', e => firsts.push(e.material));
   w.exec('fillRect', { mat: SAND, x0: 10, y0: 60, x1: 29, y1: 69 });
-  w.exec('stroke', brush(TNT, 50, 66, 52, 66, 2));
+  w.exec('stroke', apiBrush(TNT, 50, 66, 52, 66, 2));
   const c = w.getCell(15, 65), f = w.getField('type'), q = w.queryRegion({ x: 10, y: 60, w: 20, h: 10 });
   let reactions = 0; w.on('reaction', e => { reactions += e.count; });
   w.exec('fillRect', { mat: WATER, x0: 60, y0: 50, x1: 80, y1: 69 });

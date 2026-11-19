@@ -16,6 +16,8 @@ import { GH, GW, cloud, setWeather, updateSun } from '../../src/engine/weather.j
  * 6. 自测（?test=1）。模拟类用例不依赖 DOM，在 Node 里也能跑。
  * ===================================================================== */
 export const TESTS = [];
+export let tArenaHook = null;
+export function setTArenaHook(fn) { tArenaHook = fn; }
 export function defTest(name, fn) { TESTS.push({ name, fn }); }
 export function runSteps(n) { for (let k = 0; k < n; k++) simStep(); }
 
@@ -26,7 +28,7 @@ export function tArena() {
   clearGrid(); setGravity('down'); seedRng(20240607);
   gridSet('tick', 0); gridSet('parity', 0); slowSet('slowPhase', 0);
   for (const [k, v] of [['structCooldown', 0], ['structSettle', false], ['pinTick', -100], ['fracTick', -100]]) structureSet(k, v);   // 每个用例都从第 0 步开始，结果不受前面用例的影响
-  if (typeof fx !== 'undefined') { fx.flash = 0; fx.shake = 0; fx.ca = 0; for (const s of fx.shocks) s.power = 0; }   // 前面用例的爆炸留下的闪白、震动、冲击波也清掉
+  if (tArenaHook !== null) tArenaHook();                   // 浏览器里：前面用例的爆炸留下的闪白、震动、冲击波也清掉
   return { cx: W >> 1, cy: H >> 1 };
 }
 

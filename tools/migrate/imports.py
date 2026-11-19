@@ -2,7 +2,7 @@
 用法：python3 imports.py 目录或文件...  （默认 src/engine）"""
 import re, os, sys, glob
 sys.path.insert(0, os.path.dirname(__file__))
-from blocks import strip_comments
+from blocks import strip_comments, split_blocks
 
 ROOTS = sys.argv[1:] or ['src/engine']
 ALL = sorted(set(glob.glob('src/**/*.js', recursive=True)) | set(glob.glob('tests/**/*.js', recursive=True)))
@@ -34,6 +34,18 @@ def exported(path):
     return names
 
 exports = {p: exported(p) for p in ALL}
+# 引擎公开入口 index.js 的再导出：export { a, b } from './x.js' / export * from './x.js'
+INDEX = 'src/engine/index.js'
+if INDEX in exports:
+    it = strip_comments(open(INDEX, encoding='utf8').read())
+    pub = set()
+    for m in re.finditer(r"^export\s*\{([^}]*)\}\s*from\s*'([^']*)'", it, re.M):
+        for n in m.group(1).split(','):
+            n = n.strip()
+            if n: pub.add(n.split(' as ')[-1].strip())
+    for m in re.finditer(r"^export\s*\*\s*from\s*'\./([^']*)'", it, re.M):
+        pub |= exports.get('src/engine/' + m.group(1), set())
+    exports[INDEX] = pub
 owner = {}
 for p, names in exports.items():
     for n in names:
@@ -59,9 +71,20 @@ for path in targets:
     own = exports.get(path, set())
     # 本模块里非导出的顶层声明 / 函数参数等都会遮住同名导出；只对「本模块没声明过」的名字生成 import
     local_decl = set(re.findall(r'(?:function|const|let|var|class)\s+([A-Za-z_$][\w$]*)', strip_comments(body)))
+    for _, names in split_blocks(body): local_decl |= set(names)      # 顶层 let a, b, c; 的每个名字
     imports = {}
     for n in sorted(used_idents(body) - own - local_decl):
         homes = [h for h in owner.get(n, []) if h != path]
+        inside = path.startswith('src/engine/') or path.startswith('tests/')
+        if inside: homes = [h for h in homes if h != INDEX]
+        if path.startswith('src/engine/'): homes = [h for h in homes if h.startswith('src/engine/')]   # 引擎只依赖引擎自己
+        elif any(h.startswith('src/engine/') for h in homes):
+            # 引擎外面（模式、UI、渲染、game……）只能从公开入口 index.js 取引擎的东西
+            if INDEX in homes: homes = [INDEX]
+            else:
+                others = [h for h in homes if not h.startswith('src/engine/')]
+                if others: homes = others
+                else: print('非公开', path, n); problems += 1; continue
         if not homes: continue
         if len(homes) > 1:
             # 同名导出出现在多个模块：优先同一个顶层目录

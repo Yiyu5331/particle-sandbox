@@ -5,3 +5,5 @@ v4-src/soak-log.txt
 v4-src/soak-result.json
 *.log
 .DS_Store
+dist/.bundle-check.js
+tests/soak-result.json

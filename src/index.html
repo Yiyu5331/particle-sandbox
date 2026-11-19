@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>粒子沙盘</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --panel: rgba(255, 255, 255, 0.05);
+    --panel-strong: rgba(22, 22, 32, 0.82);
+    --line: rgba(255, 255, 255, 0.09);
+    --line-strong: rgba(255, 255, 255, 0.18);
+    --text: #d8d8e4;
+    --text-strong: #ffffff;
+    --muted: #8a8aa2;
+    --accent: #8fa8ff;
+    --warn: #ffc14a;
+    --danger: #ff5a5a;
+    --ok: #5fd08a;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --pill: 999px;
+    --gap: 8px;
+    --gap-sm: 4px;
+    --blur: blur(16px) saturate(140%);
+    --side: 172px;
+    --ctl-h: 28px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font: 12.5px/1.35 system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(900px 420px at 12% -10%, rgba(90, 60, 200, 0.22), transparent 70%),
+      radial-gradient(800px 380px at 92% -6%, rgba(255, 90, 30, 0.13), transparent 70%),
+      var(--bg);
+    -webkit-user-select: none; user-select: none;
+  }
+  #app { display: grid; grid-template-columns: var(--side) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+  .glass { background: var(--panel); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+
+  button, select, input { font: inherit; color: inherit; }
+  button, select {
+    height: var(--ctl-h); padding: 0 10px; cursor: pointer; white-space: nowrap;
+    border: 1px solid var(--line); border-radius: var(--pill); background: var(--panel);
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s;
+  }
+  select { padding: 0 6px; -webkit-appearance: none; appearance: none; text-align: center; }
+  select option { background: #1a1a24; color: var(--text); }
+  button:hover, select:hover { background: rgba(255, 255, 255, 0.11); }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.on { color: var(--text-strong); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 12px -2px var(--accent); }
+  button.sq { width: var(--ctl-h); padding: 0; }
+  button.danger { border-color: rgba(255, 90, 90, 0.5); color: #ff9c9c; background: rgba(255, 60, 60, 0.1); }
+  button.danger:hover, button.danger.armed { background: rgba(255, 60, 60, 0.3); color: #fff; box-shadow: 0 0 14px -2px var(--danger); }
+  button.warn { border-color: var(--warn); color: #ffd98a; box-shadow: 0 0 12px -3px var(--warn); }
+  input[type=range] { accent-color: var(--accent); cursor: pointer; height: var(--ctl-h); }
+  input[type=text] { height: var(--ctl-h); padding: 0 10px; border: 1px solid var(--line); border-radius: var(--pill); background: rgba(0, 0, 0, 0.3); min-width: 0; }
+
+  /* ---------- 顶部控制条 ---------- */
+  #topbar {
+    grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap);
+    padding: 6px 10px; border-bottom: 1px solid var(--line); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35); z-index: 5;
+  }
+  .grp { display: flex; align-items: center; gap: var(--gap-sm); padding: 3px 5px; border: 1px solid var(--line); border-radius: var(--pill); background: rgba(255, 255, 255, 0.03); }
+  .grp > .lbl { font-size: 11px; color: var(--muted); letter-spacing: 0.06em; padding: 0 3px 0 5px; white-space: nowrap; }
+  .grp .val { min-width: 1.8em; text-align: right; color: var(--text-strong); font-variant-numeric: tabular-nums; padding-right: 4px; }
+  #brand { font-weight: 650; color: var(--text-strong); letter-spacing: 0.04em; padding: 0 6px 0 2px; white-space: nowrap; }
+  #brand small { font-weight: 400; color: var(--muted); margin-left: 4px; }
+  #rngSize { width: 86px; }
+  #rngVol { width: 62px; }
+
+  /* ---------- 左侧元素面板 ---------- */
+  #palette { grid-row: 2; overflow-y: auto; padding: 8px; border-right: 1px solid var(--line); scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  .cat { margin-bottom: 10px; }
+  .cat h3 { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.1em; margin: 0 2px 5px; }
+  .cat .items { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-sm); }
+  .el {
+    --c1: #888; --c2: #aaa; --c3: #666;
+    display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 6px 0 5px; border-radius: var(--radius-sm);
+    position: relative; overflow: hidden; text-align: left;
+  }
+  .el .sw {
+    width: 16px; height: 16px; border-radius: 5px; flex: none;
+    background: linear-gradient(115deg, var(--c1), var(--c2), var(--c3), var(--c1), var(--c2));
+    background-size: 400% 100%; animation: swatch 3.2s linear infinite;
+    box-shadow: 0 0 7px -1px var(--c1), inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  }
+  .el.glow .sw { animation-duration: 1.3s; box-shadow: 0 0 10px 0 var(--c1), inset 0 0 0 1px rgba(255, 255, 255, 0.25); }
+  .el .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .el kbd { font: 10px ui-monospace, monospace; color: var(--muted); }
+  .el.on { color: var(--text-strong); border-color: var(--c1); background: rgba(255, 255, 255, 0.1); box-shadow: 0 0 0 1px var(--c1), 0 0 14px -2px var(--c1); }
+  @keyframes swatch { from { background-position: 0% 0; } to { background-position: 100% 0; } }
+  @media (prefers-reduced-motion: reduce) { .el .sw { animation: none; } }
+
+  /* ---------- 画布区 ---------- */
+  #stage { grid-row: 2; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; }
+  #viewport { position: relative; line-height: 0; }
+  #canvas { display: block; background: var(--bg); cursor: none; touch-action: none; }
+  #cursor { position: absolute; pointer-events: none; border: 1px solid rgba(255, 255, 255, 0.75); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45); display: none; }
+  #cursor.round { border-radius: 50%; }
+  #cursor.spray { border-radius: 50%; border-style: dashed; }
+  #lineprev { position: absolute; pointer-events: none; height: 0; border-top: 1px dashed rgba(255, 255, 255, 0.8); transform-origin: 0 0; display: none; }
+  .float { position: absolute; padding: 8px 10px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel-strong); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+  #debug { left: 10px; top: 10px; font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; display: none; pointer-events: none; color: #c8d4ff; }
+  #testbox { right: 10px; top: 10px; width: min(460px, 70%); max-height: calc(100% - 20px); overflow: auto; display: none; font-size: 11.5px; line-height: 1.55; -webkit-user-select: text; user-select: text; }
+  #testbox h4 { font-size: 13px; margin-bottom: 4px; color: var(--text-strong); }
+  #testbox .ok { color: var(--ok); } #testbox .bad { color: var(--danger); } #testbox .dim { color: var(--muted); }
+  #toast { left: 50%; bottom: 14px; transform: translateX(-50%); opacity: 0; transition: opacity 0.25s; pointer-events: none; white-space: nowrap; }
+  #toast.show { opacity: 1; }
+  #recdot { right: 10px; bottom: 10px; display: none; color: #ff9c9c; font-variant-numeric: tabular-nums; }
+  #recdot::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); margin-right: 6px; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0.2; } }
+
+  /* ---------- 底部状态栏 ---------- */
+  #status {
+    grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding: 4px 12px; font-size: 12px;
+    font-variant-numeric: tabular-nums; color: var(--muted); border-top: 1px solid var(--line); white-space: nowrap; overflow: hidden;
+  }
+  #status b { color: var(--text-strong); font-weight: 600; }
+  #stInspect { flex: 1; text-align: center; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  .chip { padding: 1px 8px; border-radius: var(--pill); border: 1px solid var(--line); }
+  .chip.warn { border-color: var(--warn); color: #ffd98a; }
+  .chip.hide { display: none; }
+
+  /* ---------- 弹层与提示 ---------- */
+  .pop { position: fixed; z-index: 20; display: none; min-width: 220px; max-width: 320px; padding: 10px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--panel-strong); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); }
+  .pop.show { display: block; }
+  .pop h4 { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.1em; margin: 2px 2px 8px; }
+  .pop .col { display: flex; flex-direction: column; gap: var(--gap-sm); }
+  .pop .row { display: flex; gap: var(--gap-sm); align-items: center; }
+  .pop .row > * { flex: 1; }
+  .pop button { border-radius: var(--radius-sm); text-align: left; }
+  .pop button small { color: var(--muted); margin-left: 6px; }
+  .pop label { display: flex; align-items: center; gap: 8px; height: 26px; cursor: pointer; }
+  .pop label input { accent-color: var(--accent); }
+  .pop .note { color: var(--muted); font-size: 11px; margin-top: 8px; line-height: 1.5; white-space: normal; }
+  .slot { display: flex; gap: var(--gap-sm); align-items: center; }
+  .slot .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .slot button { flex: none; text-align: center; }
+  #tip { position: fixed; z-index: 30; display: none; width: 250px; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--panel-strong); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); pointer-events: none; line-height: 1.55; }
+  #tip h4 { font-size: 13px; color: var(--text-strong); margin-bottom: 2px; }
+  #tip .sub { color: var(--muted); margin-bottom: 6px; }
+  #tip dl { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; }
+  #tip dt { color: var(--muted); } #tip dd { color: var(--text); font-variant-numeric: tabular-nums; }
+  #tip ul { list-style: none; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+  #tip li { color: var(--text); } #tip li::before { content: '· '; color: var(--muted); }
+
+  /* 主菜单 / 模式（C0） */
+  #menu { position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center; background: rgba(5, 5, 10, 0.55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  #menu.show { display: flex; }
+  #menu .box { width: min(440px, calc(100% - 32px)); padding: 16px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--panel-strong); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); }
+  #menu h2 { font-size: 16px; color: var(--text-strong); margin-bottom: 10px; }
+  #menuList { display: flex; flex-direction: column; gap: var(--gap); }
+  #menuList button { height: auto; padding: 8px 12px; border-radius: var(--radius-sm); text-align: left; white-space: normal; display: flex; flex-direction: column; gap: 2px; }
+  #menuList small { color: var(--muted); }
+  #menu .foot { display: flex; justify-content: flex-end; margin-top: 12px; }
+  #modeOverlay { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 16px; pointer-events: auto; }
+  #modeOverlay h2 { font-size: 22px; color: var(--text-strong); }
+  #modeOverlay .tag { padding: 2px 10px; border-radius: var(--pill); border: 1px solid var(--warn); color: #ffd98a; }
+  #modeOverlay p { max-width: 420px; color: var(--muted); }
+  body:not([data-mode="sandbox"]) #stModeHud { flex: 1; text-align: center; }
+  #overlay { position: absolute; left: 0; top: 0; pointer-events: none; }
+  body:not([data-mode="sandbox"]) .sbx { display: none !important; }
+  body:not([data-mode="sandbox"]) #palette > * { visibility: hidden; }
+
+  @media (max-width: 760px) {
+    :root { --side: 104px; --ctl-h: 26px; }
+    .cat .items { grid-template-columns: 1fr; }
+    #brand small, .grp > .lbl { display: none; }
+    #topbar { gap: 5px; padding: 5px; }
+    #rngSize { width: 60px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="topbar" class="glass">
+    <span id="brand">粒子沙盘<small>v4.1 · C0</small></span>
+    <button id="btnMenu" title="主菜单：切换模式（M）">菜单</button>
+    <div class="grp sbx">
+      <button id="btnPause" title="暂停 / 继续（空格）">❚❚ 暂停</button>
+      <button id="btnStep" class="sq" title="单步（.）" aria-label="单步">▸|</button>
+      <select id="selSpeed" title="模拟速度" aria-label="模拟速度">
+        <option value="0.25">0.25x</option><option value="0.5">0.5x</option><option value="1" selected>1x</option>
+        <option value="2">2x</option><option value="4">4x</option>
+      </select>
+    </div>
+    <div class="grp sbx" id="gravGrp">
+      <span class="lbl">重力</span>
+      <button class="sq" data-g="up" title="重力向上" aria-label="重力向上">↑</button>
+      <button class="sq on" data-g="down" title="重力向下" aria-label="重力向下">↓</button>
+      <button class="sq" data-g="left" title="重力向左" aria-label="重力向左">←</button>
+      <button class="sq" data-g="right" title="重力向右" aria-label="重力向右">→</button>
+    </div>
+    <div class="grp sbx">
+      <span class="lbl">笔刷</span>
+      <button class="sq on" data-shape="circle" title="圆形" aria-label="圆形笔刷">●</button>
+      <button class="sq" data-shape="square" title="方形" aria-label="方形笔刷">■</button>
+      <button class="sq" data-shape="spray" title="喷雾（随机稀疏）" aria-label="喷雾笔刷">∴</button>
+      <button id="btnMode" title="切换：只填空位 / 覆盖替换">填空</button>
+      <input type="range" id="rngSize" min="1" max="30" value="4" aria-label="笔刷大小" title="笔刷大小（[ 和 ]）">
+      <span class="val" id="lblSize">4</span>
+    </div>
+    <div class="grp sbx">
+      <button id="btnView" title="切换视图（V）">视图：正常</button>
+      <button id="btnUndo" title="撤销（Ctrl/Cmd+Z）">撤销</button>
+      <button id="btnClear" class="danger" title="清空（C，需再按一次确认）">清空</button>
+    </div>
+    <div class="grp sbx">
+      <button id="btnScenes" data-pop="popScenes">场景 ▾</button>
+      <button id="btnSave" data-pop="popSave">存档 ▾</button>
+      <button id="btnShot" title="保存 PNG 截图">截图</button>
+      <select id="selRec" title="录制时长" aria-label="录制时长">
+        <option value="5">5秒</option><option value="10" selected>10秒</option><option value="15">15秒</option><option value="30">30秒</option>
+      </select>
+      <button id="btnRec" title="录制 WebM 视频">录制</button>
+    </div>
+    <div class="grp">
+      <button id="btnMute" title="静音">声音</button>
+      <input type="range" id="rngVol" min="0" max="100" value="60" aria-label="总音量" title="总音量">
+      <button id="btnEnv" class="sbx" data-pop="popEnv">环境 ▾</button>
+      <button id="btnSettings" data-pop="popSettings">设置 ▾</button>
+    </div>
+  </header>
+
+  <aside id="palette" class="glass" aria-label="元素面板"></aside>
+
+  <main id="stage">
+    <div id="viewport">
+      <div id="cursor"></div>
+      <div id="lineprev"></div>
+    </div>
+    <div id="debug" class="float"></div>
+    <div id="testbox" class="float"></div>
+    <div id="toast" class="float"></div>
+    <div id="recdot" class="float">录制中</div>
+    <div id="modeOverlay"><span class="tag">开发中</span><h2></h2><p></p><button id="btnModeExit">返回主菜单</button></div>
+  </main>
+
+  <footer id="status" class="glass">
+    <span class="sbx">FPS <b id="stFps">--</b></span>
+    <span class="sbx">模拟 <b id="stSim">--</b> 步/秒</span>
+    <span id="stThrottle" class="chip warn hide" title="页面在后台、被遮挡或浏览器省电时，requestAnimationFrame 会被降频。这不是性能问题。">rAF 被降频</span>
+    <span id="stInspect" class="sbx">—</span>
+    <span id="stMode" class="chip"></span>
+    <span class="sbx">粒子 <b id="stCount">0</b></span>
+    <span id="stModeHud"></span>
+  </footer>
+</div>
+
+<div id="popScenes" class="pop"><h4>预设场景</h4><div class="col" id="sceneList"></div></div>
+<div id="popSave" class="pop">
+  <h4>存档槽位（浏览器本地）</h4>
+  <div class="row"><input type="text" id="slotName" placeholder="存档名称" maxlength="24"><button id="btnSlotSave" style="flex:none;text-align:center">保存</button></div>
+  <div class="col" id="slotList" style="margin-top:8px"></div>
+  <h4 style="margin-top:12px">文件</h4>
+  <div class="row"><button id="btnExport" style="text-align:center">导出 JSON</button><button id="btnImport" style="text-align:center">导入 JSON</button></div>
+  <h4 style="margin-top:12px">录制</h4>
+  <div class="row"><button id="btnRecExport" style="text-align:center">导出录制</button><button id="btnPlayStop" style="text-align:center;display:none">停止回放</button></div>
+  <div class="note">「导入 JSON」也能读录制文件：读进来就从头回放。</div>
+  <input type="file" id="fileImport" accept=".json,application/json" hidden>
+</div>
+<div id="popSettings" class="pop">
+  <h4>画质</h4>
+  <div class="row">
+    <select id="selQuality" aria-label="画质档位"><option value="low">低</option><option value="mid">中</option><option value="high" selected>高</option><option value="ultra">极致</option></select>
+    <select id="selScale" aria-label="网格精度"><option value="2">每格 2 像素</option><option value="3" selected>每格 3 像素</option><option value="4">每格 4 像素</option></select>
+  </div>
+  <h4 style="margin-top:10px">画面效果</h4><div class="col" id="settingList"></div><div class="note" id="renderInfo"></div>
+</div>
+<div id="popEnv" class="pop">
+  <h4>天气</h4>
+  <div class="row" id="envWeather"></div>
+  <h4 style="margin-top:10px">风</h4>
+  <label>风向 <input type="range" id="envWind" min="-100" max="100" value="20" style="flex:1" aria-label="风向"></label>
+  <label>风力 <input type="range" id="envPower" min="0" max="100" value="30" style="flex:1" aria-label="风力"></label>
+  <h4 style="margin-top:10px">空气</h4>
+  <label>湿度 <input type="range" id="envHumid" min="0" max="100" value="0" style="flex:1" aria-label="外来水汽"></label>
+  <label>气温 <input type="range" id="envTemp" min="-20" max="45" value="20" style="flex:1" aria-label="气温"><span id="envTempVal" style="min-width:3.2em;text-align:right">20°C</span></label>
+  <h4 style="margin-top:10px">时间</h4>
+  <label>时刻 <input type="range" id="envTime" min="0" max="100" value="80" style="flex:1" aria-label="一天中的时刻"></label>
+  <div class="row"><select id="envSpeed" aria-label="时间流速"><option value="0">时间暂停</option><option value="1" selected>1x（一天 10 分钟）</option><option value="10">10x</option><option value="60">60x</option></select></div>
+  <label><input type="checkbox" id="envDayNight" checked>昼夜循环</label>
+  <label><input type="checkbox" id="envStruct" checked>结构力学（悬空的固体会塌）</label>
+  <div class="row" style="margin-top:6px"><button id="envBolt" style="text-align:center">召唤闪电</button></div>
+</div>
+<div id="tip"></div>
+<div id="menu" role="dialog" aria-label="主菜单"><div class="box"><h2>选择模式</h2><div id="menuList"></div><div class="foot"><button id="btnMenuBack">继续当前模式（Esc）</button></div></div></div>
+
+<script>
+/*BUNDLE*/
+</script>
+</body>
+</html>
