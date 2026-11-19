@@ -69,4 +69,4 @@ for (const s of ACID_SOLUBLE) RULES.push({ a: ACID, b: s, p: 0.02, a2: ACID, b2:
 
 export const RX = new Array(NT * NT).fill(null);
 export const HASRX = new Uint8Array(NT);
-for (const r of RULES) { RX[r.a * NT + r.b] = r; HASRX[r.a] = 1; }
+for (let k = 0; k < RULES.length; k++) { const r = RULES[k]; r.idx = k; RX[r.a * NT + r.b] = r; HASRX[r.a] = 1; }

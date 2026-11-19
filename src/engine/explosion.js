@@ -1,6 +1,7 @@
 'use strict';
 import { dcos, dsin } from './dmath.js';
 import { onBoom, st } from './env.js';
+import { noteBoom } from './events.js';
 import { F_BODY, F_BURN, F_SCORCH, H, W, aux, clearCell, flags, gx, gy, life, put, seed, temp, type, wake } from './grid.js';
 import { EMBER, FIRE, M_BLAST, M_BOND, M_HARD, M_RIGID, M_STATE, SMOKE, S_GAS } from './materials.js';
 import { spawnFree } from './particles.js';
@@ -24,6 +25,7 @@ export let exActive = 0;
 export function exClear() { exA.fill(0); exX.fill(0); exY.fill(0); exR.fill(0); exP.fill(0); exCur.fill(0); exN.fill(0); exPhase.fill(0); exRays.fill(0); exActive = 0; }
 
 export function startExplosion(x, y, R, P) {
+  noteBoom(x, y, R, P);
   let k = -1;
   for (let q = 0; q < EX_MAX; q++) if (!exA[q]) { k = q; break; }
   if (k < 0) {                               // 池满：把进度最靠前的那个立刻算完，腾出位置

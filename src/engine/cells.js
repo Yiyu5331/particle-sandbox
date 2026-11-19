@@ -2,6 +2,7 @@
 import { burnStep, emitSmoke, hasOxygen, ignite, openSky } from './combustion.js';
 import { addCharge } from './electric.js';
 import { WL, env, st } from './env.js';
+import { noteRule } from './events.js';
 import { moveGas, moveLiquid, movePowder } from './fluids.js';
 import { DX4, DX8, DY4, DY8, F_BODY, F_BURN, F_PAR, F_TIP, H, W, clearCell, flags, gx, gy, inb, life, morph, parity, put, seed, swapCells, temp, type, wake, wet } from './grid.js';
 import { ANCHOR, CLONE, EMBER, FIRE, FOAM, ICE, LAVA, M_ABSORB, M_BLAST, M_BOIL, M_BOILINTO, M_DECAY, M_DECAYP, M_ELEC, M_FLAM, M_FLATENT, M_FREEZE, M_FREEZEINTO, M_IGN, M_LATENT, M_LATK, M_LIFE0, M_MELT, M_MELTINTO, M_RIGID, M_SAP, M_STATE, NT, PLANT, SALTWATER, SNOW, SPARK, STEAM, S_GAS, S_LIQUID, S_POWDER, VOID, WATER } from './materials.js';
@@ -179,6 +180,7 @@ HOOK[WATER] = hookWater; HOOK[SALTWATER] = hookWater; HOOK[STEAM] = hookSteam; H
  * 2.5 接触规则执行（规则本身在 1.3 的 RULES 表里）
  * ------------------------------------------------------------------- */
 export function applyRule(r, i, j, x, y, nx, ny) {
+  noteRule(r.idx, x, y);
   if (r.tag === 'hiss') st.hiss++;
   if (r.b2 !== r.b) {
     morph(j, r.b2, nx, ny);

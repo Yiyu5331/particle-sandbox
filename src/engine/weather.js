@@ -2,6 +2,7 @@
 import { dsin } from './dmath.js';
 import { addCharge } from './electric.js';
 import { DAY_STEPS, WL, env, onThunder, st } from './env.js';
+import { noteBolt } from './events.js';
 import { F_TIP, H, W, flags, gy, inb, life, put, temp, tick, type, wake } from './grid.js';
 import { AMBIENT, M_ELEC, M_STATE, SALTWATER, SNOW, SPARK, S_GAS, WATER } from './materials.js';
 import { rnd, rndi } from './rng.js';
@@ -242,6 +243,7 @@ export function lightning(tx) {
   }
   env.strikes++;
   lastBolt = { x: bx, y: by, sx, sy, tick };
+  noteBolt(bx, by, sx, sy);
   if (onThunder) onThunder(bx, by);
 }
 

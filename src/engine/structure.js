@@ -1,6 +1,7 @@
 'use strict';
 import { dcos, dsin } from './dmath.js';
 import { env, onCrash, st } from './env.js';
+import { noteCollapse } from './events.js';
 import { startExplosion } from './explosion.js';
 import { DX4, DY4, F_BODY, F_BURN, F_PIN, F_SCORCH, H, N, W, addRipple, aux, charge, flags, fuel, gx, gy, initFuel, life, parity, put, seed, temp, tick, type, wake, wet } from './grid.js';
 import { EMBER, FIRE, GLASS, LAVA, METAL, M_BLAST, M_BOND, M_BPOW, M_BURNTIME, M_DENS, M_FRAC, M_HARD, M_RIGID, M_STATE, NT, ROPE, SMOKE, STEEL, S_LIQUID, S_POWDER, S_SOLID } from './materials.js';
@@ -256,6 +257,7 @@ export function makeBody(cells) {
   const pts = new Float32Array(n * 2), litL = [];
   let I = 0, r = 0, mat = 0;
   for (let t = 1; t < NT; t++) if (cnt[t] > cnt[mat]) mat = t;
+  noteCollapse(n, comX, comY, mat);
   for (let k = 0; k < n; k++) {
     const c = cells[k], x = c % W, y = (c / W) | 0, li = (x - minx) + (y - miny) * lw;
     const px = x + 0.5 - comX, py = y + 0.5 - comY, d2 = px * px + py * py;

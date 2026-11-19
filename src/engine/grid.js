@@ -1,6 +1,7 @@
 'use strict';
 import { electricSet } from './electric.js';
 import { env, ledgerReset } from './env.js';
+import { noteMat } from './events.js';
 import { exClear } from './explosion.js';
 import { AIRLIKE, EMPTY, M_ABSORB, M_BLAST, M_BURNTIME, M_LIFE0, M_LIFE1, M_RIGID, M_SPAWN, PLANT, SOIL, SPARK } from './materials.js';
 import { fpClear } from './particles.js';
@@ -79,6 +80,7 @@ export function initFuel(t) {
 // 新生成一个粒子（笔刷、克隆、喷发等）
 export function put(i, t, x, y) {
   const old = type[i];
+  noteMat(t);
   type[i] = t; seed[i] = rndi(256); temp[i] = M_SPAWN[t];
   life[i] = t === PLANT ? rndi(150) : initLife(t);      // 植物的 life 是年龄：起始年龄随机，免得整片同时老死
   flags[i] = parity | (t === SPARK ? F_TIP : 0); charge[i] = 0;
@@ -101,6 +103,7 @@ export function clearCell(i, x, y) {
 export function morph(i, t, x, y) {
   if (t === EMPTY) { clearCell(i, x, y); return; }
   const o = type[i];
+  noteMat(t);
   type[i] = t; life[i] = initLife(t); flags[i] = (flags[i] & F_SCORCH) | parity;
   fuel[i] = initFuel(t);
   aux[i] = M_RIGID[t] ? (M_RIGID[o] ? aux[i] >> 1 : 255) : t === SOIL ? 255 : (AIRLIKE[t] && AIRLIKE[o]) ? aux[i] : 0;

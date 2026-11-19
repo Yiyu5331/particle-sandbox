@@ -1,5 +1,6 @@
 'use strict';
 import { st } from './env.js';
+import { noteExtinguish, noteIgnite } from './events.js';
 import { startExplosion } from './explosion.js';
 import { DX4, DY4, F_BURN, F_SCORCH, F_TIP, H, STALE_MAX, W, aux, clearCell, flags, fuel, gx, gy, inb, initFuel, life, lx, ly, morph, put, seed, temp, type, wake } from './grid.js';
 import { AIRLIKE, EMBER, FIRE, M_BLAST, M_BPOW, M_BURNINTO, M_BURNTEMP, M_BURNTIME, M_FLAM, M_FLAME, M_IGN, M_RESIDUE, M_RIGID, M_STATE, OIL, SALTWATER, SMOKE, STEAM, S_GAS, WATER } from './materials.js';
@@ -33,6 +34,7 @@ export function hasOxygen(x, y) {
 }
 
 export function ignite(i, t, x, y) {
+  noteIgnite(x, y);
   flags[i] = (flags[i] | F_BURN) & ~F_TIP;
   if (M_BLAST[t]) life[i] = M_BURNTIME[t];           // 引信
   else if (fuel[i] === 0) fuel[i] = initFuel(t);     // 只有从没装过燃料的才装；熄灭后剩多少就是多少
@@ -98,14 +100,14 @@ export function burnStep(x, y, i, t, T) {
       if (rnd() < 0.5) { morph(wetJ, STEAM, wx, wy); temp[wetJ] = 160; }
       else temp[wetJ] += 25;
       if (T < M_IGN[t]) {
-        flags[i] = (flags[i] & ~F_BURN) | F_SCORCH;
+        flags[i] = (flags[i] & ~F_BURN) | F_SCORCH; noteExtinguish(x, y);
         emitSmoke(x, y, 0);
         return false;
       }
     }
   }
   if (airJ < 0 || airStale >= STALE_MAX) {          // 缺氧：不放热、不耗燃料，很快闷熄
-    if (rnd() < 0.12) { flags[i] = (flags[i] & ~F_BURN) | F_SCORCH; if (rnd() < 0.5) emitSmoke(x, y, 2); }
+    if (rnd() < 0.12) { flags[i] = (flags[i] & ~F_BURN) | F_SCORCH; noteExtinguish(x, y); if (rnd() < 0.5) emitSmoke(x, y, 2); }
     return false;
   }
   aux[airJ] = airStale + 3 > 255 ? 255 : airStale + 3;                    // 消耗氧气
