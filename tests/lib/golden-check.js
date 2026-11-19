@@ -35,7 +35,7 @@ export function goldenCompare(maxStep, data) {
 }
 
 // Node 下从 tests/golden.json 和 tests/replays/ 读；浏览器里由构建脚本把同样的数据嵌进页面（GOLDEN_DATA）
-function loadGoldenNode() {
+export function loadGoldenNode() {
   if (typeof GOLDEN_DATA !== 'undefined') return GOLDEN_DATA;
   const fs = globalThis.process.getBuiltinModule('node:fs'), path = globalThis.process.getBuiltinModule('node:path');
   const dir = path.join(path.dirname(globalThis.__SRC_DIR), '..', 'tests');

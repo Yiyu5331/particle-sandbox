@@ -1,6 +1,7 @@
 'use strict';
 import { ignite } from './combustion.js';
 import { ENV_DEFAULTS, env } from './env.js';
+import { eventsReset } from './events.js';
 import { startExplosion } from './explosion.js';
 import { H, N, W, allocGrid, clearGrid, gridSet, parity, setGravity, tick } from './grid.js';
 import { TOOL_ERASE } from './materials.js';
@@ -24,6 +25,7 @@ export function stampCells(cx, cy, a, res) {
   const r = a.size - 1, r2 = r * r + r * 0.8;
   const round = a.shape !== 'square', spray = a.shape === 'spray' && r > 0;
   for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    if (a.limit !== undefined && res.placed >= a.limit) return;   // 预算：最多放这么多格（不传 limit 时行为不变）
     if (round && dx * dx + dy * dy > r2) continue;
     if (spray && rnd() > 0.1) continue;
     const x = cx + dx, y = cy + dy;
@@ -95,6 +97,7 @@ export function resetWorld(seedValue) {
   clearGrid();
   updateSun();
   gridSet('tick', 0); gridSet('parity', 0); slowSet('slowPhase', 0);
+  eventsReset();
   resetStructState();                                      // 上一局留下的结构力学状态全部清掉
   seedRng(seedValue);
   worldSeed = seedValue;

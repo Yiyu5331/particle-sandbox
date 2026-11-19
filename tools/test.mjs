@@ -32,6 +32,7 @@ const { TESTS, runSimTestsSync } = await import('../tests/lib/harness.js');
 await import('../tests/suites/v3.js');
 await import('../tests/suites/v4.js');
 await import('../tests/suites/v41.js');
+await import('../tests/suites/api.js');
 const { allocGrid } = await import('../src/engine/grid.js');
 allocGrid(GW, GH);
 if (args.only) for (let i = TESTS.length - 1; i >= 0; i--) if (!TESTS[i].name.includes(args.only)) TESTS.splice(i, 1);

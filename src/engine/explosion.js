@@ -1,7 +1,7 @@
 'use strict';
 import { dcos, dsin } from './dmath.js';
 import { onBoom, st } from './env.js';
-import { noteBoom } from './events.js';
+import { noteBoom, noteIgnite } from './events.js';
 import { F_BODY, F_BURN, F_SCORCH, H, W, aux, clearCell, flags, gx, gy, life, put, seed, temp, type, wake } from './grid.js';
 import { EMBER, FIRE, M_BLAST, M_BOND, M_HARD, M_RIGID, M_STATE, SMOKE, S_GAS } from './materials.js';
 import { spawnFree } from './particles.js';
@@ -49,7 +49,7 @@ export function startExplosion(x, y, R, P) {
     if (d > RR) continue;
     if (M_BLAST[o] > 0) {                              // 殉爆：范围内的炸药不管有没有被挡住都会被引爆，时间按距离错开
       if (flags[j] & F_BODY) lightBodyAt(j, 3 + ((d * 0.5) | 0) + rndi(9));
-      else if (!(flags[j] & F_BURN)) { flags[j] |= F_BURN; life[j] = 3 + ((d * 0.5) | 0) + rndi(9); wake(px, py); }
+      else if (!(flags[j] & F_BURN)) { flags[j] |= F_BURN; life[j] = 3 + ((d * 0.5) | 0) + rndi(9); wake(px, py); noteIgnite(px, py); }
       continue;
     }
     if (!M_RIGID[o] || M_HARD[o] > 1) continue;
@@ -100,7 +100,7 @@ export function stepExplosion(k) {
       }
       if (M_BLAST[o] > 0) {                          // 连锁：错开引爆时间，不在同一帧全炸
         const fz = 3 + ((d * 0.4) | 0) + rndi(9);
-        if (!(flags[j] & F_BURN)) { flags[j] |= F_BURN; life[j] = fz; }
+        if (!(flags[j] & F_BURN)) { flags[j] |= F_BURN; life[j] = fz; noteIgnite(px, py); }
         else if (life[j] > fz + 6) life[j] = fz;
         e -= 0.03; wake(px, py);
         continue;

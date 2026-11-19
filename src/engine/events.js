@@ -22,11 +22,12 @@ export function noteRule(k, x, y) { if (evRule[k]++ === 0) { evRuleX[k] = x; evR
 export function noteMat(t) { if (evSeen[t] === 0) { evSeen[t] = 1; evNewMats.push(t); } }
 export function noteIgnite(x, y) { if (evIgnite++ === 0) { evIgniteX = x; evIgniteY = y; } }
 export function noteExtinguish(x, y) { if (evExt++ === 0) { evExtX = x; evExtY = y; } }
-export function noteBoom(x, y, radius, power) { evBooms.push({ x, y, radius, power }); }
-export function noteCollapse(cells, x, y, material) { evCollapses.push({ cells, x, y, material }); }
-export function noteBolt(x, y, fromX, fromY) { evBolts.push({ x, y, fromX, fromY }); }
+const EV_CAP = 4096;   // 宿主不收事件时（直接调 simStep）列表也不会无限长
+export function noteBoom(x, y, radius, power) { if (evBooms.length < EV_CAP) evBooms.push({ x, y, radius, power }); }
+export function noteCollapse(cells, x, y, material) { if (evCollapses.length < EV_CAP) evCollapses.push({ cells, x, y, material }); }
+export function noteBolt(x, y, fromX, fromY) { if (evBolts.length < EV_CAP) evBolts.push({ x, y, fromX, fromY }); }
 
-// 每步开始：清空本步的计数
+// 清空计数（eventsCollect 读完后自动调用；两步之间 exec 产生的事件算进下一步那一批）
 export function eventsBegin() {
   evRule.fill(0); evNewMats = [];
   evIgnite = 0; evExt = 0; evBooms = []; evCollapses = []; evBolts = [];
@@ -43,9 +44,21 @@ export function eventsCollect(step) {
   for (const t of evNewMats) out.push({ type: 'materialFirstCreated', step, material: t });
   if (evIgnite) out.push({ type: 'ignite', step, count: evIgnite, x: evIgniteX, y: evIgniteY });
   if (evExt) out.push({ type: 'extinguish', step, count: evExt, x: evExtX, y: evExtY });
-  for (const b of evBooms) out.push({ type: 'explosion', step, x: b.x, y: b.y, radius: b.radius, power: b.power });
+  // 爆炸按 32×32 的块聚合（连锁引爆一步能有上百个起爆点）：同一块里的合成一条，给出个数、中心、最大半径、最大威力
+  if (evBooms.length > 0) {
+    const groups = new Map();
+    for (const b of evBooms) {
+      const key = ((b.x >> 5) << 16) | (b.y >> 5);
+      let g = groups.get(key);
+      if (!g) { g = { type: 'explosion', step, count: 0, x: 0, y: 0, radius: 0, power: 0, sx: 0, sy: 0 }; groups.set(key, g); out.push(g); }
+      g.count++; g.sx += b.x; g.sy += b.y;
+      if (b.radius > g.radius) g.radius = b.radius; if (b.power > g.power) g.power = b.power;
+    }
+    for (const g of groups.values()) { g.x = Math.round(g.sx / g.count); g.y = Math.round(g.sy / g.count); delete g.sx; delete g.sy; }
+  }
   for (const c of evCollapses) out.push({ type: 'collapse', step, cells: c.cells, x: c.x, y: c.y, material: c.material });
   for (const b of evBolts) out.push({ type: 'lightning', step, x: b.x, y: b.y, fromX: b.fromX, fromY: b.fromY });
+  eventsBegin();
   return out;
 }
 
