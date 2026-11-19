@@ -266,15 +266,24 @@ defTest('沉降看密度和粘度：沙在水里比在油里沉得快，灰浮�
 });
 
 defTest('休止角各不相同：土比沙堆得陡，湿沙能立住', () => {
+  // 每种材料在三个位置各堆一次取平均：单堆的宽度由最边上那一粒决定，随网格尺寸（随机序列）波动很大
   const pile = (t, wetness) => {
-    const { cx, cy } = tArena();
+    let h = 0, w = 0;
+    for (const off of [-40, 0, 40]) { const p = pile1(t, wetness, off); h += p.h / 3; w += p.w / 3; }
+    return { h: Math.round(h), w };
+  };
+  const pile1 = (t, wetness, off) => {
+    let { cx, cy } = tArena();
+    cx += off;
     const fy = Math.min(H - 3, cy + 40);
     tFloor(fy, STONE);
     for (let y = fy - 60; y < fy - 10; y++) for (let x = cx - 3; x <= cx + 3; x++) { const i = x + y * W; put(i, t, x, y); wet[i] = wetness; }
     runSteps(900);
-    let top = fy, l = W, r = 0;
-    for (let y = 0; y < fy; y++) for (let x = 0; x < W; x++) if (type[x + y * W] === t) { if (y < top) top = y; if (x < l) l = x; if (x > r) r = x; }
-    return { h: fy - top, w: r - l + 1 };
+    // 宽度按体积折算（堆成三角形时 面积 = 宽 × 高 / 2）：滚远的个别颗粒不影响结果
+    let top = fy, n = 0;
+    for (let y = 0; y < fy; y++) for (let x = 0; x < W; x++) if (type[x + y * W] === t) { if (y < top) top = y; n++; }
+    const h = fy - top;
+    return { h, w: h > 0 ? 2 * n / h : W };
   };
   const sand = pile(SAND, 0), soil = pile(SOIL, 0), wetSand = pile(SAND, 110);
   const rs = sand.w / sand.h, ro = soil.w / soil.h, rw = wetSand.w / wetSand.h;

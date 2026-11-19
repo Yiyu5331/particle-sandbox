@@ -54,7 +54,7 @@ defTest('冰：零下不化；常温下慢慢融化（不会瞬间消失），�
   const { cx, cy } = tArena();
   env.temp = -5; updateSun(); temp.fill(-5);
   tFloor(cy + 3);
-  fillRect(ICE, cx - 3, cy, cx + 3, cy + 2);
+  fillRect(ICE, cx - 6, cy - 1, cx + 6, cy + 2);              // 52 格：样本大一点，结果不随网格尺寸（随机序列）大幅波动
   const before = countType(ICE);
   runSteps(900);
   const cold = countType(ICE);
@@ -62,7 +62,7 @@ defTest('冰：零下不化；常温下慢慢融化（不会瞬间消失），�
   runSteps(600);
   const after10s = countType(ICE);
   let minT = 99;
-  tUntil(40000, 50, () => { for (let x = cx - 3; x <= cx + 3; x++) minT = Math.min(minT, temp[x + (cy - 1) * W]); return countType(ICE) === 0; });
+  tUntil(40000, 50, () => { for (let x = cx - 6; x <= cx + 6; x++) minT = Math.min(minT, temp[x + (cy - 2) * W]); return countType(ICE) === 0; });
   const end = countType(ICE);
   return { ok: cold === before && after10s >= before * 0.6 && after10s <= before && end === 0,
            info: '-5°C 时 ' + before + ' → ' + cold + '；20°C 下 10 秒后剩 ' + after10s + '，最终剩 ' + end };

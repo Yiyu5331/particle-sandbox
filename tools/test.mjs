@@ -27,6 +27,23 @@ const log = s => { if (!args.quiet || s.startsWith('失败')) console.log(s); };
   if (bad.length) failed++;
 }
 
+// 1b) 依赖方向：引擎只依赖引擎自己；引擎外面（模式、UI、渲染、音频、game）只能从公开入口 src/engine/index.js 取引擎的东西
+{
+  const bad = [];
+  const walk = d => readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith('.js') ? [path.join(d, e.name)] : []);
+  for (const f of walk(path.join(ROOT, 'src'))) {
+    const rel = path.relative(ROOT, f), inEngine = rel.startsWith(path.join('src', 'engine'));
+    for (const m of readFileSync(f, 'utf8').matchAll(/^(?:import|export)[^'\n]*from\s*'([^']+)'|^import\s*'([^']+)'/gm)) {
+      const target = path.relative(ROOT, path.resolve(path.dirname(f), m[1] || m[2]));
+      const toEngine = target.startsWith(path.join('src', 'engine'));
+      if (inEngine && !toEngine) bad.push(rel + ' → ' + target + '（引擎不能依赖引擎外面）');
+      if (!inEngine && toEngine && target !== path.join('src', 'engine', 'index.js') && !rel.startsWith(path.join('src', 'main.js'))) bad.push(rel + ' → ' + target + '（只能用 src/engine/index.js）');
+    }
+  }
+  log((bad.length ? '失败  ' : '通过  ') + '依赖方向：引擎不依赖外面；模式 / UI / 渲染 / 音频 / game 只用 src/engine/index.js' + (bad.length ? '\n    ' + bad.join('\n    ') : ''));
+  if (bad.length) failed++;
+}
+
 // 2) 模拟用例
 const { TESTS, runSimTestsSync } = await import('../tests/lib/harness.js');
 await import('../tests/suites/v3.js');
