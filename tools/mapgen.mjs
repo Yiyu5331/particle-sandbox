@@ -1,8 +1,9 @@
 // 全量验收：node tools/mapgen.mjs audit [--seeds=1000] [--workers=4]
-// 性能：node tools/mapgen.mjs bench。生成与实际跑物理分别计时。
+// 性能：node tools/mapgen.mjs bench。两个指标分别计时：generateMap 本身，以及把命令写进世界（createWorld + 逐条 exec）。
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { availableParallelism } from 'node:os';
 import { generateMap, mapgenBiomes, mapgenPresets } from '../src/gen/index.js';
+import { createWorld } from '../src/engine/index.js';
 import { checkDefenseMap, checkMapStability } from '../src/gen/check.js';
 
 const biomes=Object.keys(mapgenBiomes);
@@ -50,11 +51,18 @@ else if (process.argv[2]==='audit') {
   console.log('几何 + 300 步稳定性：'+total+'/'+(count*biomes.length));
   if (total!==count*biomes.length) process.exitCode=1;
 } else if (process.argv[2]==='bench') {
-  const samples=[];
+  const gen=[], apply=[];
   for (let seed=0;seed<20;seed++) for (const biome of biomes) for (const preset of Object.keys(mapgenPresets)) {
-    const start=performance.now(); generateMap(seed,{width:422,height:246,biome,preset}); samples.push(performance.now()-start);
+    const start=performance.now(); const map=generateMap(seed,{width:422,height:246,biome,preset}); gen.push(performance.now()-start);
+    // 第二个指标：把命令写进世界。和模式实际加载地图走同一条路（createWorld + 逐条 exec），不含之后的物理步
+    const t1=performance.now();
+    const world=createWorld({width:map.meta.width,height:map.meta.height,seed:map.meta.seed});
+    for (const cmd of map.commands) world.exec(cmd);
+    apply.push(performance.now()-t1);
+    world.dispose();
   }
-  samples.sort((a,b)=>a-b);
-  console.log('422×246，'+samples.length+' 张：中位 '+samples[samples.length>>1].toFixed(2)+' ms，最慢 '+samples.at(-1).toFixed(2)+' ms');
-  if (samples.at(-1)>=200) process.exitCode=1;
+  const report=(name,samples)=>{ samples.sort((a,b)=>a-b); console.log(name+'：中位 '+samples[samples.length>>1].toFixed(2)+' ms，最慢 '+samples.at(-1).toFixed(2)+' ms'); return samples.at(-1); };
+  console.log('422×246，'+gen.length+' 张');
+  const g=report('生成（generateMap）',gen), a=report('写进世界（createWorld + exec）',apply);
+  if (g>=200 || a>=200) process.exitCode=1;
 } else { console.error('用法：node tools/mapgen.mjs audit | bench'); process.exitCode=2; }
