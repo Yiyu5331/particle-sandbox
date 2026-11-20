@@ -173,6 +173,30 @@
     #topbar { gap: 5px; padding: 5px; }
     #rngSize { width: 60px; }
   }
+  /* 种子图册：沿用沙盘控件与材料配色，缩略图按模拟格展示。 */
+  body[data-page="mapgen"] {overflow:auto;user-select:text;}
+  body[data-page="mapgen"] #app {display:none;}
+  #mapgen {max-width:1500px;margin:auto;padding:clamp(16px,3vw,48px);line-height:1.5;}
+  #mapgen header {display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:14px;}
+  #mapgen h1 {font-size:clamp(26px,4vw,48px);letter-spacing:-.04em;color:var(--text-strong);}
+  #menu .mg-menu-link {margin-right:auto;align-self:center;color:var(--accent);}
+  #mapgen a {color:var(--accent);} #mapgen h2 {font-size:17px;margin-bottom:12px;}
+  .mg-controls {display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:20px 0 28px;}
+  .mg-controls label {display:flex;flex-wrap:wrap;align-items:center;gap:5px;color:var(--muted);}
+  .mg-controls label select,.mg-controls label input[type=number] {color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:4px 8px;height:32px;}
+  .mg-controls input[type=number] {width:8em;} .mg-controls input[type=range] {width:85px;}
+  .mg-work {display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:24px;align-items:start;}
+  .mg-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;}
+  .mg-grid button {height:auto;display:grid;text-align:left;padding:0;overflow:hidden;border-radius:var(--radius-sm);}
+  .mg-grid span {padding:6px 10px;} .mg-grid button[aria-pressed=true] {border-color:var(--accent);}
+  #mapgen canvas {display:block;width:100%;height:auto;image-rendering:pixelated;}
+  .mg-detail {position:sticky;top:14px;background:var(--panel);padding:16px;border:1px solid var(--line);border-radius:var(--radius);}
+  .mg-detail canvas {border-radius:var(--radius-sm);} .mg-detail h3 {font-size:20px;margin-top:12px;}
+  .mg-info,.mg-detail [role=status] {color:var(--muted);margin:6px 0 12px;}
+  .mg-legend {list-style:none;display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 16px;}
+  .mg-legend li::before {content:"";display:inline-block;width:8px;height:8px;margin-right:4px;background:#ffdb89;}
+  .mg-legend li:nth-child(2)::before {background:#7af2e7;} .mg-legend li:nth-child(3)::before {background:#8bb8ff;} .mg-legend li:nth-child(4)::before {background:#ff9979;}
+  @media(max-width:800px) { .mg-work {grid-template-columns:1fr;} .mg-detail {position:static;grid-row:1;} }
 </style>
 </head>
 <body>
@@ -288,7 +312,7 @@
   <div class="row" style="margin-top:6px"><button id="envBolt" style="text-align:center">召唤闪电</button></div>
 </div>
 <div id="tip"></div>
-<div id="menu" role="dialog" aria-label="主菜单"><div class="box"><h2>选择模式</h2><div id="menuList"></div><div class="foot"><button id="btnMenuBack">继续当前模式（Esc）</button></div></div></div>
+<div id="menu" role="dialog" aria-label="主菜单"><div class="box"><h2>选择模式</h2><div id="menuList"></div><div class="foot"><a class="mg-menu-link" href="?mapgen=1" target="_blank" rel="noopener">地图生成器</a><button id="btnMenuBack">继续当前模式（Esc）</button></div></div></div>
 
 <script>
 /*BUNDLE*/

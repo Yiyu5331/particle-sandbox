@@ -23,6 +23,7 @@ src/
     serialize.js 哈希、存档编码
     scenes.js    10 个预设场景
     env.js rng.js dmath.js 环境参数、xorshift32、确定性三角函数
+  gen/         确定性分层地图、命令输出、守护布局与物理检查（见 docs/MAPGEN.md）
   render/      WebGL2 渲染器（Canvas2D 退路）：每帧从世界取一次只读状态（禁止 Codex 修改）
   audio/       WebAudio 程序合成的声床和音效
   game/        模式管理器（主菜单、切换、暂停、主循环、事件分发）、总线、预算、区域辅助、热身
