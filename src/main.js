@@ -1,13 +1,13 @@
 'use strict';
 import { SCENES } from './engine/index.js';
 import { buildMenu, registerMode, startLoop, startMode } from './game/manager.js';
-import { warmRender, warmUp } from './game/warmup.js';
+import { warmUp } from './game/warmup.js';
 import { civModeDef } from './modes/civ/index.js';
 import { defenseModeDef } from './modes/defense/index.js';
 import { ecoModeDef } from './modes/eco/index.js';
 import { puzzleModeDef } from './modes/puzzle/index.js';
 import { sandboxModeDef } from './modes/sandbox/index.js';
-import { createRenderer } from './render/renderer.js';
+import { createRenderer, gl, renderFrame } from './render/renderer.js';
 import { $, QS, toast } from './ui/host.js';
 import { benchInPage, coldBoom, goldenInPage, runAllTests, soakInPage } from '../tests/browser/devtools.js';
 /* =====================================================================
@@ -20,6 +20,9 @@ import '../tests/suites/v41.js';
 import '../tests/suites/api.js';
 import '../tests/browser/gl.js';
 import '../tests/browser/golden.js';
+
+// 着色器热身：在真实画布上画几帧（第一次画会编译 / 链接着色器）
+function warmRender() { for (let k = 0; k < 3; k++) renderFrame(performance.now(), 16.7); if (gl) gl.finish(); }
 
 function main() {
   createRenderer($('viewport'));

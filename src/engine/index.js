@@ -3,6 +3,7 @@
  * 引擎公开入口。模式、UI、渲染、音频、实体、game 只从这里取引擎的东西（docs/API.md）。
  * 其它 src/engine/*.js 是引擎内部，随时可能改。tools/migrate/imports.py 会检查这一点。
  * ===================================================================== */
+export { warmUpEngine } from './warmup.js';
 export { createWorld, activateHostWorld, activeWorld, HOST_WORLD, EVENT_TYPES, FIELDS, cloneState } from './world.js';
 // 静态数据（只读）：材料 id、材料属性表、状态名
 export * from './materials.js';

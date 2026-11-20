@@ -4,16 +4,17 @@ import { elecCount, electricLoad, electricSave } from './electric.js';
 import { ENV_DEFAULTS, env, envLoad, envSave, envSet, st } from './env.js';
 import { eventsCollect, eventsLoad, eventsSave, scanNewMaterials } from './events.js';
 import { exActive, explosionLoad, explosionSave } from './explosion.js';
-import { CHN, CW, F_BODY, F_BURN, H, N, W, allocGrid, aux, charge, chunkCount, chunkTTL, flags, fuel, gravity, gridEpoch, gridLoad, gridSave, gx, gy, life, rippleHead, ripples, seed, temp, tick, type, wet } from './grid.js';
-import { MATERIALS, NT, TOOL_ERASE } from './materials.js';
+import { CHN, CW, F_BODY, F_BURN, H, N, W, allocGrid, aux, charge, chunkCount, chunkTTL, flags, fuel, gravity, gridEpoch, gridLoad, gridSave, gx, gy, life, put, rippleHead, ripples, seed, temp, tick, type, wet } from './grid.js';
+import { MATERIALS, NT, SAND, TNT, TOOL_ERASE, WATER } from './materials.js';
+import { fillRect } from './paint.js';
 import { fpAlive, fpCount, fpPX, fpPY, fpQX, fpQY, fpSeed, fpTemp, fpType, fpX, fpY, particlesLoad, particlesSave } from './particles.js';
 import { rngLoad, rngSave } from './rng.js';
-import { sceneState, scenesLoad, scenesSave } from './scenes.js';
+import { buildDemolition, sceneState, scenesLoad, scenesSave } from './scenes.js';
 import { captureScene, deserializeWorld, sceneToJSON, serializeLoad, serializeSave, serializeWorld, worldHash } from './serialize.js';
 import { slowLoad, slowSave } from './slow.js';
 import { perf, setSimClock, simStep, simStepsTotal, stepLoad, stepSave } from './step.js';
 import { bodies, bodyCount, structHold, structStats, structureLoad, structureSave } from './structure.js';
-import { GH, GW, cloud, heatC, lastBolt, vapor, weatherLoad, weatherSave, windX } from './weather.js';
+import { GH, GW, cloud, heatC, lastBolt, lightning, setWeather, updateSun, vapor, weatherLoad, weatherSave, windX } from './weather.js';
 /* =====================================================================
  * 公开世界 API（docs/API.md）。
  *
@@ -412,6 +413,17 @@ class World {
     });
   }
 
+  // 热身用（warmup.js）：用内部函数搭 v4.1 的热身场景并跑 360 步。不派发事件、不录制。
+  _warm() {
+    activate(this);
+    env.structure = true; env.time = 0.9; setWeather('storm'); updateSun();
+    buildDemolition(true, 100);
+    fillRect(WATER, 0, 106, W - 1, 112);
+    fillRect(SAND, 0, 113, W - 1, H - 1);
+    for (let k = 0; k < 4; k++) { const x = 30 + k * 40, i = x + 118 * W; put(i, TNT, x, 118); flags[i] |= F_BURN; life[i] = 10 + k * 6; }
+    for (let c = 0; c < GW * 4; c++) cloud[c] = 2.4;
+    for (let s = 0; s < 360; s++) { simStep(); if (s % 90 === 30) lightning(); }
+  }
   /** 释放：之后不能再用。若它在台上，宿主默认世界回到台上。 */
   dispose() {
     if (this.disposed) return;

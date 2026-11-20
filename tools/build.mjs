@@ -12,7 +12,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const m = a.match(/^--([^=]+)(?:=(.*))?$/); return m ? [m[1], m[2] ?? true] : [a, true]; }));
 const OUT = path.resolve(ROOT, args.out || 'dist/particle-sandbox.html');
-const ENTRY = path.join(ROOT, 'src', 'main.js');
+const ENTRY = args.entry ? path.resolve(ROOT, args.entry) : path.join(ROOT, 'src', 'main.js');
+// --script=路径：只输出拼好的脚本（不嵌页面、不带黄金快照数据），bench.mjs 用它测“打包后的引擎”
 
 // 1) 按 ES 模块的求值顺序（深度优先、按 import 语句出现的顺序、后序）排出模块列表
 const DEP = /^(?:import\s*(?:\{[^}]*\}\s*from\s*)?|export\s*(?:\{[^}]*\}|\*)\s*from\s*)'([^']+)';?[ \t]*$/gm;
@@ -90,8 +91,15 @@ const g = JSON.parse(readFileSync(path.join(ROOT, 'tests', 'golden.json'), 'utf8
 g.recs = {};
 for (const r of g.replays) g.recs[r.file] = JSON.parse(readFileSync(path.join(ROOT, 'tests', r.file), 'utf8'));
 
-let bundle = "'use strict';\nconst GOLDEN_DATA = " + JSON.stringify(g) + ';\n';
+let bundle = "'use strict';\n" + (args.script ? '' : 'const GOLDEN_DATA = ' + JSON.stringify(g) + ';\n');
 for (const m of order) bundle += '\n/* ==== ' + path.relative(ROOT, m.file) + ' ==== */\n' + m.code;
+if (args.script) {
+  const out = path.resolve(ROOT, args.script);
+  mkdirSync(path.dirname(out), { recursive: true });
+  writeFileSync(out, bundle);
+  console.log(`已生成脚本 ${path.relative(ROOT, out)}：${order.length} 个模块`);
+  process.exit(0);
+}
 bundle = bundle.replace(/<\/script/gi, '<\\/script');
 const html = readFileSync(path.join(ROOT, 'src', 'index.html'), 'utf8').replace('/*BUNDLE*/', () => bundle);
 mkdirSync(path.dirname(OUT), { recursive: true });
