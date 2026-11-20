@@ -1,0 +1,37 @@
+name: 地图构建与验证
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 构建单文件
+        run: node tools/build.mjs
+      - name: 运行模拟与地图测试
+        run: node tools/test.mjs
+      - name: 完整黄金快照
+        run: node tools/golden.mjs check
+      - name: 上传单文件沙盘
+        uses: actions/upload-artifact@v4
+        with:
+          name: particle-sandbox
+          path: dist/particle-sandbox.html
+          if-no-files-found: error
+  seeds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 每个群系验证 1000 个种子
+        run: node tools/mapgen.mjs audit

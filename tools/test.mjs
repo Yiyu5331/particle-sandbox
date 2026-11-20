@@ -65,4 +65,9 @@ if (!args.only && args.golden !== 'skip') {
   console.log((g.bad ? '失败  ' : '通过  ') + `黄金快照：${g.ok} 个一致，${g.bad} 个不一致` + (g.bad ? '\n    ' + g.rows.filter(x => x[0] === '✗').join('\n    ') : ''));
   failed += g.bad ? 1 : 0;
 }
+if (!args.only || String(args.only).includes('地图')) {
+  const { spawnSync } = await import('node:child_process');
+  const result=spawnSync(process.execPath,['--test','tests/suites/mapgen.test.mjs'],{cwd:ROOT,stdio:'inherit'});
+  if (result.status!==0) failed++;
+}
 process.exitCode = failed ? 1 : 0;
