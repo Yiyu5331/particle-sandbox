@@ -7,3 +7,10 @@ v4-src/soak-result.json
 .DS_Store
 dist/.bundle-check.js
 tests/soak-result.json
+# 并行开发阶段补充：覆盖率、本地环境变量（可能含密钥）、编辑器配置、临时文件
+coverage/
+.env
+.env.*
+*.tmp
+.vscode/
+.idea/
