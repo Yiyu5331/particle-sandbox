@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "id": "sand-cup",
+  "name": "一捧落沙",
+  "chapter": "第一章 · 重力",
+  "difficulty": 1,
+  "hint": "在金框上方画一小横排沙，再点击运行。至少 8 格沙要落进框里。",
+  "type": "planning",
+  "world": {
+    "width": 80,
+    "height": 48,
+    "seed": 42,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 45,
+          "x1": 79,
+          "y1": 47
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "cup",
+      "type": "goal",
+      "x": 25,
+      "y": 38,
+      "w": 32,
+      "h": 7
+    },
+    {
+      "id": "rim",
+      "type": "noBuild",
+      "x": 25,
+      "y": 38,
+      "w": 32,
+      "h": 7
+    }
+  ],
+  "materials": {
+    "SAND": 25
+  },
+  "budget": 20,
+  "maxSteps": 150,
+  "goal": {
+    "op": "within",
+    "steps": 100,
+    "condition": {
+      "op": "count",
+      "region": "cup",
+      "material": "SAND",
+      "compare": ">=",
+      "value": 8
+    }
+  },
+  "fail": null,
+  "stars": {
+    "two": {
+      "maxUsed": 19,
+      "maxSteps": 120
+    },
+    "three": {
+      "maxUsed": 15,
+      "maxSteps": 80
+    }
+  },
+  "reference": {
+    "steps": 6,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 32,
+          "y0": 20,
+          "x1": 43,
+          "y1": 20,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 // Playwright CLI：在已打开的单文件页面运行，验证真实表单、种子翻页和物理检查。
 async page => {
-  const url=new URL(page.url()); url.search='?mapgen=1'; await page.goto(url.href);
+  const url=new URL(page.url()); url.search='?dev=1&mapgen=1'; await page.goto(url.href);
   const cards=page.locator('.mg-grid button');
   if (await cards.count()!==16) throw new Error('全部群系应显示 16 张地图');
   await page.locator('[name=biome]').selectOption('volcano');

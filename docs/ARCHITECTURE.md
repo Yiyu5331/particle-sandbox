@@ -29,10 +29,11 @@ src/
   game/        模式管理器（主菜单、切换、暂停、主循环、事件分发）、总线、预算、区域辅助、热身
   modes/
     sandbox/     沙盘模式：v4 的全部界面（ui.js）+ 模式接口（index.js）
-    defense/ puzzle/ civ/ eco/   空模式（开发中）
+    puzzle/      解谜关卡、条件求值、参考回放、关卡编辑器（见 docs/PUZZLE.md）
+    defense/ civ/ eco/   空模式（开发中）
   entities/    实体接口说明（只有接口，见 docs/ENTITIES.md）
-  meta/        跨模式的元系统接口（成就、解锁、统计；只有接口）
-  ui/          页面级小工具（$、toast、下载、地址栏参数、格子像素大小）
+  meta/        玩家档案与持久化进度（见 docs/META.md）
+  ui/          原生组件、国际化、菜单和 HUD（见 docs/UI.md）
   index.html   页面模板（构建时把脚本塞进 /*BUNDLE*/）
   main.js      启动
 tests/
@@ -108,7 +109,7 @@ advanceTick → 分块唤醒计时 → 场景脚本 → 天气（风、水汽、
   update(step),            // 每个模拟步之后
   onEvent(e),              // 引擎事件（同时会以 'world:<type>' 转发到 game.bus）
   renderOverlay(g, view),  // 2D 叠加层（设置 wantsOverlay: true 才会调用）
-  getHUD(),                // 状态栏里的一行字
+  getHUD(),                // 字符串、null 或结构化 items，见 docs/UI.md
   checkOutcome(),          // {state:'playing'|'won'|'lost', score, detail}，每 30 步问一次
   serialize(), deserialize(o), dispose(),
   // 可选：preFrame(now, dt)、beforeStep()、postRender(now)、postFrame(now, dt)、frameTiming(dt)

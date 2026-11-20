@@ -4,7 +4,7 @@ import { F_BURN, H, W, flags, temp } from '../../src/engine/grid.js';
 import { BRICK, CHARCOAL, EMPTY, GLASS, ICE, LAVA, METAL, OIL, PLANT, ROPE, SALT, SAND, SOIL, STONE, TNT, WATER, WOOD } from '../../src/engine/materials.js';
 import { fillRect } from '../../src/engine/paint.js';
 import { game } from '../../src/game/manager.js';
-import { exportJSON, importJSON, resetUndo } from '../../src/modes/sandbox/ui.js';
+import { exportJSON, importJSON, resetUndo, saveSlot, renderSlots, loadAnySave } from '../../src/modes/sandbox/ui.js';
 import { R, canvas, gl, invalidate, renderFrame, settings } from '../../src/render/renderer.js';
 import { setDownloadHook } from '../../src/ui/host.js';
 import { TESTS, tArena } from '../lib/harness.js';
@@ -127,4 +127,22 @@ if (typeof document !== 'undefined') {
     resetUndo();
     return { ok: emptied && okImport && diff === 0 && h1 === h0 && /\.json$/.test(fname), info: '文件 ' + fname + '，' + (blob.size / 1024).toFixed(1) + ' KB；清空后导入，差异 ' + diff + ' 格，哈希' + (h1 === h0 ? '一致' : '不一致') };
   }, { sandbox: true });
+  defBrowserTest('玩家档案：沙盘槽位、缩略图和完整备份', async () => {
+    const name = '自测河谷', w = game.world, original = w.hash();
+    document.getElementById('slotName').value = name;
+    await saveSlot();
+    const preview = document.querySelector('#slotList .slot img')?.src;
+    const file = await game.profile.exportProfile();
+    await game.profile.deleteSlot('sandbox', name);
+    await game.profile.importProfile(file);
+    const slot = await game.profile.loadSlot('sandbox', name);
+    w.exec('clear');
+    loadAnySave(slot.json, name);
+    const ok = w.hash() === original && preview?.startsWith('data:image/png;base64,') && slot.thumbnail === preview;
+    await game.profile.deleteSlot('sandbox', name);
+    await renderSlots();
+    resetUndo();
+    return { ok, info: '槽位 ' + name + '，备份 ' + Math.round(file.size / 1024) + ' KB' };
+  }, { sandbox: true });
+
 }

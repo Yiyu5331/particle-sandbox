@@ -1,0 +1,373 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "物理解谜关卡",
+  "type": "object",
+  "properties": {
+    "version": {"const": 1},
+    "id": {"$ref": "#/$defs/id"},
+    "name": {"type": "string", "minLength": 1, "maxLength": 100},
+    "chapter": {"type": "string", "minLength": 1, "maxLength": 100},
+    "difficulty": {"type": "integer", "minimum": 1, "maximum": 5},
+    "hint": {"type": "string", "minLength": 1, "maxLength": 1000},
+    "type": {"enum": ["planning", "realtime"]},
+    "world": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "width": {"type": "integer", "minimum": 16, "maximum": 512},
+            "height": {"type": "integer", "minimum": 16, "maximum": 512},
+            "seed": {"type": "integer", "minimum": -2147483648, "maximum": 2147483647},
+            "commands": {"type": "array", "items": {"$ref": "#/$defs/setup"}, "minItems": 0, "maxItems": 4096}
+          },
+          "required": ["width", "height", "seed", "commands"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "width": {"type": "integer", "minimum": 16, "maximum": 512},
+            "height": {"type": "integer", "minimum": 16, "maximum": 512},
+            "seed": {"type": "integer", "minimum": -2147483648, "maximum": 2147483647},
+            "serialized": {"type": "string", "minLength": 1, "maxLength": 16000000}
+          },
+          "required": ["width", "height", "seed", "serialized"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "regions": {"type": "array", "items": {"$ref": "#/$defs/region"}, "minItems": 0, "maxItems": 128},
+    "materials": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"type": "integer", "minimum": 0, "maximum": 1000000}
+    },
+    "budget": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "maxSteps": {"type": "integer", "minimum": 1, "maximum": 36000},
+    "goal": {"$ref": "#/$defs/condition"},
+    "fail": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/condition"}]},
+    "stars": {
+      "type": "object",
+      "properties": {"two": {"$ref": "#/$defs/rating"}, "three": {"$ref": "#/$defs/rating"}},
+      "required": ["two", "three"],
+      "additionalProperties": false
+    },
+    "reference": {"$ref": "#/$defs/reference"}
+  },
+  "required": [
+    "version",
+    "id",
+    "name",
+    "chapter",
+    "difficulty",
+    "hint",
+    "type",
+    "world",
+    "regions",
+    "materials",
+    "budget",
+    "maxSteps",
+    "goal",
+    "fail",
+    "stars",
+    "reference"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"},
+    "material": {
+      "oneOf": [
+        {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"},
+        {"type": "integer", "minimum": 0, "maximum": 255}
+      ]
+    },
+    "stroke": {
+      "type": "object",
+      "properties": {
+        "tool": {"$ref": "#/$defs/material"},
+        "x0": {"type": "integer", "minimum": 0, "maximum": 511},
+        "y0": {"type": "integer", "minimum": 0, "maximum": 511},
+        "x1": {"type": "integer", "minimum": 0, "maximum": 511},
+        "y1": {"type": "integer", "minimum": 0, "maximum": 511},
+        "size": {"type": "integer", "minimum": 1, "maximum": 16},
+        "shape": {"enum": ["square", "circle", "spray"]}
+      },
+      "required": ["tool", "x0", "y0", "x1", "y1", "size"],
+      "additionalProperties": false
+    },
+    "setup": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "command": {"const": "fillRect"},
+            "args": {
+              "type": "object",
+              "properties": {
+                "mat": {"$ref": "#/$defs/material"},
+                "x0": {"type": "integer", "minimum": 0, "maximum": 511},
+                "y0": {"type": "integer", "minimum": 0, "maximum": 511},
+                "x1": {"type": "integer", "minimum": 0, "maximum": 511},
+                "y1": {"type": "integer", "minimum": 0, "maximum": 511}
+              },
+              "required": ["mat", "x0", "y0", "x1", "y1"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["command", "args"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {"const": "fillCircle"},
+            "args": {
+              "type": "object",
+              "properties": {
+                "mat": {"$ref": "#/$defs/material"},
+                "cx": {"type": "integer", "minimum": 0, "maximum": 511},
+                "cy": {"type": "integer", "minimum": 0, "maximum": 511},
+                "r": {"type": "integer", "minimum": 1, "maximum": 64}
+              },
+              "required": ["mat", "cx", "cy", "r"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["command", "args"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {"const": "setGravity"},
+            "args": {
+              "type": "object",
+              "properties": {"dir": {"enum": ["down", "up", "left", "right"]}},
+              "required": ["dir"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["command", "args"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {"const": "setWeather"},
+            "args": {
+              "type": "object",
+              "properties": {"key": {"enum": ["clear", "cloudy", "rain", "storm", "snow"]}},
+              "required": ["key"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["command", "args"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {"const": "loadScene"},
+            "args": {
+              "type": "object",
+              "properties": {"index": {"type": "integer", "minimum": 0, "maximum": 9}},
+              "required": ["index"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["command", "args"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {"const": "ignite"},
+            "args": {
+              "type": "object",
+              "properties": {
+                "x": {"type": "integer", "minimum": 0, "maximum": 511},
+                "y": {"type": "integer", "minimum": 0, "maximum": 511}
+              },
+              "required": ["x", "y"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["command", "args"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {"const": "clear"},
+            "args": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
+          },
+          "required": ["command", "args"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {"command": {"const": "stroke"}, "args": {"$ref": "#/$defs/stroke"}},
+          "required": ["command", "args"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {"const": "setEnv"},
+            "args": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "enum": ["wind", "windPower", "temp", "time", "timeScale", "moistPerMin", "atmosCap"]
+                    },
+                    "value": {"type": "number"}
+                  },
+                  "required": ["key", "value"],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {"key": {"enum": ["dayNight", "structure"]}, "value": {"type": "boolean"}},
+                  "required": ["key", "value"],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "required": ["command", "args"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "region": {
+      "type": "object",
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"enum": ["goal", "noBuild", "protected"]},
+        "x": {"type": "integer", "minimum": 0, "maximum": 511},
+        "y": {"type": "integer", "minimum": 0, "maximum": 511},
+        "w": {"type": "integer", "minimum": 1, "maximum": 512},
+        "h": {"type": "integer", "minimum": 1, "maximum": 512}
+      },
+      "required": ["id", "type", "x", "y", "w", "h"],
+      "additionalProperties": false
+    },
+    "condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {"const": "count"},
+            "region": {"$ref": "#/$defs/id"},
+            "material": {"$ref": "#/$defs/material"},
+            "compare": {"enum": [">=", "<="]},
+            "value": {"type": "integer", "minimum": 0, "maximum": 1000000}
+          },
+          "required": ["op", "region", "material", "compare", "value"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {"const": "noFire"},
+            "region": {"$ref": "#/$defs/id"},
+            "steps": {"type": "integer", "minimum": 1, "maximum": 36000}
+          },
+          "required": ["op", "region", "steps"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {"const": "cooler"},
+            "region": {"$ref": "#/$defs/id"},
+            "temperature": {"type": "number"}
+          },
+          "required": ["op", "region", "temperature"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {"const": "integrity"},
+            "region": {"$ref": "#/$defs/id"},
+            "material": {"$ref": "#/$defs/material"},
+            "percent": {"type": "number", "minimum": 0, "maximum": 100}
+          },
+          "required": ["op", "region", "material", "percent"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {"op": {"const": "survive"}, "steps": {"type": "integer", "minimum": 1, "maximum": 36000}},
+          "required": ["op", "steps"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {"const": "within"},
+            "steps": {"type": "integer", "minimum": 1, "maximum": 36000},
+            "condition": {"$ref": "#/$defs/condition"}
+          },
+          "required": ["op", "steps", "condition"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {"const": "and"},
+            "conditions": {"type": "array", "items": {"$ref": "#/$defs/condition"}, "minItems": 1, "maxItems": 32}
+          },
+          "required": ["op", "conditions"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {"const": "or"},
+            "conditions": {"type": "array", "items": {"$ref": "#/$defs/condition"}, "minItems": 1, "maxItems": 32}
+          },
+          "required": ["op", "conditions"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {"op": {"const": "not"}, "condition": {"$ref": "#/$defs/condition"}},
+          "required": ["op", "condition"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "rating": {
+      "type": "object",
+      "properties": {
+        "maxUsed": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "maxSteps": {"type": "integer", "minimum": 1, "maximum": 36000}
+      },
+      "required": ["maxUsed", "maxSteps"],
+      "additionalProperties": false
+    },
+    "entry": {
+      "type": "object",
+      "properties": {
+        "step": {"type": "integer", "minimum": 0, "maximum": 35999},
+        "command": {"const": "stroke"},
+        "args": {"$ref": "#/$defs/stroke"}
+      },
+      "required": ["step", "command", "args"],
+      "additionalProperties": false
+    },
+    "reference": {
+      "type": "object",
+      "properties": {
+        "steps": {"type": "integer", "minimum": 0, "maximum": 36000},
+        "log": {"type": "array", "items": {"$ref": "#/$defs/entry"}, "minItems": 0, "maxItems": 36000}
+      },
+      "required": ["steps", "log"],
+      "additionalProperties": false
+    }
+  }
+}

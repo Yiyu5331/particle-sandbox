@@ -1,8 +1,5 @@
 # src/meta
 
-跨模式的元系统：成就、解锁、玩家统计、存档目录。目前只有接口（`types.js`），没有实现。
+`profile/` 实现玩家设置、跨模式进度、世界槽位和档案备份。存储优先使用 IndexedDB，后备使用 localStorage。接口、格式和迁移流程见[玩家档案与存档](../../docs/META.md)。
 
-约定：
-- 元系统只听 `game.bus` 上的消息（`mode:enter`、`mode:exit`、`outcome`、`world:<事件>`），不直接碰世界。
-- 数据存在浏览器本地（localStorage），键名以 `particle-sandbox-meta-` 开头；读写都要 try/catch，读不到就当作新玩家。
-- 不能影响模拟：元系统里没有任何会进录制的操作。
+图鉴和反应发现订阅 `game.bus` 的世界事件。元系统读取世界快照，模拟写操作由模式负责。成就和累计统计仍在 `types.js` 中保留接口约定。

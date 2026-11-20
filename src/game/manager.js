@@ -15,7 +15,7 @@ export const game = {
   paused: false, speed: 1, stepOnce: false,
   busy: false,               // 浏览器自测 / soak / 性能测试进行中：主循环不碰模式和它的世界
   menuOpen: false, outcome: OUTCOME_PLAYING,
-  bus: createBus(),
+  bus: createBus(), profile: null,
 };
 
 export function registerMode(def) { game.modes.push(def); }
@@ -50,7 +50,7 @@ function getOverlay() {
 }
 
 const ctx = {
-  game, get bus() { return game.bus; }, QS, toast,
+  game, get profile() { return game.profile; }, get bus() { return game.bus; }, QS, toast,
   createWorld: o => createWorld(o),
   setWorld(w) { setWorld(w); if (w) resizeRenderer(); },
   renderer: { invalidate, resize: () => resizeRenderer() },
@@ -76,13 +76,15 @@ export function startMode(id, params) {
     game.bus.emit('mode:exit', { id: old });
   }
   closeMenu();
-  game.modeDef = def; game.outcome = OUTCOME_PLAYING; stepsSinceCheck = 0;
+  game.modeDef = def; game.outcome = OUTCOME_PLAYING; game.stepOnce = false; stepsSinceCheck = 0;
   document.body.dataset.mode = def.id;
   $('stModeHud').textContent = '';
   game.mode = def.create();
   setPaused(false);
   game.mode.init(ctx, params || {});
   game.bus.emit('mode:enter', { id: def.id });
+  // 已结算的存档不会再走模拟步，进入后即同步其胜负。
+  if (game.paused) gameCheckOutcome(game.mode);
   syncMenu();
 }
 
@@ -104,7 +106,7 @@ export function buildMenu() {
   $('btnModeExit').addEventListener('click', () => openMenu());
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape' && game.menuOpen) { e.stopImmediatePropagation(); closeMenu(); }
-    else if ((e.key === 'm' || e.key === 'M') && !(e.target.tagName === 'INPUT' && e.target.type === 'text') && !e.ctrlKey && !e.metaKey && !e.altKey) { game.menuOpen ? closeMenu() : openMenu(); }
+    else if ((e.key === 'm' || e.key === 'M') && !e.target.closest?.('input, textarea, select, [contenteditable=true]') && !e.ctrlKey && !e.metaKey && !e.altKey) { game.menuOpen ? closeMenu() : openMenu(); }
   }, true);
 }
 function syncMenu() { document.querySelectorAll('#menuList button').forEach(b => b.classList.toggle('on', game.modeDef && b.dataset.mode === game.modeDef.id)); }
@@ -124,18 +126,22 @@ export function closeMenu() {
 
 /* ---------- 主循环 ---------- */
 let lastFrameT = 0, simAcc = 0;
+export function gameCheckOutcome(m) {
+  if (m !== game.mode) return;
+  const o = m.checkOutcome();
+  if (o && o.state !== 'playing' && game.outcome.state === 'playing') {
+    game.outcome = o; if (!game.paused) setPaused(true);
+    game.bus.emit('outcome', o);
+    toast((o.state === 'won' ? '胜利' : '失败') + (o.detail ? '：' + o.detail : '') + (o.score ? '（' + o.score + ' 分）' : ''));
+  }
+}
 function stepOne(m, w) {
   if (m.beforeStep) m.beforeStep();
   w.step(1);
   m.update(w.tick);
-  if (++stepsSinceCheck >= 30) {
+  if (++stepsSinceCheck >= 30 || game.paused) {
     stepsSinceCheck = 0;
-    const o = m.checkOutcome();
-    if (o && o.state !== 'playing' && game.outcome.state === 'playing') {
-      game.outcome = o; setPaused(true);
-      game.bus.emit('outcome', o);
-      toast((o.state === 'won' ? '胜利' : '失败') + (o.detail ? '：' + o.detail : '') + (o.score ? '（' + o.score + ' 分）' : ''));
-    }
+    gameCheckOutcome(m);
   }
 }
 
@@ -152,7 +158,7 @@ function loop(now) {
     const stepMs = 1000 / SIM_HZ, maxSteps = Math.max(2, Math.ceil(game.speed * 2));
     simAcc += Math.min(dt, 100) * game.speed;
     let n = 0;
-    while (simAcc >= stepMs && n < maxSteps) { stepOne(m, w); simAcc -= stepMs; n++; }
+    while (!game.paused && simAcc >= stepMs && n < maxSteps) { stepOne(m, w); simAcc -= stepMs; n++; }
     if (simAcc > stepMs * 2) simAcc = 0;                 // 跟不上就丢步，不追帧
   } else if (game.stepOnce) stepOne(m, w);
   game.stepOnce = false;
@@ -161,7 +167,11 @@ function loop(now) {
   if (m.postRender) m.postRender(now);
   audioFrame();
   if (m.postFrame) m.postFrame(now, dt);
-  if (now - hudAt > 250) { hudAt = now; const s = m.getHUD ? m.getHUD() : null; if (s !== null && s !== undefined) $('stModeHud').textContent = s; }
+  if (now - hudAt > 250) {
+    hudAt = now;
+    const text = m.getHUD?.();
+    if (text != null) $('stModeHud').textContent = text;
+  }
 }
 
 export function startLoop() {

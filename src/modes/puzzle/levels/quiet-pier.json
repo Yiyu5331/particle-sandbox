@@ -1,0 +1,153 @@
+{
+  "version": 1,
+  "id": "quiet-pier",
+  "name": "冷却桥墩",
+  "chapter": "第二章 · 守护",
+  "difficulty": 2,
+  "hint": "在桥墩两侧补水。保持墩身完好，让周围连续 12 步无火，至少留下 5 格水。",
+  "type": "planning",
+  "world": {
+    "width": 80,
+    "height": 48,
+    "seed": 42,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 45,
+          "x1": 79,
+          "y1": 47
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "BRICK",
+          "x0": 37,
+          "y0": 39,
+          "x1": 42,
+          "y1": 44
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 22,
+          "y0": 36,
+          "x1": 23,
+          "y1": 44
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 54,
+          "y0": 36,
+          "x1": 55,
+          "y1": 44
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "FIRE",
+          "x0": 27,
+          "y0": 40,
+          "x1": 31,
+          "y1": 42
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "pier",
+      "type": "protected",
+      "x": 37,
+      "y": 39,
+      "w": 6,
+      "h": 6
+    },
+    {
+      "id": "basin",
+      "type": "goal",
+      "x": 24,
+      "y": 34,
+      "w": 30,
+      "h": 11
+    }
+  ],
+  "materials": {
+    "WATER": 25
+  },
+  "budget": 20,
+  "maxSteps": 150,
+  "goal": {
+    "op": "and",
+    "conditions": [
+      {
+        "op": "count",
+        "region": "basin",
+        "material": "WATER",
+        "compare": ">=",
+        "value": 5
+      },
+      {
+        "op": "noFire",
+        "region": "basin",
+        "steps": 12
+      },
+      {
+        "op": "cooler",
+        "region": "basin",
+        "temperature": 50
+      },
+      {
+        "op": "integrity",
+        "region": "pier",
+        "material": "BRICK",
+        "percent": 90
+      }
+    ]
+  },
+  "fail": {
+    "op": "not",
+    "condition": {
+      "op": "integrity",
+      "region": "pier",
+      "material": "BRICK",
+      "percent": 70
+    }
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 19,
+      "maxSteps": 120
+    },
+    "three": {
+      "maxUsed": 15,
+      "maxSteps": 80
+    }
+  },
+  "reference": {
+    "steps": 73,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 26,
+          "y0": 33,
+          "x1": 35,
+          "y1": 33,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

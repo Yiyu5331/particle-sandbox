@@ -1,6 +1,8 @@
 'use strict';
+import { uiT, uiOnLanguage, uiLanguage, uiSetLanguage } from '../../ui/i18n.js';
 import { audio, audioSetVolume, audioStart } from '../../audio/audio.js';
-import { ACID, AMBIENT, ANCHOR, ASH, BODY_MAX, BRICK, CHARCOAL, CLONE, CONCRETE, DEADPLANT, EMBER, EMPTY, FIRE, FLOWER, FOAM, FP_MAX, F_BODY, F_BURN, F_SCORCH, F_TIP, GLASS, GUNPOWDER, ICE, LAVA, MATERIALS, METAL, M_BLAST, M_HARD, M_LATENT, M_RIGID, OIL, PLANT, ROPE, RULES, SALT, SALTWATER, SAND, SCENES, SEED, SMOKE, SNOW, SOIL, SPARK, STATE_NAMES, STEAM, STEEL, STONE, S_ENERGY, S_GAS, TNT, TOOL_COOL, TOOL_ERASE, TOOL_HEAT, TOOL_LIGHTNING, VOID, WATER, WEATHER_PRESETS, WOOD, b64ToBytes, bytesToB64 } from '../../engine/index.js';
+import { ACID, AMBIENT, ANCHOR, ASH, BODY_MAX, BRICK, CHARCOAL, CLONE, CONCRETE, DEADPLANT, EMBER, EMPTY, FIRE, FLOWER, FOAM, FP_MAX, F_BODY, F_BURN, F_SCORCH, F_TIP, GLASS, GUNPOWDER, ICE, LAVA, MATERIALS, METAL, M_BLAST, M_HARD, M_LATENT, M_RIGID, OIL, PLANT, ROPE, RULES, SALT, SALTWATER, SAND, SCENES, SEED, SMOKE, SNOW, SOIL, SPARK, STATE_NAMES, STEAM, STEEL, STONE, S_ENERGY, S_GAS, TNT, TOOL_COOL, TOOL_ERASE, TOOL_HEAT, TOOL_LIGHTNING, VOID, WATER, WEATHER_PRESETS, WOOD, b64ToBytes } from '../../engine/index.js';
+import { attachProfileDiscoveries, createProfileAutosave } from '../../meta/profile/runtime.js';
 import { game, gameSetPaused } from '../../game/manager.js';
 import { R, VIEW_NAMES, canvas, gl, invalidate, particleCount, renderFrame, renderMode, resizeRenderer, setViewMode, settings, viewMode } from '../../render/renderer.js';
 import { $, CELL, downloadBlob, setCell, stampName, toast } from '../../ui/host.js';
@@ -13,7 +15,7 @@ export let world = null, V = null;
 export function setUIWorld(w) { world = w; V = w.view; }
 // 沙盘不在台上时（别的模式、主菜单），画布和键盘事件一律不处理
 export let uiActive = false;
-export function setUIActive(v) { uiActive = v; }
+export function setUIActive(v) { uiActive = v; if (canvas) canvas.tabIndex = v ? 0 : -1; }
 
 /* =====================================================================
  * 5. UI
@@ -56,7 +58,7 @@ export function buildPalette() {
     const box = document.createElement('div');
     box.className = 'cat';
     const h = document.createElement('h3');
-    h.textContent = cat.name;
+    h.textContent = uiT(cat.name);
     const items = document.createElement('div');
     items.className = 'items';
     for (const id of cat.ids) {
@@ -67,7 +69,7 @@ export function buildPalette() {
       b.style.setProperty('--c2', p[1] || p[0]);
       b.style.setProperty('--c3', p[2] || p[0]);
       b.innerHTML = '<span class="sw"></span><span class="nm"></span>' + (keyOf[id] ? '<kbd>' + keyOf[id] + '</kbd>' : '');
-      b.querySelector('.nm').textContent = info.name;
+      b.querySelector('.nm').textContent = uiT(info.name);
       b.addEventListener('click', () => selectTool(id));
       b.addEventListener('mouseenter', () => showTip(id, b));
       b.addEventListener('mouseleave', hideTip);
@@ -92,51 +94,52 @@ export function showTip(id, anchor) {
   const tip = $('tip');
   let html;
   if (id >= 100) {
-    html = '<h4>' + TOOLS[id].name + '</h4><div class="sub">工具</div><div>' + TOOLS[id].note + '</div>';
+    html = '<h4>' + uiT(TOOLS[id].name) + '</h4><div class="sub">' + uiT('工具') + '</div><div>' + uiT(TOOLS[id].note) + '</div>';
   } else {
     const m = MATERIALS[id], rows = [];
-    rows.push(['密度', m.density >= 10 ? Math.round(m.density) + ' kg/m³' : m.density + ' kg/m³']);
-    rows.push(['导热', m.conductivity.toFixed(2)]);
-    rows.push(['比热', m.heatCapacity.toFixed(1)]);
-    if (m.state !== S_GAS && m.state !== S_ENERGY) rows.push(['硬度', m.hardness > 1 ? '不可破坏' : m.hardness.toFixed(2)]);
-    if (m.spawnTemp !== AMBIENT) rows.push(['初始温度', fmtT(m.spawnTemp)]);
-    if (m.flammability > 0) rows.push(['燃点', fmtT(m.ignitionTemp) + '，烧成' + (m.blastRadius ? '爆炸' : MATERIALS[m.burnInto].name)]);
-    if (isFinite(m.meltTemp)) rows.push(['熔点', fmtT(m.meltTemp) + ' → ' + MATERIALS[m.meltInto].name]);
-    if (isFinite(m.boilTemp)) rows.push(['沸点', fmtT(m.boilTemp) + ' → ' + MATERIALS[m.boilInto].name]);
-    if (isFinite(m.freezeTemp)) rows.push([m.state === S_GAS ? '凝结' : '凝固', '低于 ' + fmtT(m.freezeTemp) + ' → ' + MATERIALS[m.freezeInto].name]);
-    if (m.blastRadius) rows.push(['爆炸', '半径 ' + m.blastRadius + ' 格，威力 ' + m.blastPower]);
-    if (m.life) rows.push(['寿命', m.life[0] + '–' + m.life[1] + ' 帧']);
-    if (m.electric) rows.push(['导电', '是']);
+    rows.push([uiT('密度'), m.density >= 10 ? Math.round(m.density) + ' kg/m³' : m.density + ' kg/m³']);
+    rows.push([uiT('导热'), m.conductivity.toFixed(2)]);
+    rows.push([uiT('比热'), m.heatCapacity.toFixed(1)]);
+    if (m.state !== S_GAS && m.state !== S_ENERGY) rows.push([uiT('硬度'), m.hardness > 1 ? uiT('不可破坏') : m.hardness.toFixed(2)]);
+    if (m.spawnTemp !== AMBIENT) rows.push([uiT('初始温度'), fmtT(m.spawnTemp)]);
+    if (m.flammability > 0) rows.push([uiT('燃点'), fmtT(m.ignitionTemp) + uiT('，烧成') + (m.blastRadius ? uiT('爆炸') : uiT(MATERIALS[m.burnInto].name))]);
+    if (isFinite(m.meltTemp)) rows.push([uiT('熔点'), fmtT(m.meltTemp) + ' → ' + uiT(MATERIALS[m.meltInto].name)]);
+    if (isFinite(m.boilTemp)) rows.push([uiT('沸点'), fmtT(m.boilTemp) + ' → ' + uiT(MATERIALS[m.boilInto].name)]);
+    if (isFinite(m.freezeTemp)) rows.push([m.state === S_GAS ? uiT('凝结') : uiT('凝固'), uiT('低于 ') + fmtT(m.freezeTemp) + ' → ' + uiT(MATERIALS[m.freezeInto].name)]);
+    if (m.blastRadius) rows.push([uiT('爆炸'), uiT('半径 ') + m.blastRadius + uiT(' 格，威力 ') + m.blastPower]);
+    if (m.life) rows.push([uiT('寿命'), m.life[0] + '–' + m.life[1] + uiT(' 帧')]);
+    if (m.electric) rows.push([uiT('导电'), uiT('是')]);
     // 反应列表直接从规则表生成
     const rx = [];
-    const nm = t => t === EMPTY ? '消失' : MATERIALS[t].name;
+    const nm = t => t === EMPTY ? uiT('消失') : uiT(MATERIALS[t].name);
     for (const r of RULES) {
       if (r.a !== id && r.b !== id) continue;
       const other = r.a === id ? r.b : r.a, self2 = r.a === id ? r.a2 : r.b2, other2 = r.a === id ? r.b2 : r.a2;
       let s;
-      if (r.tag === 'grow') s = id === PLANT ? '吸水后生长' : '被植物吸收';
-      else if (r.use) s = r.a === id ? '溶解它' : '被溶解';
+      if (r.tag === 'grow') s = id === PLANT ? uiT('吸水后生长') : uiT('被植物吸收');
+      else if (r.use) s = r.a === id ? uiT('溶解它') : uiT('被溶解');
       else {
         const parts = [];
-        if (self2 !== id) parts.push('自己→' + nm(self2));
-        if (other2 !== other) parts.push('对方→' + nm(other2));
-        s = parts.join('，') || '无变化';
+        if (self2 !== id) parts.push(uiT('自己→') + nm(self2));
+        if (other2 !== other) parts.push(uiT('对方→') + nm(other2));
+        s = parts.join(uiT('，')) || uiT('无变化');
       }
-      rx.push('<li>碰到<b>' + MATERIALS[other].name + '</b>：' + s + '</li>');
+      rx.push('<li>' + uiT('碰到') + '<b>' + uiT(MATERIALS[other].name) + '</b>' + uiT('：') + s + '</li>');
     }
-    if (id === SPARK) rx.push('<li>碰到<b>金属 / 水</b>：注入电荷并传导</li><li>碰到<b>可燃物</b>：加热到燃点</li>');
-    html = '<h4>' + m.name + '</h4><div class="sub">' + STATE_NAMES[m.state] + (m.note ? ' · ' + m.note : '') + '</div><dl>' +
+    if (id === SPARK) rx.push(...[[uiT('金属 / 水'),uiT('注入电荷并传导')],[uiT('可燃物'),uiT('加热到燃点')]].map(([target,effect]) => '<li>' + uiT('碰到') + '<b>' + target + '</b>' + uiT('：') + effect + '</li>'));
+    html = '<h4>' + uiT(m.name) + '</h4><div class="sub">' + uiT(STATE_NAMES[m.state]) + (m.note ? ' · ' + uiT(m.note) : '') + '</div><dl>' +
       rows.map(r => '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>').join('') + '</dl>' +
-      (rx.length ? '<ul>' + rx.slice(0, 9).join('') + (rx.length > 9 ? '<li>……共 ' + rx.length + ' 条</li>' : '') + '</ul>' : '');
+      (rx.length ? '<ul>' + rx.slice(0, 9).join('') + (rx.length > 9 ? '<li>' + uiT('……共 {n} 条', {n:rx.length}) + '</li>' : '') + '</ul>' : '');
   }
   tip.innerHTML = html;
   tip.style.display = 'block';
+  anchor.setAttribute('aria-describedby','tip');
   const r = anchor.getBoundingClientRect(), th = tip.offsetHeight;
   const side = $('palette').getBoundingClientRect().right + 8;
   tip.style.left = Math.min(window.innerWidth - 260, side) + 'px';
   tip.style.top = Math.max(8, Math.min(window.innerHeight - th - 8, r.top - 6)) + 'px';
 }
-export function hideTip() { $('tip').style.display = 'none'; }
+export function hideTip() { $('tip').style.display = 'none'; document.querySelector('[aria-describedby="tip"]')?.removeAttribute('aria-describedby'); }
 
 /* ---------------------------------------------------------------------
  * 5.2 笔刷
@@ -174,6 +177,23 @@ export function updateCursor() {
 }
 
 export function bindPointer() {
+  canvas.tabIndex = 0;
+  canvas.setAttribute('aria-label', uiT('绘制区域：方向键移动，回车绘制，Delete 擦除'));
+  canvas.addEventListener('keydown', e => {
+    if (!uiActive || $('app').inert || uiLocked()) return;
+    const directions = { ArrowUp:[0,-1], ArrowDown:[0,1], ArrowLeft:[-1,0], ArrowRight:[1,0] };
+    if (pointer.hx < 0 || pointer.hy < 0) { pointer.hx = V.W >> 1; pointer.hy = V.H >> 1; }
+    if (directions[e.key]) {
+      const [dx,dy] = directions[e.key];
+      pointer.hx = Math.max(0,Math.min(V.W - 1,pointer.hx + dx));
+      pointer.hy = Math.max(0,Math.min(V.H - 1,pointer.hy + dy));
+    } else if (e.key === 'Enter' || e.key === 'Delete') {
+      pushUndo();
+      if (tool === TOOL_LIGHTNING && e.key === 'Enter') world.exec('lightning',{x:pointer.hx});
+      else stamp(pointer.hx,pointer.hy,e.key === 'Delete');
+    } else return;
+    e.preventDefault(); pointer.inside = true; updateCursor();
+  });
   canvas.addEventListener('pointerdown', e => {
     if (!uiActive) return;
     if (e.button !== 0 && e.button !== 2) return;
@@ -182,7 +202,7 @@ export function bindPointer() {
     closePops();
     try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 合成事件没有活动指针 */ }
     const p = toCell(e);
-    if (uiLocked()) { toast('正在回放录制，按「停止回放」再操作'); return; }
+    if (uiLocked()) { toast(uiT('正在回放录制，按「停止回放」再操作')); return; }
     if (tool === TOOL_LIGHTNING && e.button === 0) { world.exec('lightning', { x: p.x }); return; }      // 召唤闪电：点一下劈一道
     pushUndo();
     world.exec('strokeBegin', {});                          // 画的时候先不判定支撑，松手再算（否则画到一半就掉了）
@@ -233,14 +253,14 @@ export function pushUndo() {
 
 export function undo() {
   if (uiLocked()) return;
-  if (undoLen === 0) { toast('没有可撤销的操作'); return; }
+  if (undoLen === 0) { toast(uiT('没有可撤销的操作')); return; }
   undoHead = (undoHead + UNDO_MAX - 1) % UNDO_MAX;
   undoLen--;
   const s = undoRing[undoHead];
   undoRing[undoHead] = null;
   world.exec('restoreScene', { json: s });
   syncGravityUI(); syncEnvUI();
-  toast('已撤销（还可撤销 ' + undoLen + ' 步）');
+  toast(uiT('已撤销（还可撤销 {n} 步）', {n:undoLen}));
 }
 
 /* ---------------------------------------------------------------------
@@ -252,12 +272,6 @@ export function readSlots() {
   try { return JSON.parse(localStorage.getItem(SLOT_KEY) || '{}') || {}; } catch (e) { return {}; }
 }
 
-// 完整存档有几百 KB，存进 localStorage 之前用浏览器自带的 gzip 压一下（没有 CompressionStream 就存原文）
-export async function gzipToB64(str) {
-  if (typeof CompressionStream === 'undefined') return null;
-  const stream = new Blob([str]).stream().pipeThrough(new CompressionStream('gzip'));
-  return bytesToB64(new Uint8Array(await new Response(stream).arrayBuffer()));
-}
 export async function gunzipB64(b64) {
   const stream = new Blob([b64ToBytes(b64)]).stream().pipeThrough(new DecompressionStream('gzip'));
   return await new Response(stream).text();
@@ -272,50 +286,100 @@ export function loadAnySave(text, label) {
   if (o && (o.kind === 'full' || o.kind === 'world')) world.exec('restoreFull', { json: text });   // world.serialize() 的存档和 v4.1 的完整存档
   else world.exec('restoreScene', { json: text });
   syncGravityUI(); syncEnvUI();
-  toast('已读取「' + label + '」');
+  toast(uiT('已读入「{name}」', {name:label}));
 }
 
-export function renderSlots() {
-  const host = $('slotList'), slots = readSlots(), names = Object.keys(slots);
+let sandboxSlotDraw = 0;
+const sandboxAutoName = '自动存档';
+const sandboxSaveError = e => toast(e.message);
+const sandboxAutosave = createProfileAutosave(() => {
+  if (uiActive && !game.busy && !uiLocked()) return game.profile.saveSlot('sandbox', sandboxAutoName, world);
+}, sandboxSaveError);
+let sandboxOffDiscoveries = null;
+
+export function applySandboxProfile(p) {
+  const prefs = p.settings;
+  if (prefs.language !== uiLanguage()) uiSetLanguage(prefs.language === 'en' ? 'en' : 'zh-CN');
+  if (sandboxOffDiscoveries) sandboxOffDiscoveries();
+  sandboxOffDiscoveries = attachProfileDiscoveries(game.bus, game.profile, p, sandboxSaveError, () => game.modeDef?.id !== 'home' && !game.busy);
+  $('selQuality').value = prefs.quality;
+  setQuality(prefs.quality);
+  audio.volume = prefs.volume;
+  $('rngVol').value = Math.round(prefs.volume * 100);
+  audioSetVolume();
+  const resized = CELL !== prefs.gridPrecision;
+  setCell(prefs.gridPrecision);
+  $('selScale').value = String(CELL);
+  if (resized && uiActive) fitGrid(true);
+  $('autoSeconds').value = prefs.autosaveMs / 1000;
+  sandboxAutosave.setInterval(prefs.autosaveMs);
+}
+
+export function sandboxPreference(key, value) {
+  if (game.profile) game.profile.updateProfile(p => { p.settings[key] = value; }).catch(sandboxSaveError);
+}
+
+export async function renderSlots() {
+  const generation = ++sandboxSlotDraw;
+  const host = $('slotList'), legacy = readSlots();
+  let entries = [];
+  try { if (game.profile) entries = await game.profile.listPreviews('sandbox'); }
+  catch (e) { sandboxSaveError(e); }
+  if (generation !== sandboxSlotDraw) return;
+  entries.push(...Object.keys(legacy).map(name => ({ name, legacy: true })));
   host.textContent = '';
-  if (!names.length) { const d = document.createElement('div'); d.className = 'note'; d.style.marginTop = '0'; d.textContent = '还没有存档'; host.appendChild(d); return; }
-  for (const name of names) {
-    const row = document.createElement('div');
+  if (!entries.length) { host.textContent = uiT('还没有存档'); return; }
+  for (const entry of entries) {
+    const name = entry.name, row = document.createElement('div');
     row.className = 'slot';
+    if (entry.thumbnail) {
+      const img = document.createElement('img');
+      img.width = 48; img.alt = ''; img.src = entry.thumbnail; row.appendChild(img);
+    }
     const nm = document.createElement('span');
-    nm.className = 'nm'; nm.textContent = name;
+    nm.className = 'nm'; nm.textContent = entry.legacy ? uiT('{name}（旧版）',{name}) : name === sandboxAutoName ? uiT(name) : name;
     const load = document.createElement('button');
-    load.textContent = '读取';
+    load.textContent = uiT('读取');
     load.addEventListener('click', async () => {
       if (uiLocked()) return;
-      try { loadAnySave(await slotText(slots[name]), name); closePops(); }
-      catch (e) { toast('读取失败：' + e.message); }
+      const target = world;
+      try {
+        const json = entry.legacy ? await slotText(legacy[name]) : (await game.profile.loadSlot('sandbox', name)).json;
+        if (target === world && uiActive && !uiLocked()) { loadAnySave(json, name); closePops(); }
+      } catch (e) { toast(uiT('读取失败：') + uiT(e.message)); }
     });
     const del = document.createElement('button');
-    del.textContent = '删除'; del.className = 'danger';
-    del.addEventListener('click', () => {
-      const s = readSlots();
-      delete s[name];
-      localStorage.setItem(SLOT_KEY, JSON.stringify(s));
-      renderSlots();
+    del.textContent = uiT('删除'); del.className = 'danger';
+    del.addEventListener('click', async () => {
+      try {
+        if (entry.legacy) {
+          const slots = readSlots();
+          delete slots[name]; localStorage.setItem(SLOT_KEY, JSON.stringify(slots));
+        } else await game.profile.deleteSlot('sandbox', name);
+        await renderSlots();
+      } catch (e) { sandboxSaveError(e); }
     });
-    row.appendChild(nm); row.appendChild(load); row.appendChild(del);
-    host.appendChild(row);
+    row.append(nm, load, del); host.appendChild(row);
   }
 }
 
 export async function saveSlot() {
-  const name = $('slotName').value.trim() || '存档 ' + new Date().toLocaleTimeString();
-  const slots = readSlots();
-  const text = world.serialize();
-  const z = await gzipToB64(text);
-  slots[name] = z ? { z } : text;
-  try { localStorage.setItem(SLOT_KEY, JSON.stringify(slots)); toast('已保存到「' + name + '」（' + ((z ? z.length : text.length) / 1024).toFixed(0) + ' KB）'); }
-  catch (e) { toast('保存失败：浏览器本地存储空间不足，请改用导出 JSON'); }
-  $('slotName').value = '';
-  renderSlots();
+  const name = $('slotName').value.trim() || uiT('存档 ') + new Date().toLocaleTimeString();
+  if (name === sandboxAutoName) { toast('此名称用于自动存档，请换一个名称'); return; }
+  try {
+    if (!game.profile) throw new Error('本地存储不可用，请导出世界文件');
+    const preview = document.createElement('canvas');
+    preview.width = 96;
+    preview.height = Math.max(1, Math.round(96 * canvas.height / canvas.width));
+    const g = preview.getContext('2d');
+    renderFrame(performance.now(), 16.7);
+    g.drawImage(canvas, 0, 0, preview.width, preview.height);
+    await game.profile.saveSlot('sandbox', name, world, { thumbnail: preview.toDataURL('image/png') });
+    $('slotName').value = '';
+    toast(uiT('已保存到「{name}」',{name}));
+    await renderSlots();
+  } catch (e) { sandboxSaveError(e); }
 }
-
 
 export function exportJSON() { downloadBlob(new Blob([world.serialize()], { type: 'application/json' }), stampName('json')); }
 
@@ -323,7 +387,7 @@ export function exportJSON() { downloadBlob(new Blob([world.serialize()], { type
 export function exportRecording() {
   const rec = world.recording();
   downloadBlob(new Blob([JSON.stringify(rec)], { type: 'application/json' }), stampName('rec.json'));
-  toast('已导出录制：' + rec.log.length + ' 条命令、' + rec.steps + ' 步');
+  toast(uiT('已导出录制：{commands} 条命令、{steps} 步', {commands:rec.log.length, steps:rec.steps}));
 }
 
 // 回放：从录制的种子重新开局，按步数把命令一条条喂进去；回放期间不接受玩家输入
@@ -334,7 +398,7 @@ export function startPlayback(rec) {
   playback = { rec };
   sbxSetPaused(false);
   $('btnPlayStop').style.display = '';
-  toast('开始回放：' + rec.log.length + ' 条命令、' + rec.steps + ' 步');
+  toast(uiT('开始回放：{commands} 条命令、{steps} 步', {commands:rec.log.length, steps:rec.steps}));
 }
 export function stopPlayback(done) {
   if (!playback) return;
@@ -343,7 +407,7 @@ export function stopPlayback(done) {
   world.replayEnd(true);                                 // 回放完接着录：后面的操作接在原录制后面
   $('btnPlayStop').style.display = 'none';
   syncGravityUI(); syncEnvUI();
-  toast(done ? '回放完成，哈希 ' + world.hash() : '已停止回放');
+  toast(done ? uiT('回放完成，哈希 ') + world.hash() : uiT('已停止回放'));
 }
 // 主循环里每个模拟步之前调用：把这一步该执行的命令喂进去
 export function playbackTick() {
@@ -356,9 +420,9 @@ export function importJSON(file) {
     const fr = new FileReader();
     fr.onload = () => {
       try { loadAnySave(String(fr.result), file.name); resolve(true); }
-      catch (e) { toast('导入失败：' + e.message); resolve(false); }
+      catch (e) { toast(uiT('导入失败：') + uiT(e.message)); resolve(false); }
     };
-    fr.onerror = () => { toast('读取文件失败'); resolve(false); };
+    fr.onerror = () => { toast(uiT('读取文件失败')); resolve(false); };
     fr.readAsText(file);
   });
 }
@@ -380,26 +444,26 @@ export const rec = { mr: null, chunks: [], timer: 0, endAt: 0 };
 
 export function toggleRecord() {
   if (rec.mr) { rec.mr.stop(); return; }
-  if (!canvas.captureStream || !window.MediaRecorder) { toast('这个浏览器不支持录制'); return; }
+  if (!canvas.captureStream || !window.MediaRecorder) { toast(uiT('这个浏览器不支持录制')); return; }
   const secs = Math.min(30, Math.max(5, +$('selRec').value));
   const types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
   const mime = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
   let mr;
   try { mr = new MediaRecorder(canvas.captureStream(60), mime ? { mimeType: mime, videoBitsPerSecond: 8e6 } : undefined); }
-  catch (e) { toast('无法开始录制：' + e.message); return; }
+  catch (e) { toast(uiT('无法开始录制：') + uiT(e.message)); return; }
   rec.mr = mr; rec.chunks = []; rec.endAt = performance.now() + secs * 1000;
   mr.ondataavailable = e => { if (e.data && e.data.size) rec.chunks.push(e.data); };
   mr.onstop = () => {
     clearInterval(rec.timer);
     rec.mr = null;
-    $('btnRec').textContent = '录制'; $('btnRec').classList.remove('warn'); $('recdot').style.display = 'none';
-    if (rec.chunks.length) { downloadBlob(new Blob(rec.chunks, { type: 'video/webm' }), stampName('webm')); toast('录制完成，已下载 WebM'); }
+    $('btnRec').textContent = uiT('录制'); $('btnRec').classList.remove('warn'); $('recdot').style.display = 'none';
+    if (rec.chunks.length) { downloadBlob(new Blob(rec.chunks, { type: 'video/webm' }), stampName('webm')); toast(uiT('录制完成，已下载 WebM')); }
   };
   mr.start(250);
-  $('btnRec').textContent = '停止'; $('btnRec').classList.add('warn'); $('recdot').style.display = 'block';
+  $('btnRec').textContent = uiT('停止'); $('btnRec').classList.add('warn'); $('recdot').style.display = 'block';
   rec.timer = setInterval(() => {
     const left = Math.max(0, rec.endAt - performance.now());
-    $('recdot').textContent = '录制中 ' + (left / 1000).toFixed(1) + ' 秒';
+    $('recdot').textContent = uiT('录制中 ') + (left / 1000).toFixed(1) + uiT(' 秒');
     if (left <= 0 && rec.mr) rec.mr.stop();
   }, 100);
 }
@@ -413,7 +477,7 @@ export function loadScene(k) {
   world.exec('loadScene', { index: k });
   syncGravityUI(); syncEnvUI();
   if (game.paused) sbxSetPaused(false);
-  toast('场景：' + SCENES[k].name + ' — ' + SCENES[k].note);
+  toast(uiT('场景：') + uiT(SCENES[k].name) + ' — ' + uiT(SCENES[k].note));
 }
 
 /* ---------------------------------------------------------------------
@@ -423,7 +487,7 @@ export function sbxSetPaused(v) {
   gameSetPaused(v);
 }
 export function syncPauseUI() {
-  $('btnPause').textContent = game.paused ? '▶ 继续' : '❚❚ 暂停';
+  $('btnPause').textContent = game.paused ? uiT('▶ 继续') : uiT('❚❚ 暂停');
   $('btnPause').classList.toggle('warn', game.paused);
 }
 
@@ -439,7 +503,7 @@ export function setBrushSize(v) {
 
 export function setView(v) {
   setViewMode(v % VIEW_NAMES.length);
-  $('btnView').textContent = '视图：' + VIEW_NAMES[viewMode];
+  $('btnView').textContent = uiT('视图：') + uiT(VIEW_NAMES[viewMode]);
   $('btnView').classList.toggle('on', viewMode !== 0);
   invalidate();
 }
@@ -449,24 +513,37 @@ export function requestClear() {
   const b = $('btnClear');
   if (clearArmed) {
     clearTimeout(clearArmed); clearArmed = 0;
-    b.textContent = '清空'; b.classList.remove('armed');
+    b.textContent = uiT('清空'); b.classList.remove('armed');
     if (uiLocked()) return;
     pushUndo(); world.exec('clear', {});
-    toast('已清空（可撤销）');
+    toast(uiT('已清空（可撤销）'));
     return;
   }
-  b.textContent = '再按一次确认'; b.classList.add('armed');
-  clearArmed = setTimeout(() => { clearArmed = 0; b.textContent = '清空'; b.classList.remove('armed'); }, 2500);
+  b.textContent = uiT('再按一次确认'); b.classList.add('armed');
+  clearArmed = setTimeout(() => { clearArmed = 0; b.textContent = uiT('清空'); b.classList.remove('armed'); }, 2500);
 }
 
-export function closePops() { document.querySelectorAll('.pop.show').forEach(p => p.classList.remove('show')); }
+export function sbxReleaseInput() {
+  if (uiActive && pointer.down && V.structHold && !uiLocked()) world.exec('strokeEnd', {});
+  pointer.down = false; pointer.line = false; pointer.inside = false; pointer.hx = -1;
+  updateCursor(); hideTip();
+}
+
+export function closePops() {
+  document.querySelectorAll('.pop.show').forEach(p => {
+    p.classList.remove('show');
+    document.querySelector('[data-pop="' + p.id + '"]')?.setAttribute('aria-expanded','false');
+  });
+}
 
 export function togglePop(btn) {
   const pop = $(btn.dataset.pop), was = pop.classList.contains('show');
   closePops();
   if (was) return;
   if (pop.id === 'popSave') renderSlots();
+  btn.setAttribute('aria-expanded','true');
   pop.classList.add('show');
+  pop.querySelector('button, input, select')?.focus();
   const r = btn.getBoundingClientRect();
   pop.style.top = r.bottom + 8 + 'px';
   pop.style.left = Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, r.left)) + 'px';
@@ -510,8 +587,8 @@ export function buildEnvPanel() {
   const host = $('envWeather');
   for (const key in WEATHER_PRESETS) {
     const b = document.createElement('button');
-    b.textContent = WEATHER_PRESETS[key].name; b.dataset.w = key; b.style.textAlign = 'center';
-    b.addEventListener('click', () => { if (uiLocked()) return; world.exec('setWeather', { key }); syncEnvUI(); toast('天气：' + WEATHER_PRESETS[key].name); });
+    b.textContent = uiT(WEATHER_PRESETS[key].name); b.dataset.w = key; b.style.textAlign = 'center';
+    b.addEventListener('click', () => { if (uiLocked()) return; world.exec('setWeather', { key }); syncEnvUI(); toast(uiT('天气：') + uiT(WEATHER_PRESETS[key].name)); });
     host.appendChild(b);
   }
   const setE = (key, value) => { if (!uiLocked()) world.exec('setEnv', { key, value }); };
@@ -523,13 +600,16 @@ export function buildEnvPanel() {
   $('envSpeed').addEventListener('change', e => setE('timeScale', +e.target.value));
   $('envDayNight').addEventListener('change', e => { setE('dayNight', e.target.checked); invalidate(); });
   $('envStruct').addEventListener('change', e => setE('structure', e.target.checked));
-  $('envBolt').addEventListener('click', () => { selectTool(TOOL_LIGHTNING); closePops(); toast('闪电工具：在画面上点一下'); });
-  $('selQuality').addEventListener('change', e => setQuality(e.target.value));
-  $('selScale').addEventListener('change', e => { setCell(+e.target.value); fitGrid(true); toast('每格 ' + CELL + ' 像素，网格 ' + V.W + '×' + V.H); });
+  $('envBolt').addEventListener('click', () => { selectTool(TOOL_LIGHTNING); closePops(); toast(uiT('闪电工具：在画面上点一下')); });
+  $('selQuality').addEventListener('change', e => { setQuality(e.target.value); sandboxPreference('quality',e.target.value); });
+  $('selScale').addEventListener('change', e => { setCell(+e.target.value); sandboxPreference('gridPrecision',CELL); fitGrid(true); toast(uiT('每格 {cell} 像素，网格 {w}×{h}', {cell:CELL,w:V.W,h:V.H})); });
   syncEnvUI();
 }
 
 export function buildControls() {
+  $('selLanguage').value = uiLanguage();
+  $('selLanguage').addEventListener('change', e => { uiSetLanguage(e.target.value); sandboxPreference('language',e.target.value); });
+  uiOnLanguage(sbxRefreshLanguage);
   $('btnPause').addEventListener('click', () => sbxSetPaused(!game.paused));
   $('btnStep').addEventListener('click', () => { sbxSetPaused(true); game.stepOnce = true; });
   $('selSpeed').addEventListener('change', e => { game.speed = +e.target.value; });
@@ -541,7 +621,7 @@ export function buildControls() {
   }));
   $('btnMode').addEventListener('click', () => {
     brush.replace = !brush.replace;
-    $('btnMode').textContent = brush.replace ? '覆盖' : '填空';
+    $('btnMode').textContent = brush.replace ? uiT('覆盖') : uiT('填空');
     $('btnMode').classList.toggle('on', brush.replace);
   });
   $('rngSize').addEventListener('input', e => setBrushSize(+e.target.value));
@@ -553,12 +633,15 @@ export function buildControls() {
   $('btnMute').addEventListener('click', () => {
     audioStart();
     audio.muted = !audio.muted;
-    $('btnMute').textContent = audio.muted ? '静音' : '声音';
+    $('btnMute').textContent = audio.muted ? uiT('静音') : uiT('声音');
     $('btnMute').classList.toggle('warn', audio.muted);
     audioSetVolume();
   });
   $('rngVol').addEventListener('input', e => { audioStart(); audio.volume = +e.target.value / 100; audioSetVolume(); });
-  document.querySelectorAll('[data-pop]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); togglePop(b); }));
+  document.querySelectorAll('[data-pop]').forEach(b => {
+    b.setAttribute('aria-controls',b.dataset.pop); b.setAttribute('aria-expanded','false');
+    b.addEventListener('click', e => { e.stopPropagation(); togglePop(b); });
+  });
   document.querySelectorAll('.pop').forEach(p => p.addEventListener('pointerdown', e => e.stopPropagation()));
   window.addEventListener('pointerdown', e => { if (!e.target.closest('[data-pop]')) closePops(); });
   window.addEventListener('pointerdown', audioStart, { once: true });
@@ -566,7 +649,7 @@ export function buildControls() {
   SCENES.forEach((s, k) => {
     const b = document.createElement('button');
     b.innerHTML = '<span></span><small></small>';
-    b.firstChild.textContent = (k + 1) + '. ' + s.name; b.lastChild.textContent = s.note;
+    b.firstChild.textContent = (k + 1) + '. ' + uiT(s.name); b.lastChild.textContent = uiT(s.note);
     b.addEventListener('click', () => { loadScene(k); closePops(); });
     $('sceneList').appendChild(b);
   });
@@ -580,13 +663,31 @@ export function buildControls() {
       if (key === 'hd') resizeRenderer();
       invalidate();
     });
-    l.appendChild(c); l.appendChild(document.createTextNode(label));
+    l.appendChild(c); l.appendChild(document.createTextNode(uiT(label)));
     $('settingList').appendChild(l);
   }
-  $('renderInfo').textContent = renderMode === 'webgl2'
-    ? '渲染：WebGL2' + (R.hdr ? '（HDR 浮点缓冲）' : '（8 位缓冲）') + '。按 ` 打开调试面板。'
-    : '渲染：Canvas2D 退路（没有 WebGL2）。发光、光照、扭曲等后处理不可用。';
+  sbxRenderInfo();
 
+  for (const id of ['autoSeconds', 'btnProfileExport', 'btnProfileImport']) $(id).disabled = !game.profile;
+  $('rngVol').addEventListener('change', () => sandboxPreference('volume', audio.volume));
+  $('autoSeconds').addEventListener('change', async e => {
+    try {
+      const ms = Math.round(Number(e.target.value) * 1000);
+      await game.profile.updateProfile(p => { p.settings.autosaveMs = ms; });
+      sandboxAutosave.setInterval(ms);
+    } catch (err) { sandboxSaveError(err); }
+  });
+  $('btnProfileExport').addEventListener('click', async () => {
+    try { downloadBlob(await game.profile.exportProfile(), stampName('profile.json')); }
+    catch (e) { sandboxSaveError(e); }
+  });
+  $('btnProfileImport').addEventListener('click', () => $('profileFile').click());
+  $('profileFile').addEventListener('change', async e => {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file || !window.confirm(uiT('用此档案替换本机进度和存档槽位？'))) return;
+    try { applySandboxProfile(await game.profile.importProfile(file)); await renderSlots(); toast('玩家档案已导入'); }
+    catch (err) { sandboxSaveError(err); }
+  });
   $('btnSlotSave').addEventListener('click', saveSlot);
   $('slotName').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') saveSlot(); });
   $('btnExport').addEventListener('click', exportJSON);
@@ -601,9 +702,9 @@ export let debugOn = false;
 
 export function bindKeys() {
   window.addEventListener('keydown', e => {
-    if (!uiActive) return;
+    if (!uiActive || $('app').inert || e.defaultPrevented) return;
     const tag = e.target.tagName;
-    if (tag === 'INPUT' && e.target.type === 'text') return;
+    if (['INPUT','SELECT','TEXTAREA'].includes(tag) || (tag === 'BUTTON' && e.key === ' ')) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key;
@@ -652,55 +753,81 @@ export function updateHud(now) {
   hud.simRate = (V.simStepsTotal - hud.lastSteps) * 1000 / dt;
   hud.frames = 0; hud.last = now; hud.lastSteps = V.simStepsTotal;
   $('stFps').textContent = Math.round(hud.fps);
-  $('stSim').textContent = game.paused ? '暂停' : Math.round(hud.simRate);
+  $('stSim').textContent = game.paused ? uiT('暂停') : Math.round(hud.simRate);
   $('stCount').textContent = (particleCount + V.fpCount).toLocaleString();
   $('stMode').textContent = renderMode === 'webgl2' ? 'WebGL2' : 'Canvas2D';
   // rAF 间隔明显大于 16.7ms，而我们自己每帧的活儿（含 GPU）远小于间隔 → 是浏览器在降频，不是性能问题
   hud.throttled = document.hidden || (hud.fps < 50 && hud.work + V.perf.gpu < 8);
   $('stThrottle').classList.toggle('hide', !hud.throttled);
-  $('stThrottle').textContent = 'rAF 被降频（实际 ' + (hud.fps < 10 ? hud.fps.toFixed(1) : Math.round(hud.fps)) + ' 帧/秒，每帧只需 ' + (hud.work + V.perf.gpu).toFixed(1) + 'ms）';
+  $('stThrottle').textContent = uiT('rAF 被降频（实际 {fps} 帧/秒，每帧只需 {ms}ms）', {fps:hud.fps < 10 ? hud.fps.toFixed(1) : Math.round(hud.fps), ms:(hud.work + V.perf.gpu).toFixed(1)});
 
   // 检视器
   if (pointer.inside && pointer.hx >= 0 && pointer.hy >= 0 && pointer.hx < V.W && pointer.hy < V.H) {
     const i = pointer.hx + pointer.hy * V.W, t = V.type[i], f = V.flags[i], m = MATERIALS[t];
-    let s = m.name + ' · ' + Math.round(V.temp[i]) + '°C · ' + STATE_NAMES[m.state];
-    if ((t === METAL || t === STEEL) && V.temp[i] > 450) s = '热' + s;
-    if (f & F_BODY) s += ' · 刚体（下落中）';
-    else if (M_RIGID[t] && M_HARD[t] <= 1) s += ' · 完整度 ' + V.aux[i];
-    if (V.wet[i] > 0 && t !== 0) s += ' · 含水 ' + V.wet[i];
-    if (t === 0 && V.aux[i] > 20) s += ' · 空气浑浊 ' + V.aux[i];
-    if (t === CLONE && V.life[i]) s += ' · 复制：' + MATERIALS[V.life[i]].name;
-    else if (V.life[i] && t !== 0 && !(f & F_BODY)) s += ' · ' + (M_BLAST[t] && (f & F_BURN) ? '引信 ' : f & F_TIP ? '生长能量 ' : M_LATENT[t] ? '融化进度 ' : t === PLANT || t === FLOWER || t === SEED ? '年龄 ' : '寿命 ') + V.life[i];
-    if (V.fuel[i] > 0 && (f & F_BURN)) s += ' · 剩余燃料 ' + V.fuel[i];
-    if (f & F_BURN) s += ' · 燃烧中';
-    if (f & F_SCORCH) s += ' · 焦黑';
-    if (V.charge[i]) s += ' · 带电';
+    let s = uiT(m.name) + ' · ' + Math.round(V.temp[i]) + '°C · ' + uiT(STATE_NAMES[m.state]);
+    if ((t === METAL || t === STEEL) && V.temp[i] > 450) s = uiT('热') + s;
+    if (f & F_BODY) s += uiT(' · 刚体（下落中）');
+    else if (M_RIGID[t] && M_HARD[t] <= 1) s += uiT(' · 完整度 ') + V.aux[i];
+    if (V.wet[i] > 0 && t !== 0) s += uiT(' · 含水 ') + V.wet[i];
+    if (t === 0 && V.aux[i] > 20) s += uiT(' · 空气浑浊 ') + V.aux[i];
+    if (t === CLONE && V.life[i]) s += uiT(' · 复制：') + uiT(MATERIALS[V.life[i]].name);
+    else if (V.life[i] && t !== 0 && !(f & F_BODY)) s += ' · ' + (M_BLAST[t] && (f & F_BURN) ? uiT('引信 ') : f & F_TIP ? uiT('生长能量 ') : M_LATENT[t] ? uiT('融化进度 ') : t === PLANT || t === FLOWER || t === SEED ? uiT('年龄 ') : uiT('寿命 ')) + V.life[i];
+    if (V.fuel[i] > 0 && (f & F_BURN)) s += uiT(' · 剩余燃料 ') + V.fuel[i];
+    if (f & F_BURN) s += uiT(' · 燃烧中');
+    if (f & F_SCORCH) s += uiT(' · 焦黑');
+    if (V.charge[i]) s += uiT(' · 带电');
     $('stInspect').textContent = s + '  (' + pointer.hx + ', ' + pointer.hy + ')';
   } else $('stInspect').textContent = '—';
 
   if (debugOn) {
     const n = Math.max(1, V.perf.frames || 1), sN = Math.max(1, V.perf.steps);
     $('debug').textContent =
-      '网格        ' + V.W + ' x ' + V.H + '  (' + V.CW * V.CHN + ' 块)\n' +
-      '活跃块      ' + V.perf.activeChunks + ' / ' + V.CW * V.CHN + '\n' +
-      '飞行粒子    ' + V.fpCount + ' / ' + FP_MAX + '\n' +
-      '爆炸 / 带电 ' + V.exActive + ' / ' + V.elecCount + '\n' +
-      '刚体        ' + V.bodyCount + ' / ' + BODY_MAX + '   (支撑检测 ' + V.structStats.checks + ' 次)\n' +
-      '环境        ' + (V.env.time * 24).toFixed(1) + ' 时  ' + V.env.ambient.toFixed(0) + '°C  云 ' + sumCloudUI().toFixed(0) + '  雨 ' + V.env.rainCount + '  雪 ' + V.env.snowCount + '  闪电 ' + V.env.strikes + '\n' +
-      '模拟步数    ' + (V.perf.steps / n).toFixed(2) + ' 步/帧  (' + Math.round(hud.simRate) + ' 步/秒)\n' +
-      '── 每帧耗时 (ms) ──\n' +
-      '模拟·粒子   ' + (V.perf.cells / n).toFixed(2) + '   (每步 ' + (V.perf.cells / sN).toFixed(2) + ')\n' +
-      '模拟·温度   ' + (V.perf.thermal / n).toFixed(2) + '\n' +
-      '模拟·结构   ' + (V.perf.struct / n).toFixed(2) + '   (支撑检测 + 刚体)\n' +
-      '模拟·天气   ' + (V.perf.weather / n).toFixed(2) + '   (风 / 湿度 / 云 / 昼夜)\n' +
-      '模拟·慢过程 ' + (V.perf.slow / n).toFixed(2) + '   (蒸发 / 植物 / 渗水)\n' +
-      '模拟·其他   ' + (V.perf.misc / n).toFixed(2) + '   (爆炸 / 电 / 飞行粒子)\n' +
-      '渲染·打包   ' + (V.perf.pack / n).toFixed(2) + '\n' +
-      '渲染·场景   ' + (V.perf.draw / n).toFixed(2) + '\n' +
-      '渲染·后处理 ' + (V.perf.post / n).toFixed(2) + '\n' +
-      'GPU 完成    ' + V.perf.gpu.toFixed(2) + '  (抽样 gl.finish)\n' +
-      'rAF 间隔    ' + hud.interval.toFixed(1) + '   CPU 合计 ' + hud.work.toFixed(2) + '\n' +
-      '渲染后端    ' + renderMode + (gl ? ' ' + canvas.width + 'x' + canvas.height + (R.hdr ? ' HDR' : '') : '');
+      uiT('网格        ') + V.W + ' x ' + V.H + '  (' + V.CW * V.CHN + uiT(' 块)\n') +
+      uiT('活跃块      ') + V.perf.activeChunks + ' / ' + V.CW * V.CHN + '\n' +
+      uiT('飞行粒子    ') + V.fpCount + ' / ' + FP_MAX + '\n' +
+      uiT('爆炸 / 带电 ') + V.exActive + ' / ' + V.elecCount + '\n' +
+      uiT('刚体        ') + V.bodyCount + ' / ' + BODY_MAX + uiT('   (支撑检测 ') + V.structStats.checks + uiT(' 次)\n') +
+      uiT('环境        ') + (V.env.time * 24).toFixed(1) + uiT(' 时  ') + V.env.ambient.toFixed(0) + uiT('°C  云 ') + sumCloudUI().toFixed(0) + uiT('  雨 ') + V.env.rainCount + uiT('  雪 ') + V.env.snowCount + uiT('  闪电 ') + V.env.strikes + '\n' +
+      uiT('模拟步数    ') + (V.perf.steps / n).toFixed(2) + uiT(' 步/帧  (') + Math.round(hud.simRate) + uiT(' 步/秒)\n') +
+      uiT('── 每帧耗时 (ms) ──\n') +
+      uiT('模拟·粒子   ') + (V.perf.cells / n).toFixed(2) + uiT('   (每步 ') + (V.perf.cells / sN).toFixed(2) + ')\n' +
+      uiT('模拟·温度   ') + (V.perf.thermal / n).toFixed(2) + '\n' +
+      uiT('模拟·结构   ') + (V.perf.struct / n).toFixed(2) + uiT('   (支撑检测 + 刚体)\n') +
+      uiT('模拟·天气   ') + (V.perf.weather / n).toFixed(2) + uiT('   (风 / 湿度 / 云 / 昼夜)\n') +
+      uiT('模拟·慢过程 ') + (V.perf.slow / n).toFixed(2) + uiT('   (蒸发 / 植物 / 渗水)\n') +
+      uiT('模拟·其他   ') + (V.perf.misc / n).toFixed(2) + uiT('   (爆炸 / 电 / 飞行粒子)\n') +
+      uiT('渲染·打包   ') + (V.perf.pack / n).toFixed(2) + '\n' +
+      uiT('渲染·场景   ') + (V.perf.draw / n).toFixed(2) + '\n' +
+      uiT('渲染·后处理 ') + (V.perf.post / n).toFixed(2) + '\n' +
+      uiT('GPU 完成    ') + V.perf.gpu.toFixed(2) + uiT('  (抽样 gl.finish)\n') +
+      uiT('rAF 间隔    ') + hud.interval.toFixed(1) + uiT('   CPU 合计 ') + hud.work.toFixed(2) + '\n' +
+      uiT('渲染后端    ') + renderMode + (gl ? ' ' + canvas.width + 'x' + canvas.height + (R.hdr ? ' HDR' : '') : '');
   }
   V.perf.cells = V.perf.thermal = V.perf.misc = V.perf.struct = V.perf.weather = V.perf.slow = V.perf.pack = V.perf.draw = V.perf.post = 0; V.perf.steps = 0; V.perf.frames = 0;
+}
+
+function sbxRenderInfo() {
+  $('renderInfo').textContent = renderMode === 'webgl2'
+    ? uiT('渲染：WebGL2') + (R.hdr ? uiT('（HDR 浮点缓冲）') : uiT('（8 位缓冲）')) + uiT('。按 ` 打开调试面板。')
+    : uiT('渲染：Canvas2D 退路（没有 WebGL2）。发光、光照、扭曲等后处理不可用。');
+}
+
+export function sbxRefreshLanguage() {
+  $('selLanguage').value = uiLanguage();
+  if (!toolButtons.size) return;
+  canvas.setAttribute('aria-label',uiT('绘制区域：方向键移动，回车绘制，Delete 擦除'));
+  for (const [id,b] of toolButtons) b.querySelector('.nm').textContent = uiT(toolInfo(id).name);
+  document.querySelectorAll('#palette h3').forEach((h,i) => { h.textContent = uiT(CATEGORIES[i].name); });
+  document.querySelectorAll('#sceneList button').forEach((b,i) => {
+    b.firstChild.textContent = (i + 1) + '. ' + uiT(SCENES[i].name); b.lastChild.textContent = uiT(SCENES[i].note);
+  });
+  for (const b of $('envWeather').children) b.textContent = uiT(WEATHER_PRESETS[b.dataset.w].name);
+  for (const [key,label] of SETTING_LABELS) settingBoxes[key].parentElement.lastChild.data = uiT(label);
+  $('btnView').textContent = uiT('视图：') + uiT(VIEW_NAMES[viewMode]);
+  $('btnMode').textContent = uiT(brush.replace ? '覆盖' : '填空');
+  $('btnMute').textContent = uiT(audio.muted ? '静音' : '声音');
+  $('btnClear').textContent = uiT(clearArmed ? '再按一次确认' : '清空');
+  $('btnRec').textContent = uiT(rec.mr ? '停止' : '录制');
+  hideTip(); $('tip').textContent = ''; sbxRenderInfo(); syncPauseUI();
+  if ($('slotList').childNodes.length) renderSlots();
 }

@@ -2,7 +2,7 @@
 import { audioBoom, audioThunder } from '../../audio/audio.js';
 import { SAND, thunderDelay } from '../../engine/index.js';
 import { OUTCOME_PLAYING } from '../../game/mode.js';
-import { V, bindKeys, bindPointer, bindResize, buildControls, buildEnvPanel, buildPalette, closePops, hud, loadScene, playbackTick, pointer, selectTool, setUIActive, setUIWorld, settingBoxes, stamp, stopPlayback, syncEnvUI, syncGravityUI, syncPauseUI, updateHud, world } from './ui.js';
+import { V, bindKeys, bindPointer, bindResize, buildControls, buildEnvPanel, buildPalette, closePops, hud, loadScene, playbackTick, pointer, selectTool, sbxReleaseInput, setUIActive, setUIWorld, settingBoxes, stamp, stopPlayback, syncEnvUI, syncGravityUI, syncPauseUI, resetUndo, updateHud, world } from './ui.js';
 import { R, fxBoom, fxThunder, gl, pixelRatio, resizeRenderer, settings } from '../../render/renderer.js';
 import { $, CELL, QS, toast } from '../../ui/host.js';
 /* =====================================================================
@@ -26,6 +26,7 @@ function createSandbox() {
       let w = kept;
       if (!w || params.fresh) {
         if (w) w.dispose();
+        resetUndo();
         const stage = $('stage');
         const gw = Math.max(48, Math.floor(stage.clientWidth / CELL)), gh = Math.max(48, Math.floor(stage.clientHeight / CELL));
         // 这一局的种子：地址栏 ?seed= 指定，否则随机。种子 + 录制下来的命令 = 能逐格复现的一局
@@ -52,7 +53,7 @@ function createSandbox() {
     },
     preFrame() {
       frameT0 = performance.now();
-      if (pointer.down && !pointer.line) stamp(pointer.x, pointer.y, pointer.erase);     // 按住不动也持续出料
+      if (pointer.down && !pointer.line && !$('app').inert) stamp(pointer.x, pointer.y, pointer.erase);     // 按住不动也持续出料
     },
     beforeStep() { playbackTick(); },                    // 回放录制：把这一步该执行的命令喂进去
     update() {},
@@ -84,7 +85,7 @@ function createSandbox() {
       if (unsubPause) unsubPause();
       stopPlayback(false);
       closePops();
-      pointer.down = false; pointer.inside = false; pointer.hx = -1;
+      sbxReleaseInput();
       setUIActive(false);
     },
   };

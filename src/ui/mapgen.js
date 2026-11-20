@@ -46,7 +46,7 @@ function mapgenPaint(canvas,map,markers) {
 export function openMapgenPage() {
   document.body.dataset.page='mapgen'; document.title='地图生成器 · 粒子沙盘';
   const root=document.createElement('main'); root.id='mapgen';
-  root.innerHTML=`<header><h1>地图生成器</h1><a href="?">返回沙盘</a></header>
+  root.innerHTML=`<header><h1>地图生成器</h1><a href="?dev=1">返回沙盘</a></header>
     <form class="mg-controls">
       <label>群系<select name="biome"><option value="all">全部群系</option></select></label>
       <label>用途<select name="preset"></select></label>
