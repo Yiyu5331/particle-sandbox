@@ -143,6 +143,8 @@ export function activateHostWorld(): void;
 export function activeWorld(): World | null;
 export const HOST_WORLD: { readonly isHost: true; renderState(): RenderState; readonly view: Readonly<RenderState> };
 export function cloneState<T>(v: T): T;
+/** 冷启动热身：临时世界里跑一遍爆炸、倒塌、闪电，跑完就扔 */
+export function warmUpEngine(): void;
 
 // ---- 静态数据（只读） ----
 export interface Material { id: MaterialId; key: string; name: string; state: number; cat: string; density: number; conductivity: number; heatCapacity: number; hardness: number; palette: string[]; [k: string]: unknown; }
