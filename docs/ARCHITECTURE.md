@@ -40,7 +40,7 @@ tests/
   browser/     只在浏览器跑的：像素 / 音效 / 导入导出用例、黄金快照、?test ?soak ?bench ?golden ?coldboom 入口
   golden.json  黄金快照；replays/ 5 段录制
 tools/
-  build.mjs    打包成 dist/particle-sandbox.html
+  build.mjs    打包成 dist/particle-sandbox.html（不入库，CI 构建）
   test.mjs     纯净扫描 + 依赖方向 + 全部模拟用例 + 黄金快照
   soak.mjs     10 个场景长跑稳定性
   bench.mjs    性能基准（稳态、冷启动）
@@ -131,17 +131,26 @@ advanceTick → 分块唤醒计时 → 场景脚本 → 天气（风、水汽、
 
 ## 构建
 
-`node tools/build.mjs` → `dist/particle-sandbox.html`，单文件、零依赖，可以直接双击打开。
+`node tools/build.mjs` → `dist/particle-sandbox.html`，单文件、零依赖，可以直接双击打开。`dist/` 不入库：CI（`.github/workflows/ci.yml`）每次构建并把它作为 `particle-sandbox` 产物上传。
 
 选纯 Node 而不是 esbuild：引擎模块之间大量依赖活绑定，最省事也最贴近 v4 的做法，是按 ES 模块的求值顺序把各模块的顶层代码拼进同一个作用域。活绑定天然成立，生成的代码就是源代码本身（浏览器里调试直接对得上），也不用装任何依赖。代价是**所有模块的顶层名字必须全局唯一**，构建脚本会检查，重名就报错。
 
 `src/index.html` 只是模板，不能直接打开；改完代码先构建，再开 `dist/particle-sandbox.html`。
 
+## 设置的唯一数据来源
+
+玩家设置（画质、格子大小、音量、语言、按键……）只有一份：**玩家档案（`src/meta/profile`，X2）里的 `settings`**。
+
+- 设置界面（X4）和沙盘自己的控件（`src/modes/sandbox/ui.js` 里的开关、滑块）都只读写档案的 `settings`，不各自往 `localStorage` 或别的地方存。
+- 读：启动时从档案取一次，之后订阅档案的变化来更新界面和渲染器；写：改档案，由档案负责持久化并通知订阅者。
+- 新增设置项时在档案的 settings 结构里加字段（带默认值和版本迁移），再在界面里接上。不要在模式或界面里新建第二个存储位置。
+- 模拟状态（世界、录制）不属于设置，照旧走 `world.serialize()` / 录制。
+
 ## 测试
 
 | 命令 | 内容 |
 |---|---|
-| `node tools/test.mjs` | 引擎纯净扫描、依赖方向、全部模拟用例（v3 + v4 + v4.1 + API）、黄金快照到第 5000 步。`--golden=full` 跑满 36000 步，`--only=关键字`，`--grid=宽x高` |
+| `node tools/test.mjs` | 引擎纯净扫描、依赖方向、全部模拟用例（v3 + v4 + v4.1 + API）、黄金快照到第 5000 步，然后自动发现并逐个独立进程运行 `tests/suites/*.test.{js,mjs}` 和 `tests/dom/*.test.{js,mjs}`（DOM 用例前先构建临时单文件，路径在 `PARTICLE_TEST_HTML`）。`--golden=full` 跑满 36000 步，`--only=关键字`，`--grid=宽x高`，`--no-dom`，`--dom-only` |
 | `node tools/soak.mjs` | 10 个场景各 36000 步，最后 2 分钟每种材料趋势 < 2% |
 | `node tools/bench.mjs` | 稳态每步耗时：ES 模块引擎 vs 公开 API vs v4.1 单文件；`--cold` 冷启动第一次大爆炸 |
 | `node tools/golden.mjs check` | 完整黄金快照 |

@@ -1,0 +1,45 @@
+# 唯一的 CI（各分支不要再加自己的 workflow，见 AGENTS.md）。
+# 依次：构建 → 无头测试 → 完整黄金快照 → DOM 测试 → 解谜关卡校验 → 地图约束检查。
+# 还没合并进 main 的模块（tools/levels.mjs、tools/mapgen.mjs、tests/dom/）在脚本或目录不存在时跳过，不算失败。
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: 安装开发依赖
+        run: npm ci --ignore-scripts
+      - name: 构建单文件
+        run: node tools/build.mjs
+      - name: 上传单文件 HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: particle-sandbox
+          path: dist/particle-sandbox.html
+          if-no-files-found: error
+      - name: 无头测试（模拟用例 + 黄金快照前 5000 步 + tests/suites/*.test.*）
+        run: node tools/test.mjs --no-dom
+      - name: 完整黄金快照
+        run: node tools/golden.mjs check
+      - name: DOM 测试
+        run: |
+          if ls tests/dom/*.test.* >/dev/null 2>&1; then node tools/test.mjs --dom-only
+          else echo '跳过：还没有 tests/dom/ 用例'; fi
+      - name: 解谜关卡校验
+        run: |
+          if [ -f tools/levels.mjs ]; then node tools/levels.mjs validate
+          else echo '跳过：tools/levels.mjs 还没合并'; fi
+      - name: 地图约束检查
+        run: |
+          if [ -f tools/mapgen.mjs ]; then node tools/mapgen.mjs audit
+          else echo '跳过：tools/mapgen.mjs 还没合并'; fi

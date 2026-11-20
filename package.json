@@ -1,0 +1,17 @@
+{
+  "name": "particle-sandbox",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tools/test.mjs",
+    "build": "node tools/build.mjs",
+    "golden": "node tools/golden.mjs check",
+    "levels": "node tools/levels.mjs validate",
+    "mapgen": "node tools/mapgen.mjs audit"
+  },
+  "devDependencies": {
+    "acorn": "8.19.0",
+    "fake-indexeddb": "6.2.4",
+    "happy-dom": "21.0.4"
+  }
+}

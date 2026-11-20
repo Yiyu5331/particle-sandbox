@@ -18,7 +18,7 @@ if (mode === 'check') {
   const { GOLDEN_SCRIPTS, GOLDEN_W, GOLDEN_H, GOLDEN_STEPS, recordScript, sceneHashes } = await import('../tests/lib/golden-scripts.js');
   const { replay } = await import('../src/engine/commands.js');
   const { SCENES } = await import('../src/engine/scenes.js');
-  const out = { note: '固定种子下的 world.hash()。第二部分（C0 重构）不允许让这些值发生任何变化。', grid: [GOLDEN_W, GOLDEN_H], steps: GOLDEN_STEPS, scenes: [], replays: [] };
+  const out = { note: '固定种子下的 world.hash()。infra 重录：刚体摔碎时点着的炸药不再丢引信（只影响爆破拆除第 1000/5000/36000 步）。纯重构不允许让这些值发生任何变化。', grid: [GOLDEN_W, GOLDEN_H], steps: GOLDEN_STEPS, scenes: [], replays: [] };
   for (const [i, sc] of GOLDEN_SCRIPTS.entries()) {
     const file = 'replays/rec-' + (i + 1) + '.json';
     const { rec, hash } = recordScript(sc);
