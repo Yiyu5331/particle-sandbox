@@ -1,0 +1,273 @@
+{
+  "version": 1,
+  "id": "c3-1-4-level",
+  "name": "填平路面",
+  "chapter": "第一章 · 粉末与重力",
+  "difficulty": 2,
+  "hint": "把路上的两个坑填平：坑里要填满，路面上不能堆出沙包。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 14,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 31,
+          "x1": 63,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "EMPTY",
+          "x0": 12,
+          "y0": 31,
+          "x1": 21,
+          "y1": 34
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "EMPTY",
+          "x0": 40,
+          "y0": 31,
+          "x1": 45,
+          "y1": 35
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "pitA",
+      "type": "goal",
+      "x": 12,
+      "y": 31,
+      "w": 10,
+      "h": 4
+    },
+    {
+      "id": "pitB",
+      "type": "goal",
+      "x": 40,
+      "y": 31,
+      "w": 6,
+      "h": 5
+    },
+    {
+      "id": "air",
+      "type": "noBuild",
+      "x": 0,
+      "y": 22,
+      "w": 64,
+      "h": 9
+    }
+  ],
+  "materials": {
+    "SAND": 110
+  },
+  "budget": 110,
+  "maxSteps": 500,
+  "goal": {
+    "op": "and",
+    "conditions": [
+      {
+        "op": "count",
+        "region": "pitA",
+        "material": "SAND",
+        "compare": ">=",
+        "value": 35
+      },
+      {
+        "op": "count",
+        "region": "pitB",
+        "material": "SAND",
+        "compare": ">=",
+        "value": 26
+      },
+      {
+        "op": "count",
+        "region": "air",
+        "material": "SAND",
+        "compare": "<=",
+        "value": 10
+      }
+    ]
+  },
+  "fail": null,
+  "stars": {
+    "two": {
+      "maxUsed": 86,
+      "maxSteps": 400
+    },
+    "three": {
+      "maxUsed": 74,
+      "maxSteps": 300
+    }
+  },
+  "reference": {
+    "steps": 10,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 13,
+          "y0": 3,
+          "x1": 20,
+          "y1": 3,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 13,
+          "y0": 6,
+          "x1": 20,
+          "y1": 6,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 13,
+          "y0": 9,
+          "x1": 20,
+          "y1": 9,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 13,
+          "y0": 12,
+          "x1": 20,
+          "y1": 12,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 13,
+          "y0": 15,
+          "x1": 20,
+          "y1": 15,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 41,
+          "y0": 0,
+          "x1": 44,
+          "y1": 0,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 41,
+          "y0": 3,
+          "x1": 44,
+          "y1": 3,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 41,
+          "y0": 6,
+          "x1": 44,
+          "y1": 6,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 41,
+          "y0": 9,
+          "x1": 44,
+          "y1": 9,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 41,
+          "y0": 12,
+          "x1": 44,
+          "y1": 12,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 41,
+          "y0": 15,
+          "x1": 44,
+          "y1": 15,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 41,
+          "y0": 18,
+          "x1": 44,
+          "y1": 18,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

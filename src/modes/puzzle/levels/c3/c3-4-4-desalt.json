@@ -1,0 +1,250 @@
+{
+  "version": 1,
+  "id": "c3-4-4-desalt",
+  "name": "海水淡化",
+  "chapter": "第四章 · 相变",
+  "difficulty": 3,
+  "hint": "海水会从高台上漫出来白白流走。想办法让蓄水池里攒下至少 20 格淡水，一点盐水都不能有。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 44,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 14,
+          "x1": 12,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 1,
+          "x1": 0,
+          "y1": 13
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 11,
+          "y0": 9,
+          "x1": 12,
+          "y1": 13
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "SALTWATER",
+          "x0": 1,
+          "y0": 2,
+          "x1": 10,
+          "y1": 13
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 16,
+          "y0": 14,
+          "x1": 16,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 27,
+          "y0": 12,
+          "x1": 27,
+          "y1": 32
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "LAVA",
+          "x0": 17,
+          "y0": 33,
+          "x1": 26,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 27,
+          "y0": 33,
+          "x1": 27,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 16,
+          "y0": 7,
+          "x1": 52,
+          "y1": 7
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 28,
+          "y0": 18,
+          "x1": 52,
+          "y1": 18
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 52,
+          "y0": 8,
+          "x1": 52,
+          "y1": 17
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 28,
+          "y0": 19,
+          "x1": 29,
+          "y1": 36
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "cistern",
+      "type": "goal",
+      "x": 28,
+      "y": 8,
+      "w": 24,
+      "h": 10
+    },
+    {
+      "id": "lid",
+      "type": "noBuild",
+      "x": 28,
+      "y": 0,
+      "w": 26,
+      "h": 19
+    },
+    {
+      "id": "sea",
+      "type": "protected",
+      "x": 0,
+      "y": 0,
+      "w": 13,
+      "h": 14
+    },
+    {
+      "id": "furnace",
+      "type": "protected",
+      "x": 17,
+      "y": 33,
+      "w": 10,
+      "h": 4
+    },
+    {
+      "id": "beach",
+      "type": "protected",
+      "x": 13,
+      "y": 28,
+      "w": 3,
+      "h": 9
+    }
+  ],
+  "materials": {
+    "STONE": 20
+  },
+  "budget": 20,
+  "maxSteps": 1400,
+  "goal": {
+    "op": "and",
+    "conditions": [
+      {
+        "op": "survive",
+        "steps": 600
+      },
+      {
+        "op": "count",
+        "region": "cistern",
+        "material": "WATER",
+        "compare": ">=",
+        "value": 20
+      },
+      {
+        "op": "count",
+        "region": "cistern",
+        "material": "SALTWATER",
+        "compare": "<=",
+        "value": 0
+      }
+    ]
+  },
+  "fail": {
+    "op": "count",
+    "region": "beach",
+    "material": "SALTWATER",
+    "compare": ">=",
+    "value": 12
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 12,
+      "maxSteps": 1400
+    },
+    "three": {
+      "maxUsed": 7,
+      "maxSteps": 1400
+    }
+  },
+  "reference": {
+    "steps": 600,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "STONE",
+          "x0": 12,
+          "y0": 11,
+          "x1": 17,
+          "y1": 11,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

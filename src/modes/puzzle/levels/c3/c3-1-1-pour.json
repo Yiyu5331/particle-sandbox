@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "id": "c3-1-1-pour",
+  "name": "一斗沙",
+  "chapter": "第一章 · 粉末与重力",
+  "difficulty": 1,
+  "hint": "把至少 30 格沙倒进石槽，别撒到两边的草地上。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 11,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 25,
+          "y0": 27,
+          "x1": 26,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 37,
+          "y0": 27,
+          "x1": 38,
+          "y1": 36
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "cup",
+      "type": "goal",
+      "x": 27,
+      "y": 27,
+      "w": 10,
+      "h": 10
+    },
+    {
+      "id": "chute",
+      "type": "noBuild",
+      "x": 25,
+      "y": 14,
+      "w": 14,
+      "h": 23
+    },
+    {
+      "id": "lawnL",
+      "type": "protected",
+      "x": 0,
+      "y": 31,
+      "w": 25,
+      "h": 6
+    },
+    {
+      "id": "lawnR",
+      "type": "protected",
+      "x": 39,
+      "y": 31,
+      "w": 25,
+      "h": 6
+    }
+  ],
+  "materials": {
+    "SAND": 45
+  },
+  "budget": 45,
+  "maxSteps": 360,
+  "goal": {
+    "op": "within",
+    "steps": 300,
+    "condition": {
+      "op": "count",
+      "region": "cup",
+      "material": "SAND",
+      "compare": ">=",
+      "value": 30
+    }
+  },
+  "fail": {
+    "op": "or",
+    "conditions": [
+      {
+        "op": "count",
+        "region": "lawnL",
+        "material": "SAND",
+        "compare": ">=",
+        "value": 6
+      },
+      {
+        "op": "count",
+        "region": "lawnR",
+        "material": "SAND",
+        "compare": ">=",
+        "value": 6
+      }
+    ]
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 40,
+      "maxSteps": 300
+    },
+    "three": {
+      "maxUsed": 34,
+      "maxSteps": 200
+    }
+  },
+  "reference": {
+    "steps": 8,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 31,
+          "y0": 2,
+          "x1": 31,
+          "y1": 11,
+          "size": 2
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "id": "c3-2-1-divert",
+  "name": "改道",
+  "chapter": "第二章 · 水与流体",
+  "difficulty": 1,
+  "hint": "水池满了，水会从两边漫出来。让水只流向右边的田（至少 32 格），左边的村子一滴都不能进。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 21,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 31,
+          "y0": 18,
+          "x1": 32,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 25,
+          "y0": 17,
+          "x1": 38,
+          "y1": 17
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 25,
+          "y0": 14,
+          "x1": 25,
+          "y1": 16
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 38,
+          "y0": 14,
+          "x1": 38,
+          "y1": 16
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WATER",
+          "x0": 26,
+          "y0": 9,
+          "x1": 37,
+          "y1": 16
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "field",
+      "type": "goal",
+      "x": 40,
+      "y": 30,
+      "w": 24,
+      "h": 7
+    },
+    {
+      "id": "village",
+      "type": "protected",
+      "x": 0,
+      "y": 30,
+      "w": 24,
+      "h": 7
+    },
+    {
+      "id": "pillar",
+      "type": "protected",
+      "x": 31,
+      "y": 18,
+      "w": 2,
+      "h": 19
+    }
+  ],
+  "materials": {
+    "STONE": 24
+  },
+  "budget": 24,
+  "maxSteps": 450,
+  "goal": {
+    "op": "within",
+    "steps": 400,
+    "condition": {
+      "op": "count",
+      "region": "field",
+      "material": "WATER",
+      "compare": ">=",
+      "value": 32
+    }
+  },
+  "fail": {
+    "op": "count",
+    "region": "village",
+    "material": "WATER",
+    "compare": ">=",
+    "value": 4
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 20,
+      "maxSteps": 400
+    },
+    "three": {
+      "maxUsed": 16,
+      "maxSteps": 300
+    }
+  },
+  "reference": {
+    "steps": 44,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "STONE",
+          "x0": 25,
+          "y0": 8,
+          "x1": 25,
+          "y1": 13,
+          "size": 2
+        }
+      }
+    ]
+  }
+}

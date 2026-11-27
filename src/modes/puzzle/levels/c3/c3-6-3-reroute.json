@@ -1,0 +1,249 @@
+{
+  "version": 1,
+  "id": "c3-6-3-reroute",
+  "name": "绕开木屋",
+  "chapter": "第六章 · 天气与电",
+  "difficulty": 3,
+  "hint": "引爆右边的 TNT 炸开巨石。旧电线从木屋底下穿过，通了电会把木屋烤着。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 63,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "METAL",
+          "x0": 3,
+          "y0": 18,
+          "x1": 3,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "METAL",
+          "x0": 7,
+          "y0": 36,
+          "x1": 40,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 8,
+          "y0": 30,
+          "x1": 13,
+          "y1": 35
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 19,
+          "y0": 30,
+          "x1": 24,
+          "y1": 35
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 30,
+          "y0": 30,
+          "x1": 35,
+          "y1": 35
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "TNT",
+          "x0": 58,
+          "y0": 33,
+          "x1": 59,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "BRICK",
+          "x0": 60,
+          "y0": 24,
+          "x1": 63,
+          "y1": 36
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "boulder",
+      "type": "goal",
+      "x": 60,
+      "y": 24,
+      "w": 4,
+      "h": 13
+    },
+    {
+      "id": "houseA",
+      "type": "protected",
+      "x": 8,
+      "y": 30,
+      "w": 6,
+      "h": 6
+    },
+    {
+      "id": "houseB",
+      "type": "protected",
+      "x": 19,
+      "y": 30,
+      "w": 6,
+      "h": 6
+    },
+    {
+      "id": "houseC",
+      "type": "protected",
+      "x": 30,
+      "y": 30,
+      "w": 6,
+      "h": 6
+    }
+  ],
+  "materials": {
+    "METAL": 100,
+    "SPARK": 6
+  },
+  "budget": 104,
+  "maxSteps": 600,
+  "goal": {
+    "op": "and",
+    "conditions": [
+      {
+        "op": "survive",
+        "steps": 400
+      },
+      {
+        "op": "not",
+        "condition": {
+          "op": "integrity",
+          "region": "boulder",
+          "material": "BRICK",
+          "percent": 40
+        }
+      }
+    ]
+  },
+  "fail": {
+    "op": "or",
+    "conditions": [
+      {
+        "op": "not",
+        "condition": {
+          "op": "integrity",
+          "region": "houseA",
+          "material": "WOOD",
+          "percent": 50
+        }
+      },
+      {
+        "op": "not",
+        "condition": {
+          "op": "integrity",
+          "region": "houseB",
+          "material": "WOOD",
+          "percent": 50
+        }
+      },
+      {
+        "op": "not",
+        "condition": {
+          "op": "integrity",
+          "region": "houseC",
+          "material": "WOOD",
+          "percent": 50
+        }
+      }
+    ]
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 98,
+      "maxSteps": 600
+    },
+    "three": {
+      "maxUsed": 88,
+      "maxSteps": 600
+    }
+  },
+  "reference": {
+    "steps": 400,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "METAL",
+          "x0": 2,
+          "y0": 26,
+          "x1": 59,
+          "y1": 26,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "METAL",
+          "x0": 57,
+          "y0": 25,
+          "x1": 57,
+          "y1": 34,
+          "size": 2
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SPARK",
+          "x0": 2,
+          "y0": 22,
+          "x1": 4,
+          "y1": 22,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SPARK",
+          "x0": 2,
+          "y0": 30,
+          "x1": 4,
+          "y1": 30,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

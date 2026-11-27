@@ -1,0 +1,222 @@
+{
+  "version": 1,
+  "id": "c3-3-5-beacon",
+  "name": "烽火台",
+  "chapter": "第三章 · 火与热",
+  "difficulty": 4,
+  "hint": "点燃烽火台上的柴堆，烧掉一半以上；紧挨着的木岗亭不能烧着。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 35,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 38,
+          "y0": 22,
+          "x1": 63,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 40,
+          "y0": 16,
+          "x1": 40,
+          "y1": 21
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 51,
+          "y0": 16,
+          "x1": 51,
+          "y1": 21
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 40,
+          "y0": 16,
+          "x1": 51,
+          "y1": 16
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "EMPTY",
+          "x0": 42,
+          "y0": 16,
+          "x1": 49,
+          "y1": 16
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 41,
+          "y0": 11,
+          "x1": 50,
+          "y1": 15
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 53,
+          "y0": 9,
+          "x1": 58,
+          "y1": 21
+        }
+      },
+      {
+        "command": "stroke",
+        "args": {
+          "tool": "STONE",
+          "x0": 26,
+          "y0": 4,
+          "x1": 53,
+          "y1": 8,
+          "size": 2
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "pile",
+      "type": "goal",
+      "x": 41,
+      "y": 11,
+      "w": 10,
+      "h": 5
+    },
+    {
+      "id": "hut",
+      "type": "protected",
+      "x": 53,
+      "y": 9,
+      "w": 6,
+      "h": 13
+    },
+    {
+      "id": "sky",
+      "type": "noBuild",
+      "x": 44,
+      "y": 0,
+      "w": 20,
+      "h": 9
+    }
+  ],
+  "materials": {
+    "FIRE": 4,
+    "DEADPLANT": 16,
+    "WATER": 36
+  },
+  "budget": 46,
+  "maxSteps": 1200,
+  "goal": {
+    "op": "and",
+    "conditions": [
+      {
+        "op": "survive",
+        "steps": 1000
+      },
+      {
+        "op": "count",
+        "region": "pile",
+        "material": "WOOD",
+        "compare": "<=",
+        "value": 25
+      },
+      {
+        "op": "integrity",
+        "region": "hut",
+        "material": "WOOD",
+        "percent": 85
+      }
+    ]
+  },
+  "fail": {
+    "op": "not",
+    "condition": {
+      "op": "integrity",
+      "region": "hut",
+      "material": "WOOD",
+      "percent": 70
+    }
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 39,
+      "maxSteps": 1200
+    },
+    "three": {
+      "maxUsed": 36,
+      "maxSteps": 1200
+    }
+  },
+  "reference": {
+    "steps": 1000,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "DEADPLANT",
+          "x0": 42,
+          "y0": 20,
+          "x1": 49,
+          "y1": 20,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "FIRE",
+          "x0": 44,
+          "y0": 17,
+          "x1": 47,
+          "y1": 17,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 30,
+          "y0": 1,
+          "x1": 36,
+          "y1": 1,
+          "size": 2
+        }
+      }
+    ]
+  }
+}

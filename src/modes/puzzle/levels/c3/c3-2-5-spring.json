@@ -1,0 +1,248 @@
+{
+  "version": 1,
+  "id": "c3-2-5-spring",
+  "name": "分水",
+  "chapter": "第二章 · 水与流体",
+  "difficulty": 3,
+  "hint": "泉水先流进左边的田。田灌满（80 格）以后及时把水改到右边，让闸里的木筏浮进金框。左边的村子不能进水。",
+  "type": "realtime",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 25,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 33,
+          "y0": 0,
+          "x1": 33,
+          "y1": 3
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 40,
+          "y0": 0,
+          "x1": 40,
+          "y1": 3
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "CLONE",
+          "x0": 34,
+          "y0": 3,
+          "x1": 39,
+          "y1": 3
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WATER",
+          "x0": 34,
+          "y0": 1,
+          "x1": 39,
+          "y1": 2
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 26,
+          "y0": 12,
+          "x1": 46,
+          "y1": 12
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 35,
+          "y0": 13,
+          "x1": 36,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 46,
+          "y0": 10,
+          "x1": 46,
+          "y1": 11
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 17,
+          "y0": 30,
+          "x1": 17,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 28,
+          "y0": 30,
+          "x1": 28,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 45,
+          "y0": 22,
+          "x1": 45,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 56,
+          "y0": 26,
+          "x1": 56,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WATER",
+          "x0": 46,
+          "y0": 32,
+          "x1": 55,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 49,
+          "y0": 30,
+          "x1": 52,
+          "y1": 31
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "fieldA",
+      "type": "goal",
+      "x": 18,
+      "y": 30,
+      "w": 10,
+      "h": 7
+    },
+    {
+      "id": "village",
+      "type": "protected",
+      "x": 0,
+      "y": 30,
+      "w": 17,
+      "h": 7
+    },
+    {
+      "id": "dock",
+      "type": "goal",
+      "x": 46,
+      "y": 22,
+      "w": 10,
+      "h": 5
+    },
+    {
+      "id": "spring",
+      "type": "protected",
+      "x": 33,
+      "y": 0,
+      "w": 8,
+      "h": 4
+    }
+  ],
+  "materials": {
+    "STONE": 30
+  },
+  "budget": 30,
+  "maxSteps": 1200,
+  "goal": {
+    "op": "and",
+    "conditions": [
+      {
+        "op": "count",
+        "region": "fieldA",
+        "material": "WATER",
+        "compare": ">=",
+        "value": 55
+      },
+      {
+        "op": "count",
+        "region": "dock",
+        "material": "WOOD",
+        "compare": ">=",
+        "value": 6
+      }
+    ]
+  },
+  "fail": {
+    "op": "count",
+    "region": "village",
+    "material": "WATER",
+    "compare": ">=",
+    "value": 4
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 24,
+      "maxSteps": 1100
+    },
+    "three": {
+      "maxUsed": 12,
+      "maxSteps": 900
+    }
+  },
+  "reference": {
+    "steps": 401,
+    "log": [
+      {
+        "step": 200,
+        "command": "stroke",
+        "args": {
+          "tool": "STONE",
+          "x0": 26,
+          "y0": 8,
+          "x1": 26,
+          "y1": 11,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "version": 1,
+  "id": "c3-2-4-raft",
+  "name": "升筏",
+  "chapter": "第二章 · 水与流体",
+  "difficulty": 2,
+  "hint": "抬高闸里的水位，让木筏浮进金框并停稳；水不能漫过右边的闸墙淹到村子。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 24,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 18,
+          "y0": 12,
+          "x1": 19,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 44,
+          "y0": 21,
+          "x1": 45,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WATER",
+          "x0": 20,
+          "y0": 26,
+          "x1": 43,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 29,
+          "y0": 24,
+          "x1": 34,
+          "y1": 25
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "dock",
+      "type": "goal",
+      "x": 28,
+      "y": 15,
+      "w": 8,
+      "h": 7
+    },
+    {
+      "id": "mast",
+      "type": "noBuild",
+      "x": 28,
+      "y": 0,
+      "w": 8,
+      "h": 26
+    },
+    {
+      "id": "village",
+      "type": "protected",
+      "x": 46,
+      "y": 30,
+      "w": 18,
+      "h": 7
+    }
+  ],
+  "materials": {
+    "WATER": 150,
+    "OIL": 150
+  },
+  "budget": 150,
+  "maxSteps": 700,
+  "goal": {
+    "op": "and",
+    "conditions": [
+      {
+        "op": "survive",
+        "steps": 360
+      },
+      {
+        "op": "count",
+        "region": "dock",
+        "material": "WOOD",
+        "compare": ">=",
+        "value": 8
+      }
+    ]
+  },
+  "fail": {
+    "op": "count",
+    "region": "village",
+    "material": "WATER",
+    "compare": ">=",
+    "value": 6
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 100,
+      "maxSteps": 650
+    },
+    "three": {
+      "maxUsed": 90,
+      "maxSteps": 500
+    }
+  },
+  "reference": {
+    "steps": 363,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 22,
+          "y0": 12,
+          "x1": 25,
+          "y1": 13,
+          "size": 3
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 38,
+          "y0": 12,
+          "x1": 41,
+          "y1": 13,
+          "size": 3
+        }
+      }
+    ]
+  }
+}

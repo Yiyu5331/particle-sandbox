@@ -1,0 +1,336 @@
+{
+  "version": 1,
+  "id": "c3-6-5-doubleshot",
+  "name": "一火双响",
+  "chapter": "第六章 · 天气与电",
+  "difficulty": 4,
+  "hint": "用电火花把高处和水渠尽头的两包 TNT 都引爆。泉水正在灌渠，渠满了会淹到村子。",
+  "type": "realtime",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 65,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 31,
+          "x1": 63,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "EMPTY",
+          "x0": 8,
+          "y0": 30,
+          "x1": 41,
+          "y1": 33
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 6,
+          "y0": 26,
+          "x1": 7,
+          "y1": 30
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 9,
+          "y0": 20,
+          "x1": 9,
+          "y1": 23
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 14,
+          "y0": 20,
+          "x1": 14,
+          "y1": 23
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "CLONE",
+          "x0": 10,
+          "y0": 23,
+          "x1": 13,
+          "y1": 23
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WATER",
+          "x0": 10,
+          "y0": 21,
+          "x1": 13,
+          "y1": 22
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "TNT",
+          "x0": 42,
+          "y0": 30,
+          "x1": 43,
+          "y1": 33
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 44,
+          "y0": 16,
+          "x1": 63,
+          "y1": 30
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 34,
+          "y0": 22,
+          "x1": 43,
+          "y1": 23
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 0,
+          "y0": 26,
+          "x1": 5,
+          "y1": 30
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "METAL",
+          "x0": 8,
+          "y0": 6,
+          "x1": 8,
+          "y1": 33
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "METAL",
+          "x0": 9,
+          "y0": 6,
+          "x1": 19,
+          "y1": 6
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "METAL",
+          "x0": 26,
+          "y0": 6,
+          "x1": 35,
+          "y1": 6
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "ANCHOR",
+          "x0": 36,
+          "y0": 8,
+          "x1": 40,
+          "y1": 8
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "TNT",
+          "x0": 36,
+          "y0": 5,
+          "x1": 37,
+          "y1": 7
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "tntLow",
+      "type": "goal",
+      "x": 42,
+      "y": 30,
+      "w": 2,
+      "h": 4
+    },
+    {
+      "id": "tntHigh",
+      "type": "goal",
+      "x": 36,
+      "y": 5,
+      "w": 2,
+      "h": 3
+    },
+    {
+      "id": "village",
+      "type": "protected",
+      "x": 0,
+      "y": 24,
+      "w": 8,
+      "h": 7
+    },
+    {
+      "id": "spring",
+      "type": "protected",
+      "x": 9,
+      "y": 20,
+      "w": 6,
+      "h": 4
+    },
+    {
+      "id": "cliff",
+      "type": "protected",
+      "x": 34,
+      "y": 16,
+      "w": 30,
+      "h": 15
+    },
+    {
+      "id": "wire",
+      "type": "protected",
+      "x": 26,
+      "y": 3,
+      "w": 16,
+      "h": 7
+    },
+    {
+      "id": "far",
+      "type": "noBuild",
+      "x": 16,
+      "y": 10,
+      "w": 26,
+      "h": 24
+    },
+    {
+      "id": "sky",
+      "type": "noBuild",
+      "x": 10,
+      "y": 0,
+      "w": 16,
+      "h": 5
+    },
+    {
+      "id": "gully",
+      "type": "noBuild",
+      "x": 10,
+      "y": 8,
+      "w": 6,
+      "h": 12
+    }
+  ],
+  "materials": {
+    "SPARK": 3,
+    "METAL": 20,
+    "SAND": 20
+  },
+  "budget": 24,
+  "maxSteps": 900,
+  "goal": {
+    "op": "within",
+    "steps": 850,
+    "condition": {
+      "op": "and",
+      "conditions": [
+        {
+          "op": "count",
+          "region": "tntLow",
+          "material": "TNT",
+          "compare": "<=",
+          "value": 0
+        },
+        {
+          "op": "count",
+          "region": "tntHigh",
+          "material": "TNT",
+          "compare": "<=",
+          "value": 0
+        }
+      ]
+    }
+  },
+  "fail": {
+    "op": "count",
+    "region": "village",
+    "material": "WATER",
+    "compare": ">=",
+    "value": 3
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 18,
+      "maxSteps": 850
+    },
+    "three": {
+      "maxUsed": 12,
+      "maxSteps": 600
+    }
+  },
+  "reference": {
+    "steps": 293,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "METAL",
+          "x0": 19,
+          "y0": 6,
+          "x1": 26,
+          "y1": 6,
+          "size": 1
+        }
+      },
+      {
+        "step": 180,
+        "command": "stroke",
+        "args": {
+          "tool": "SPARK",
+          "x0": 7,
+          "y0": 24,
+          "x1": 9,
+          "y1": 24,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,184 @@
+{
+  "version": 1,
+  "id": "c3-3-3-bridge",
+  "name": "烧桥",
+  "chapter": "第三章 · 火与热",
+  "difficulty": 2,
+  "hint": "烧掉峡谷上的木桥，但旁边的木塔必须保住。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 33,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 24,
+          "x1": 20,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 43,
+          "y0": 24,
+          "x1": 63,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 18,
+          "y0": 22,
+          "x1": 45,
+          "y1": 23
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 46,
+          "y0": 12,
+          "x1": 50,
+          "y1": 23
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "bridge",
+      "type": "goal",
+      "x": 21,
+      "y": 22,
+      "w": 22,
+      "h": 2
+    },
+    {
+      "id": "tower",
+      "type": "protected",
+      "x": 46,
+      "y": 12,
+      "w": 5,
+      "h": 12
+    }
+  ],
+  "materials": {
+    "FIRE": 20,
+    "WATER": 40
+  },
+  "budget": 50,
+  "maxSteps": 1600,
+  "goal": {
+    "op": "and",
+    "conditions": [
+      {
+        "op": "survive",
+        "steps": 1400
+      },
+      {
+        "op": "count",
+        "region": "bridge",
+        "material": "WOOD",
+        "compare": "<=",
+        "value": 14
+      },
+      {
+        "op": "integrity",
+        "region": "tower",
+        "material": "WOOD",
+        "percent": 90
+      }
+    ]
+  },
+  "fail": {
+    "op": "not",
+    "condition": {
+      "op": "integrity",
+      "region": "tower",
+      "material": "WOOD",
+      "percent": 80
+    }
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 38,
+      "maxSteps": 1600
+    },
+    "three": {
+      "maxUsed": 28,
+      "maxSteps": 1600
+    }
+  },
+  "reference": {
+    "steps": 1400,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 46,
+          "y0": 9,
+          "x1": 50,
+          "y1": 9,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 46,
+          "y0": 8,
+          "x1": 50,
+          "y1": 8,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "FIRE",
+          "x0": 26,
+          "y0": 25,
+          "x1": 33,
+          "y1": 25,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "FIRE",
+          "x0": 26,
+          "y0": 26,
+          "x1": 33,
+          "y1": 26,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

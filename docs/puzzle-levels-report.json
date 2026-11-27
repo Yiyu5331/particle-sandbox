@@ -1,0 +1,2233 @@
+{
+  "generated": "2026-11-27",
+  "bot": 200,
+  "jitter": 50,
+  "levels": [
+    {
+      "id": "c3-1-1-pour",
+      "n": "1-1",
+      "type": "planning",
+      "name": [
+        "一斗沙",
+        "A Bucket of Sand"
+      ],
+      "mechanic": [
+        "重力：粉末自由下落",
+        "Gravity: powders fall freely"
+      ],
+      "difficulty": 1,
+      "reference": {
+        "stars": 3,
+        "steps": 8,
+        "used": 32,
+        "hash": "cfa06f21d1dbdcca",
+        "strokes": 1
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 40,
+          "maxSteps": 300
+        },
+        "three": {
+          "maxUsed": 34,
+          "maxSteps": 200
+        }
+      },
+      "budget": 45,
+      "maxSteps": 360,
+      "solutions": [
+        {
+          "name": "槽口正上方竖着倒",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 8,
+          "used": 32,
+          "strokes": 1
+        },
+        {
+          "name": "宽宽地撒一排",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 7,
+          "used": 45,
+          "strokes": 1
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 2,
+        "rate": 0.01,
+        "stars": [
+          0,
+          2,
+          0,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 50,
+        "rate": 1,
+        "three": 50
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 0.2
+    },
+    {
+      "id": "c3-1-2-repose",
+      "n": "1-2",
+      "type": "planning",
+      "name": [
+        "靠墙堆沙",
+        "Lean on the Wall"
+      ],
+      "mechanic": [
+        "休止角：沙堆坡度固定，靠墙省一半料",
+        "Angle of repose: a pile against a wall needs half the sand"
+      ],
+      "difficulty": 1,
+      "reference": {
+        "stars": 3,
+        "steps": 12,
+        "used": 41,
+        "hash": "0f36305ff57c683a",
+        "strokes": 1
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 56,
+          "maxSteps": 380
+        },
+        "three": {
+          "maxUsed": 44,
+          "maxSteps": 300
+        }
+      },
+      "budget": 70,
+      "maxSteps": 450,
+      "solutions": [
+        {
+          "name": "贴着墙倒",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 12,
+          "used": 41,
+          "strokes": 1
+        },
+        {
+          "name": "离墙几格多倒些",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 17,
+          "used": 59,
+          "strokes": 1
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 6,
+        "rate": 0.03,
+        "stars": [
+          0,
+          5,
+          1,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 50,
+        "rate": 1,
+        "three": 50
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 0.2
+    },
+    {
+      "id": "c3-1-3-funnel",
+      "n": "1-3",
+      "type": "planning",
+      "name": [
+        "漏斗",
+        "The Funnel"
+      ],
+      "mechanic": [
+        "漏斗：陡坡滑落、缓坡留沙",
+        "Funnels: steep slopes shed sand, gentle slopes keep it"
+      ],
+      "difficulty": 2,
+      "reference": {
+        "stars": 3,
+        "steps": 39,
+        "used": 29,
+        "hash": "8a53eb317f24c8ea",
+        "strokes": 1
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 50,
+          "maxSteps": 400
+        },
+        "three": {
+          "maxUsed": 32,
+          "maxSteps": 300
+        }
+      },
+      "budget": 70,
+      "maxSteps": 450,
+      "solutions": [
+        {
+          "name": "倒在陡的一边",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 39,
+          "used": 29,
+          "strokes": 1
+        },
+        {
+          "name": "倒在缓的一边",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 40,
+          "used": 70,
+          "strokes": 1
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 1,
+        "rate": 0.005,
+        "stars": [
+          0,
+          1,
+          0,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 50,
+        "rate": 1,
+        "three": 50
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 0.3
+    },
+    {
+      "id": "c3-1-4-level",
+      "n": "1-4",
+      "type": "planning",
+      "name": [
+        "填平路面",
+        "Level the Road"
+      ],
+      "mechanic": [
+        "填平：横向铺开，按容积用料",
+        "Levelling: spread sideways and match the volume"
+      ],
+      "difficulty": 2,
+      "reference": {
+        "stars": 3,
+        "steps": 10,
+        "used": 68,
+        "hash": "b3d972cab03be6d5",
+        "strokes": 12
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 86,
+          "maxSteps": 400
+        },
+        "three": {
+          "maxUsed": 74,
+          "maxSteps": 300
+        }
+      },
+      "budget": 110,
+      "maxSteps": 500,
+      "solutions": [
+        {
+          "name": "比坑窄一格、一行一行铺",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 10,
+          "used": 68,
+          "strokes": 12
+        },
+        {
+          "name": "方笔刷分几块",
+          "reference": false,
+          "state": "won",
+          "stars": 3,
+          "steps": 10,
+          "used": 70,
+          "strokes": 5
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 0,
+        "rate": 0,
+        "stars": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 49,
+        "rate": 0.98,
+        "three": 49
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 0.7
+    },
+    {
+      "id": "c3-1-5-exam",
+      "n": "1-5",
+      "type": "planning",
+      "name": [
+        "沙之考场",
+        "Sand Finals"
+      ],
+      "mechanic": [
+        "综合：填平、漏斗、休止角",
+        "Review: levelling, funnels and the angle of repose"
+      ],
+      "difficulty": 3,
+      "reference": {
+        "stars": 3,
+        "steps": 35,
+        "used": 82,
+        "hash": "f8778066d7f5f360",
+        "strokes": 6
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 108,
+          "maxSteps": 500
+        },
+        "three": {
+          "maxUsed": 88,
+          "maxSteps": 400
+        }
+      },
+      "budget": 130,
+      "maxSteps": 600,
+      "solutions": [
+        {
+          "name": "三处都用巧办法",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 35,
+          "used": 82,
+          "strokes": 6
+        },
+        {
+          "name": "漏斗走缓坡、堆沙离墙远",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 31,
+          "used": 124,
+          "strokes": 6
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 0,
+        "rate": 0,
+        "stars": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 50,
+        "rate": 1,
+        "three": 50
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 0.6
+    },
+    {
+      "id": "c3-2-1-divert",
+      "n": "2-1",
+      "type": "planning",
+      "name": [
+        "改道",
+        "Divert the Water"
+      ],
+      "mechanic": [
+        "引流：水从低的一侧漫出",
+        "Diverting: water spills over the lower side"
+      ],
+      "difficulty": 1,
+      "reference": {
+        "stars": 3,
+        "steps": 44,
+        "used": 14,
+        "hash": "59c41e10d410bd66",
+        "strokes": 1
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 20,
+          "maxSteps": 400
+        },
+        "three": {
+          "maxUsed": 16,
+          "maxSteps": 300
+        }
+      },
+      "budget": 24,
+      "maxSteps": 450,
+      "solutions": [
+        {
+          "name": "把左边池壁加高",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 44,
+          "used": 14,
+          "strokes": 1
+        },
+        {
+          "name": "把左壁垒得更高",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 73,
+          "used": 23,
+          "strokes": 1
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 0,
+        "rate": 0,
+        "stars": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 41,
+        "rate": 0.82,
+        "three": 32
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 0.3
+    },
+    {
+      "id": "c3-2-2-aqueduct",
+      "n": "2-2",
+      "type": "planning",
+      "name": [
+        "渡槽",
+        "The Aqueduct"
+      ],
+      "mechanic": [
+        "连通：搭渡槽把高处的水引到低处",
+        "Connecting: build an aqueduct to carry water downhill"
+      ],
+      "difficulty": 2,
+      "reference": {
+        "stars": 3,
+        "steps": 99,
+        "used": 22,
+        "hash": "4c1a1b69a811fff4",
+        "strokes": 1
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 40,
+          "maxSteps": 450
+        },
+        "three": {
+          "maxUsed": 24,
+          "maxSteps": 350
+        }
+      },
+      "budget": 70,
+      "maxSteps": 500,
+      "solutions": [
+        {
+          "name": "一格厚的渡槽",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 99,
+          "used": 22,
+          "strokes": 1
+        },
+        {
+          "name": "三格厚的石桥",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 89,
+          "used": 63,
+          "strokes": 1
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 0,
+        "rate": 0,
+        "stars": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 44,
+        "rate": 0.88,
+        "three": 30
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 0.5
+    },
+    {
+      "id": "c3-2-3-skim",
+      "n": "2-3",
+      "type": "planning",
+      "name": [
+        "撇油",
+        "Skim the Oil"
+      ],
+      "mechanic": [
+        "密度分层：重的沉底、轻的上浮",
+        "Density layering: heavy sinks, light floats"
+      ],
+      "difficulty": 2,
+      "reference": {
+        "stars": 3,
+        "steps": 58,
+        "used": 76,
+        "hash": "667e1ad661f9355f",
+        "strokes": 1
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 86,
+          "maxSteps": 550
+        },
+        "three": {
+          "maxUsed": 78,
+          "maxSteps": 450
+        }
+      },
+      "budget": 90,
+      "maxSteps": 600,
+      "solutions": [
+        {
+          "name": "往罐里倒水把油顶出去",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 58,
+          "used": 76,
+          "strokes": 1
+        },
+        {
+          "name": "倒盐水沉底顶油",
+          "reference": false,
+          "state": "won",
+          "stars": 3,
+          "steps": 97,
+          "used": 69,
+          "strokes": 1
+        },
+        {
+          "name": "多倒一些水",
+          "reference": false,
+          "state": "won",
+          "stars": 2,
+          "steps": 51,
+          "used": 84,
+          "strokes": 1
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 0,
+        "rate": 0,
+        "stars": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 50,
+        "rate": 1,
+        "three": 50
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 0.5
+    },
+    {
+      "id": "c3-2-4-raft",
+      "n": "2-4",
+      "type": "planning",
+      "name": [
+        "升筏",
+        "Raise the Raft"
+      ],
+      "mechanic": [
+        "浮力：水涨船高",
+        "Buoyancy: a rising tide lifts the raft"
+      ],
+      "difficulty": 2,
+      "reference": {
+        "stars": 3,
+        "steps": 363,
+        "used": 76,
+        "hash": "a8b6d8b9d55b3e30",
+        "strokes": 2
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 100,
+          "maxSteps": 650
+        },
+        "three": {
+          "maxUsed": 90,
+          "maxSteps": 500
+        }
+      },
+      "budget": 150,
+      "maxSteps": 700,
+      "solutions": [
+        {
+          "name": "在木筏两边倒水",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 363,
+          "used": 76,
+          "strokes": 2
+        },
+        {
+          "name": "倒油也能托起木筏",
+          "reference": false,
+          "state": "won",
+          "stars": 2,
+          "steps": 558,
+          "used": 76,
+          "strokes": 2
+        },
+        {
+          "name": "只在一边多倒",
+          "reference": false,
+          "state": "won",
+          "stars": 3,
+          "steps": 485,
+          "used": 69,
+          "strokes": 1
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 1,
+        "rate": 0.005,
+        "stars": [
+          0,
+          1,
+          0,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 43,
+        "rate": 0.86,
+        "three": 32
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 6.5
+    },
+    {
+      "id": "c3-2-5-spring",
+      "n": "2-5",
+      "type": "realtime",
+      "name": [
+        "分水",
+        "Share the Spring"
+      ],
+      "mechanic": [
+        "综合：引流、浮力和时机",
+        "Review: diverting, buoyancy and timing"
+      ],
+      "difficulty": 3,
+      "reference": {
+        "stars": 3,
+        "steps": 401,
+        "used": 4,
+        "hash": "045ef2ffda4d1561",
+        "strokes": 1
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 24,
+          "maxSteps": 1100
+        },
+        "three": {
+          "maxUsed": 12,
+          "maxSteps": 900
+        }
+      },
+      "budget": 30,
+      "maxSteps": 1200,
+      "solutions": [
+        {
+          "name": "左田快满时把左端加高",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 401,
+          "used": 4,
+          "strokes": 1
+        },
+        {
+          "name": "堵得又高又厚",
+          "reference": false,
+          "state": "won",
+          "stars": 2,
+          "steps": 375,
+          "used": 17,
+          "strokes": 1
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 1,
+        "rate": 0.005,
+        "stars": [
+          0,
+          1,
+          0,
+          0
+        ]
+      },
+      "jitter": null,
+      "early": {
+        "state": "lost",
+        "steps": 1200
+      },
+      "problems": [],
+      "seconds": 3.3
+    },
+    {
+      "id": "c3-3-1-bonfire",
+      "n": "3-1",
+      "type": "planning",
+      "name": [
+        "篝火",
+        "The Bonfire"
+      ],
+      "mechanic": [
+        "点火：火往上烧",
+        "Ignition: fire burns upward"
+      ],
+      "difficulty": 1,
+      "reference": {
+        "stars": 3,
+        "steps": 246,
+        "used": 8,
+        "hash": "602c76bf5f318a59",
+        "strokes": 1
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 11,
+          "maxSteps": 650
+        },
+        "three": {
+          "maxUsed": 9,
+          "maxSteps": 500
+        }
+      },
+      "budget": 12,
+      "maxSteps": 700,
+      "solutions": [
+        {
+          "name": "炉膛里放一排火",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 246,
+          "used": 8,
+          "strokes": 1
+        },
+        {
+          "name": "炉膛里塞满火",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 248,
+          "used": 12,
+          "strokes": 1
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 8,
+        "rate": 0.04,
+        "stars": [
+          0,
+          7,
+          0,
+          1
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 50,
+        "rate": 1,
+        "three": 50
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 1.7
+    },
+    {
+      "id": "c3-3-2-firebreak",
+      "n": "3-2",
+      "type": "realtime",
+      "name": [
+        "防火带",
+        "Firebreak"
+      ],
+      "mechanic": [
+        "防火带：浸湿可燃物",
+        "Firebreaks: soak the fuel"
+      ],
+      "difficulty": 2,
+      "reference": {
+        "stars": 3,
+        "steps": 1500,
+        "used": 13,
+        "hash": "16840112894e18af",
+        "strokes": 2
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 17,
+          "maxSteps": 1600
+        },
+        "three": {
+          "maxUsed": 14,
+          "maxSteps": 1600
+        }
+      },
+      "budget": 20,
+      "maxSteps": 1600,
+      "solutions": [
+        {
+          "name": "两边火头前各浇一道窄水带",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 1500,
+          "used": 13,
+          "strokes": 2
+        },
+        {
+          "name": "早一点、浇得宽一些",
+          "reference": false,
+          "state": "won",
+          "stars": 2,
+          "steps": 1500,
+          "used": 17,
+          "strokes": 2
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 0,
+        "rate": 0,
+        "stars": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "jitter": null,
+      "early": {
+        "state": "won",
+        "steps": 1500
+      },
+      "problems": [],
+      "seconds": 6.5
+    },
+    {
+      "id": "c3-3-3-bridge",
+      "n": "3-3",
+      "type": "planning",
+      "name": [
+        "烧桥",
+        "Burn the Bridge"
+      ],
+      "mechanic": [
+        "湿木头：浸湿的木头不会着火",
+        "Wet wood: soaked wood does not catch fire"
+      ],
+      "difficulty": 2,
+      "reference": {
+        "stars": 3,
+        "steps": 1400,
+        "used": 26,
+        "hash": "77e5f68d022ac5ce",
+        "strokes": 4
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 38,
+          "maxSteps": 1600
+        },
+        "three": {
+          "maxUsed": 28,
+          "maxSteps": 1600
+        }
+      },
+      "budget": 50,
+      "maxSteps": 1600,
+      "solutions": [
+        {
+          "name": "先浇湿木塔，再从桥下点火",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 1400,
+          "used": 26,
+          "strokes": 4
+        },
+        {
+          "name": "浇透木塔两侧",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 1400,
+          "used": 49,
+          "strokes": 2
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 2,
+        "rate": 0.01,
+        "stars": [
+          0,
+          0,
+          0,
+          2
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 46,
+        "rate": 0.92,
+        "three": 46
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 7.6
+    },
+    {
+      "id": "c3-3-4-cellar",
+      "n": "3-4",
+      "type": "realtime",
+      "name": [
+        "地窖失火",
+        "Cellar Fire"
+      ],
+      "mechanic": [
+        "灭火：用水隔绝空气、带走热量",
+        "Firefighting: water cuts off air and carries away heat"
+      ],
+      "difficulty": 3,
+      "reference": {
+        "stars": 3,
+        "steps": 195,
+        "used": 148,
+        "hash": "130f75bf8e070e4e",
+        "strokes": 2
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 200,
+          "maxSteps": 500
+        },
+        "three": {
+          "maxUsed": 180,
+          "maxSteps": 320
+        }
+      },
+      "budget": 220,
+      "maxSteps": 1200,
+      "solutions": [
+        {
+          "name": "一着火就从进水口灌水",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 195,
+          "used": 148,
+          "strokes": 2
+        },
+        {
+          "name": "慢慢灌",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 290,
+          "used": 220,
+          "strokes": 4
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 0,
+        "rate": 0,
+        "stars": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "jitter": null,
+      "early": {
+        "state": "won",
+        "steps": 158
+      },
+      "problems": [],
+      "seconds": 12.1
+    },
+    {
+      "id": "c3-3-5-beacon",
+      "n": "3-5",
+      "type": "planning",
+      "name": [
+        "烽火台",
+        "Signal Beacon"
+      ],
+      "mechanic": [
+        "综合：引火物、湿木头和引流",
+        "Review: tinder, wet wood and channelling water"
+      ],
+      "difficulty": 4,
+      "reference": {
+        "stars": 3,
+        "steps": 1000,
+        "used": 35,
+        "hash": "ae6cd727780c1b24",
+        "strokes": 3
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 39,
+          "maxSteps": 1200
+        },
+        "three": {
+          "maxUsed": 36,
+          "maxSteps": 1200
+        }
+      },
+      "budget": 46,
+      "maxSteps": 1200,
+      "solutions": [
+        {
+          "name": "枯枝引火，斜槽引水浇岗亭",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 1000,
+          "used": 35,
+          "strokes": 3
+        },
+        {
+          "name": "两层枯枝、多浇水",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 1000,
+          "used": 46,
+          "strokes": 4
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 2,
+        "rate": 0.01,
+        "stars": [
+          0,
+          0,
+          0,
+          2
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 46,
+        "rate": 0.92,
+        "three": 46
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 4
+    },
+    {
+      "id": "c3-4-1-steam",
+      "n": "4-1",
+      "type": "planning",
+      "name": [
+        "蒸汽搬水",
+        "Steam Lift"
+      ],
+      "mechanic": [
+        "汽化与凝结：水遇热成蒸汽，遇冷又成水",
+        "Boiling and condensing: water turns to steam in heat and back to water in the cold"
+      ],
+      "difficulty": 2,
+      "reference": {
+        "stars": 3,
+        "steps": 205,
+        "used": 67,
+        "hash": "bacc6d9cca0e65d9",
+        "strokes": 1
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 80,
+          "maxSteps": 850
+        },
+        "three": {
+          "maxUsed": 70,
+          "maxSteps": 700
+        }
+      },
+      "budget": 90,
+      "maxSteps": 900,
+      "solutions": [
+        {
+          "name": "把水倒在熔岩上",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 205,
+          "used": 67,
+          "strokes": 1
+        },
+        {
+          "name": "多倒一些",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 147,
+          "used": 90,
+          "strokes": 1
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 7,
+        "rate": 0.035,
+        "stars": [
+          0,
+          2,
+          1,
+          4
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 50,
+        "rate": 1,
+        "three": 50
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 5.6
+    },
+    {
+      "id": "c3-4-2-snowmelt",
+      "n": "4-2",
+      "type": "planning",
+      "name": [
+        "化雪",
+        "Snowmelt"
+      ],
+      "mechanic": [
+        "熔化：固体吸热变成液体",
+        "Melting: solids absorb heat and turn liquid"
+      ],
+      "difficulty": 2,
+      "reference": {
+        "stars": 3,
+        "steps": 600,
+        "used": 12,
+        "hash": "7b81351a845d781b",
+        "strokes": 2
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 24,
+          "maxSteps": 900
+        },
+        "three": {
+          "maxUsed": 14,
+          "maxSteps": 900
+        }
+      },
+      "budget": 40,
+      "maxSteps": 900,
+      "solutions": [
+        {
+          "name": "两个烟囱口各投一小股熔岩",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 600,
+          "used": 12,
+          "strokes": 2
+        },
+        {
+          "name": "各投一大股",
+          "reference": false,
+          "state": "won",
+          "stars": 2,
+          "steps": 600,
+          "used": 20,
+          "strokes": 2
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 2,
+        "rate": 0.01,
+        "stars": [
+          0,
+          1,
+          1,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 50,
+        "rate": 1,
+        "three": 50
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 9.2
+    },
+    {
+      "id": "c3-4-3-cast",
+      "n": "4-3",
+      "type": "planning",
+      "name": [
+        "浇铸石板",
+        "Cast a Slab"
+      ],
+      "mechanic": [
+        "凝固：熔岩遇水冷却成石",
+        "Solidifying: water cools lava into stone"
+      ],
+      "difficulty": 2,
+      "reference": {
+        "stars": 3,
+        "steps": 107,
+        "used": 64,
+        "hash": "193d0f675771b3e7",
+        "strokes": 2
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 90,
+          "maxSteps": 150
+        },
+        "three": {
+          "maxUsed": 70,
+          "maxSteps": 130
+        }
+      },
+      "budget": 110,
+      "maxSteps": 400,
+      "solutions": [
+        {
+          "name": "一层熔岩一层水",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 107,
+          "used": 64,
+          "strokes": 2
+        },
+        {
+          "name": "一层熔岩、浇两层水",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 87,
+          "used": 96,
+          "strokes": 3
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 0,
+        "rate": 0,
+        "stars": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 50,
+        "rate": 1,
+        "three": 50
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 2.2
+    },
+    {
+      "id": "c3-4-4-desalt",
+      "n": "4-4",
+      "type": "planning",
+      "name": [
+        "海水淡化",
+        "Desalination"
+      ],
+      "mechanic": [
+        "综合：蒸馏把盐留下",
+        "Review: distillation leaves the salt behind"
+      ],
+      "difficulty": 3,
+      "reference": {
+        "stars": 3,
+        "steps": 600,
+        "used": 5,
+        "hash": "cb57840cf56e1f3e",
+        "strokes": 1
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 12,
+          "maxSteps": 1400
+        },
+        "three": {
+          "maxUsed": 7,
+          "maxSteps": 1400
+        }
+      },
+      "budget": 20,
+      "maxSteps": 1400,
+      "solutions": [
+        {
+          "name": "从海边搭一小段石槽到竖井口",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 600,
+          "used": 5,
+          "strokes": 1
+        },
+        {
+          "name": "搭一段三格厚的石槽",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 600,
+          "used": 13,
+          "strokes": 1
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 4,
+        "rate": 0.02,
+        "stars": [
+          0,
+          4,
+          0,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 44,
+        "rate": 0.88,
+        "three": 44
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 2.6
+    },
+    {
+      "id": "c3-4-5-snowtower",
+      "n": "4-5",
+      "type": "planning",
+      "name": [
+        "雪水上楼",
+        "Snow to the Rooftop"
+      ],
+      "mechanic": [
+        "综合：熔化、汽化、凝结",
+        "Review: melting, boiling and condensing"
+      ],
+      "difficulty": 4,
+      "reference": {
+        "stars": 3,
+        "steps": 900,
+        "used": 27,
+        "hash": "b68b61d1bf50652a",
+        "strokes": 3
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 34,
+          "maxSteps": 1600
+        },
+        "three": {
+          "maxUsed": 28,
+          "maxSteps": 1600
+        }
+      },
+      "budget": 40,
+      "maxSteps": 1600,
+      "solutions": [
+        {
+          "name": "往雪上投三排熔岩",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 900,
+          "used": 27,
+          "strokes": 3
+        },
+        {
+          "name": "投四排熔岩",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 900,
+          "used": 36,
+          "strokes": 4
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 4,
+        "rate": 0.02,
+        "stars": [
+          0,
+          3,
+          1,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 48,
+        "rate": 0.96,
+        "three": 48
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 15.4
+    },
+    {
+      "id": "c3-5-1-pillar",
+      "n": "5-1",
+      "type": "planning",
+      "name": [
+        "支柱",
+        "The Pillar"
+      ],
+      "mechanic": [
+        "支撑：刚体要连到地面或锚点",
+        "Support: rigid bodies must connect to the ground or an anchor"
+      ],
+      "difficulty": 1,
+      "reference": {
+        "stars": 3,
+        "steps": 300,
+        "used": 20,
+        "hash": "24ce15f778e00bdf",
+        "strokes": 1
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 44,
+          "maxSteps": 400
+        },
+        "three": {
+          "maxUsed": 24,
+          "maxSteps": 400
+        }
+      },
+      "budget": 60,
+      "maxSteps": 400,
+      "solutions": [
+        {
+          "name": "在一端立一根细柱",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 300,
+          "used": 20,
+          "strokes": 1
+        },
+        {
+          "name": "两端各立一根粗柱",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 300,
+          "used": 60,
+          "strokes": 2
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 0,
+        "rate": 0,
+        "stars": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 50,
+        "rate": 1,
+        "three": 50
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 0.2
+    },
+    {
+      "id": "c3-5-2-hang",
+      "n": "5-2",
+      "type": "planning",
+      "name": [
+        "吊灯",
+        "Hang the Lamp"
+      ],
+      "mechanic": [
+        "绳子：把东西吊在锚点上",
+        "Rope: hang loads from an anchor"
+      ],
+      "difficulty": 2,
+      "reference": {
+        "stars": 3,
+        "steps": 300,
+        "used": 13,
+        "hash": "07a103e423f96940",
+        "strokes": 1
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 28,
+          "maxSteps": 400
+        },
+        "three": {
+          "maxUsed": 14,
+          "maxSteps": 400
+        }
+      },
+      "budget": 40,
+      "maxSteps": 400,
+      "solutions": [
+        {
+          "name": "一根绳子吊住",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 300,
+          "used": 13,
+          "strokes": 1
+        },
+        {
+          "name": "两根绳子吊住",
+          "reference": false,
+          "state": "won",
+          "stars": 2,
+          "steps": 300,
+          "used": 26,
+          "strokes": 2
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 0,
+        "rate": 0,
+        "stars": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 50,
+        "rate": 1,
+        "three": 50
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 0.2
+    },
+    {
+      "id": "c3-5-3-blast",
+      "n": "5-3",
+      "type": "planning",
+      "name": [
+        "定点爆破",
+        "Controlled Demolition"
+      ],
+      "mechanic": [
+        "TNT 和引线：用火药引爆",
+        "TNT and fuses: prime it with gunpowder"
+      ],
+      "difficulty": 2,
+      "reference": {
+        "stars": 3,
+        "steps": 400,
+        "used": 13,
+        "hash": "3708076f3ddc8b49",
+        "strokes": 3
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 20,
+          "maxSteps": 700
+        },
+        "three": {
+          "maxUsed": 13,
+          "maxSteps": 700
+        }
+      },
+      "budget": 30,
+      "maxSteps": 700,
+      "solutions": [
+        {
+          "name": "TNT 贴墙竖一排，火药引子，熔岩点火",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 400,
+          "used": 13,
+          "strokes": 3
+        },
+        {
+          "name": "多放 TNT、拉一条长引线",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 400,
+          "used": 22,
+          "strokes": 3
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 8,
+        "rate": 0.04,
+        "stars": [
+          0,
+          4,
+          1,
+          3
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 41,
+        "rate": 0.82,
+        "three": 41
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 2.8
+    },
+    {
+      "id": "c3-5-4-fuses",
+      "n": "5-4",
+      "type": "realtime",
+      "name": [
+        "掐断引线",
+        "Cut the Fuses"
+      ],
+      "mechanic": [
+        "综合：引线、防火带和时机",
+        "Review: fuses, firebreaks and timing"
+      ],
+      "difficulty": 3,
+      "reference": {
+        "stars": 3,
+        "steps": 1400,
+        "used": 9,
+        "hash": "d67eb5ef02528a2f",
+        "strokes": 2
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 24,
+          "maxSteps": 1500
+        },
+        "three": {
+          "maxUsed": 14,
+          "maxSteps": 1500
+        }
+      },
+      "budget": 40,
+      "maxSteps": 1500,
+      "solutions": [
+        {
+          "name": "两边火头前各浇一小段水",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 1400,
+          "used": 9,
+          "strokes": 2
+        },
+        {
+          "name": "稍晚一些、浇得长一点",
+          "reference": false,
+          "state": "won",
+          "stars": 2,
+          "steps": 1400,
+          "used": 15,
+          "strokes": 2
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 2,
+        "rate": 0.01,
+        "stars": [
+          0,
+          2,
+          0,
+          0
+        ]
+      },
+      "jitter": null,
+      "early": {
+        "state": "won",
+        "steps": 1400
+      },
+      "problems": [],
+      "seconds": 5.1
+    },
+    {
+      "id": "c3-5-5-breach",
+      "n": "5-5",
+      "type": "planning",
+      "name": [
+        "炸坝引水",
+        "Breach the Dam"
+      ],
+      "mechanic": [
+        "综合：支撑、爆破与引水",
+        "Review: support, demolition and water"
+      ],
+      "difficulty": 4,
+      "reference": {
+        "stars": 3,
+        "steps": 700,
+        "used": 42,
+        "hash": "9fed45bdff2a6e29",
+        "strokes": 4
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 60,
+          "maxSteps": 900
+        },
+        "three": {
+          "maxUsed": 45,
+          "maxSteps": 900
+        }
+      },
+      "budget": 80,
+      "maxSteps": 900,
+      "solutions": [
+        {
+          "name": "先立柱，再引爆坝脚",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 700,
+          "used": 42,
+          "strokes": 4
+        },
+        {
+          "name": "两根柱子、多放火药",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 700,
+          "used": 72,
+          "strokes": 5
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 0,
+        "rate": 0,
+        "stars": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 43,
+        "rate": 0.86,
+        "three": 43
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 2.5
+    },
+    {
+      "id": "c3-6-1-circuit",
+      "n": "6-1",
+      "type": "planning",
+      "name": [
+        "接通电路",
+        "Close the Circuit"
+      ],
+      "mechanic": [
+        "导电：电火花沿金属传导",
+        "Conduction: sparks travel along metal"
+      ],
+      "difficulty": 2,
+      "reference": {
+        "stars": 3,
+        "steps": 120,
+        "used": 16,
+        "hash": "83bf6c941b34a5cb",
+        "strokes": 2
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 28,
+          "maxSteps": 450
+        },
+        "three": {
+          "maxUsed": 22,
+          "maxSteps": 300
+        }
+      },
+      "budget": 32,
+      "maxSteps": 500,
+      "solutions": [
+        {
+          "name": "补上缺口，再在金属桩旁点电火花",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 120,
+          "used": 16,
+          "strokes": 2
+        },
+        {
+          "name": "整段再铺一层，多点几个火花",
+          "reference": false,
+          "state": "won",
+          "stars": 2,
+          "steps": 119,
+          "used": 26,
+          "strokes": 4
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 1,
+        "rate": 0.005,
+        "stars": [
+          0,
+          1,
+          0,
+          0
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 50,
+        "rate": 1,
+        "three": 35
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 0.6
+    },
+    {
+      "id": "c3-6-2-canal",
+      "n": "6-2",
+      "type": "planning",
+      "name": [
+        "水渠导电",
+        "The Wet Wire"
+      ],
+      "mechanic": [
+        "导电：水也能传电",
+        "Conduction: water carries current too"
+      ],
+      "difficulty": 2,
+      "reference": {
+        "stars": 3,
+        "steps": 105,
+        "used": 20,
+        "hash": "e1c18699bdf00752",
+        "strokes": 2
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 30,
+          "maxSteps": 450
+        },
+        "three": {
+          "maxUsed": 24,
+          "maxSteps": 300
+        }
+      },
+      "budget": 34,
+      "maxSteps": 500,
+      "solutions": [
+        {
+          "name": "往干沟里灌水接通，再在金属桩旁放火花",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 105,
+          "used": 20,
+          "strokes": 2
+        },
+        {
+          "name": "往干沟里填金属",
+          "reference": false,
+          "state": "won",
+          "stars": 3,
+          "steps": 101,
+          "used": 20,
+          "strokes": 2
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 4,
+        "rate": 0.02,
+        "stars": [
+          0,
+          0,
+          1,
+          3
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 50,
+        "rate": 1,
+        "three": 50
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 0.9
+    },
+    {
+      "id": "c3-6-3-reroute",
+      "n": "6-3",
+      "type": "planning",
+      "name": [
+        "绕开木屋",
+        "Reroute the Line"
+      ],
+      "mechanic": [
+        "导电的副作用：通电金属会发热",
+        "A side effect of conduction: live metal gets hot"
+      ],
+      "difficulty": 3,
+      "reference": {
+        "stars": 3,
+        "steps": 400,
+        "used": 88,
+        "hash": "e80c1922289faca2",
+        "strokes": 4
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 98,
+          "maxSteps": 600
+        },
+        "three": {
+          "maxUsed": 88,
+          "maxSteps": 600
+        }
+      },
+      "budget": 104,
+      "maxSteps": 600,
+      "solutions": [
+        {
+          "name": "贴着屋顶上方拉一条新线",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 400,
+          "used": 88,
+          "strokes": 4
+        },
+        {
+          "name": "从桩顶拉一条高线",
+          "reference": false,
+          "state": "won",
+          "stars": 3,
+          "steps": 400,
+          "used": 70,
+          "strokes": 3
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 5,
+        "rate": 0.025,
+        "stars": [
+          0,
+          0,
+          0,
+          5
+        ]
+      },
+      "jitter": {
+        "n": 50,
+        "wins": 50,
+        "rate": 1,
+        "three": 27
+      },
+      "early": null,
+      "problems": [],
+      "seconds": 2.5
+    },
+    {
+      "id": "c3-6-4-flowspark",
+      "n": "6-4",
+      "type": "realtime",
+      "name": [
+        "顺水通电",
+        "Current on the Tide"
+      ],
+      "mechanic": [
+        "综合：水流、导电与时机",
+        "Review: flowing water, conduction and timing"
+      ],
+      "difficulty": 3,
+      "reference": {
+        "stars": 3,
+        "steps": 289,
+        "used": 1,
+        "hash": "d65dd65e1fd1d749",
+        "strokes": 1
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 8,
+          "maxSteps": 800
+        },
+        "three": {
+          "maxUsed": 3,
+          "maxSteps": 500
+        }
+      },
+      "budget": 20,
+      "maxSteps": 900,
+      "solutions": [
+        {
+          "name": "水一接到 TNT 就在金属桩旁放火花",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 289,
+          "used": 1,
+          "strokes": 1
+        },
+        {
+          "name": "晚一点、多放几个火花",
+          "reference": false,
+          "state": "won",
+          "stars": 3,
+          "steps": 425,
+          "used": 2,
+          "strokes": 2
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 7,
+        "rate": 0.035,
+        "stars": [
+          0,
+          3,
+          2,
+          2
+        ]
+      },
+      "jitter": null,
+      "early": {
+        "state": "lost",
+        "steps": 900
+      },
+      "problems": [],
+      "seconds": 6.6
+    },
+    {
+      "id": "c3-6-5-doubleshot",
+      "n": "6-5",
+      "type": "realtime",
+      "name": [
+        "一火双响",
+        "One Spark, Two Blasts"
+      ],
+      "mechanic": [
+        "综合：导线、水路与时机",
+        "Review: wires, water paths and timing"
+      ],
+      "difficulty": 4,
+      "reference": {
+        "stars": 3,
+        "steps": 293,
+        "used": 7,
+        "hash": "eacefdbb22b5a853",
+        "strokes": 2
+      },
+      "stars": {
+        "two": {
+          "maxUsed": 18,
+          "maxSteps": 850
+        },
+        "three": {
+          "maxUsed": 12,
+          "maxSteps": 600
+        }
+      },
+      "budget": 24,
+      "maxSteps": 900,
+      "solutions": [
+        {
+          "name": "先补线，水接到下面的 TNT 再放火花",
+          "reference": true,
+          "state": "won",
+          "stars": 3,
+          "steps": 293,
+          "used": 7,
+          "strokes": 2
+        },
+        {
+          "name": "晚一点补线，分两次放火花",
+          "reference": false,
+          "state": "won",
+          "stars": 1,
+          "steps": 372,
+          "used": 21,
+          "strokes": 3
+        }
+      ],
+      "nothing": "lost",
+      "bot": {
+        "n": 200,
+        "wins": 9,
+        "rate": 0.045,
+        "stars": [
+          0,
+          0,
+          4,
+          5
+        ]
+      },
+      "jitter": null,
+      "early": {
+        "state": "lost",
+        "steps": 900
+      },
+      "problems": [],
+      "seconds": 7.4
+    }
+  ]
+}

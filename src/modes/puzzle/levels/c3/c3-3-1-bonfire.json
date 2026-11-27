@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "id": "c3-3-1-bonfire",
+  "name": "篝火",
+  "chapter": "第三章 · 火与热",
+  "difficulty": 1,
+  "hint": "点燃炉栅上的木堆，烧出至少 5 格木炭。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 31,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 24,
+          "y0": 35,
+          "x1": 39,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 26,
+          "y0": 31,
+          "x1": 26,
+          "y1": 34
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 37,
+          "y0": 31,
+          "x1": 37,
+          "y1": 34
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 26,
+          "y0": 31,
+          "x1": 37,
+          "y1": 31
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "EMPTY",
+          "x0": 28,
+          "y0": 31,
+          "x1": 35,
+          "y1": 31
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 27,
+          "y0": 26,
+          "x1": 36,
+          "y1": 30
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "pile",
+      "type": "goal",
+      "x": 27,
+      "y": 26,
+      "w": 10,
+      "h": 5
+    }
+  ],
+  "materials": {
+    "FIRE": 12
+  },
+  "budget": 12,
+  "maxSteps": 700,
+  "goal": {
+    "op": "within",
+    "steps": 650,
+    "condition": {
+      "op": "count",
+      "region": "pile",
+      "material": "CHARCOAL",
+      "compare": ">=",
+      "value": 5
+    }
+  },
+  "fail": null,
+  "stars": {
+    "two": {
+      "maxUsed": 11,
+      "maxSteps": 650
+    },
+    "three": {
+      "maxUsed": 9,
+      "maxSteps": 500
+    }
+  },
+  "reference": {
+    "steps": 246,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "FIRE",
+          "x0": 28,
+          "y0": 33,
+          "x1": 35,
+          "y1": 33,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

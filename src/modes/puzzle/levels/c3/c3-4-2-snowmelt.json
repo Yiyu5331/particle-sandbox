@@ -1,0 +1,297 @@
+{
+  "version": 1,
+  "id": "c3-4-2-snowmelt",
+  "name": "化雪",
+  "chapter": "第四章 · 相变",
+  "difficulty": 2,
+  "hint": "天冷，雪不会自己化。把两边雪池里的雪各化成至少 55 格水；中间冰窖的雪要留着，木棚顶不能烧着。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 42,
+    "commands": [
+      {
+        "command": "setEnv",
+        "args": {
+          "key": "temp",
+          "value": -8
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 24,
+          "x1": 63,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "EMPTY",
+          "x0": 4,
+          "y0": 24,
+          "x1": 19,
+          "y1": 31
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "EMPTY",
+          "x0": 24,
+          "y0": 24,
+          "x1": 39,
+          "y1": 31
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "EMPTY",
+          "x0": 44,
+          "y0": 24,
+          "x1": 59,
+          "y1": 31
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "SNOW",
+          "x0": 4,
+          "y0": 26,
+          "x1": 19,
+          "y1": 31
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "SNOW",
+          "x0": 24,
+          "y0": 26,
+          "x1": 39,
+          "y1": 31
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "SNOW",
+          "x0": 44,
+          "y0": 26,
+          "x1": 59,
+          "y1": 31
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 2,
+          "y0": 22,
+          "x1": 61,
+          "y1": 23
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "EMPTY",
+          "x0": 11,
+          "y0": 22,
+          "x1": 13,
+          "y1": 23
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "EMPTY",
+          "x0": 51,
+          "y0": 22,
+          "x1": 53,
+          "y1": 23
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "pondA",
+      "type": "goal",
+      "x": 4,
+      "y": 24,
+      "w": 16,
+      "h": 8
+    },
+    {
+      "id": "icehouse",
+      "type": "protected",
+      "x": 24,
+      "y": 24,
+      "w": 16,
+      "h": 8
+    },
+    {
+      "id": "pondB",
+      "type": "goal",
+      "x": 44,
+      "y": 24,
+      "w": 16,
+      "h": 8
+    },
+    {
+      "id": "roofA",
+      "type": "protected",
+      "x": 2,
+      "y": 22,
+      "w": 9,
+      "h": 2
+    },
+    {
+      "id": "roofB",
+      "type": "protected",
+      "x": 14,
+      "y": 22,
+      "w": 37,
+      "h": 2
+    },
+    {
+      "id": "roofC",
+      "type": "protected",
+      "x": 54,
+      "y": 22,
+      "w": 8,
+      "h": 2
+    }
+  ],
+  "materials": {
+    "LAVA": 40,
+    "FIRE": 40
+  },
+  "budget": 40,
+  "maxSteps": 900,
+  "goal": {
+    "op": "and",
+    "conditions": [
+      {
+        "op": "survive",
+        "steps": 600
+      },
+      {
+        "op": "count",
+        "region": "pondA",
+        "material": "WATER",
+        "compare": ">=",
+        "value": 55
+      },
+      {
+        "op": "count",
+        "region": "pondB",
+        "material": "WATER",
+        "compare": ">=",
+        "value": 55
+      },
+      {
+        "op": "count",
+        "region": "icehouse",
+        "material": "SNOW",
+        "compare": ">=",
+        "value": 50
+      }
+    ]
+  },
+  "fail": {
+    "op": "or",
+    "conditions": [
+      {
+        "op": "count",
+        "region": "icehouse",
+        "material": "SNOW",
+        "compare": "<=",
+        "value": 40
+      },
+      {
+        "op": "not",
+        "condition": {
+          "op": "integrity",
+          "region": "roofA",
+          "material": "WOOD",
+          "percent": 95
+        }
+      },
+      {
+        "op": "not",
+        "condition": {
+          "op": "integrity",
+          "region": "roofB",
+          "material": "WOOD",
+          "percent": 95
+        }
+      },
+      {
+        "op": "not",
+        "condition": {
+          "op": "integrity",
+          "region": "roofC",
+          "material": "WOOD",
+          "percent": 95
+        }
+      }
+    ]
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 24,
+      "maxSteps": 900
+    },
+    "three": {
+      "maxUsed": 14,
+      "maxSteps": 900
+    }
+  },
+  "reference": {
+    "steps": 600,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "LAVA",
+          "x0": 12,
+          "y0": 14,
+          "x1": 12,
+          "y1": 19,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "LAVA",
+          "x0": 52,
+          "y0": 14,
+          "x1": 52,
+          "y1": 19,
+          "size": 1
+        }
+      }
+    ]
+  }
+}
