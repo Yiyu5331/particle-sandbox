@@ -2,7 +2,7 @@
 
 ## 当前目标和状态
 
-为解谜模式设计 30 个关卡（6 章 × 5 关），每关做完质量验证，并接入内置选关目录。**关卡、工具、文档、截图、用例都已完成；30 关已登记进 `catalog.js`，在 PR 中等待 CI 和审阅，未合并。**
+为解谜模式设计 30 个关卡（6 章 × 5 关），每关做完质量验证，并接入内置选关目录。**已完成并合并**：PR #5 于 2026-11-28 合并进 main，合并提交 `096fcfc091761e255b81358e719cf5bf9415771a`。30 关已登记进 `catalog.js`，CI 的 `levels.mjs validate` 逐关验证。
 
 - 原起点：`codex/batch1-integration` 的 `edf8ac82e59df35d86b335e60620e896907324d8`。batch1 合并后（main `95979ce`）已用 `git rebase --onto origin/main edf8ac8… claude/c3-levels` 迁移完毕。
 - 工作树里的 `node_modules` 是指向 `../particle-sandbox-batch1/node_modules` 的软链接（两边 `package-lock.json` 相同）。`.gitignore` 的 `node_modules/` 只匹配目录、不匹配软链接，所以它会出现在 `git status` 里，**不要提交**。
@@ -28,11 +28,20 @@
 | `tools/c3/build.mjs` | 源定义 → JSON + meta.json |
 | `tools/c3/audit.mjs`、`tools/c3/doc.mjs` | 全量验证，写 `docs/puzzle-levels-report.json`，并重新生成 `docs/puzzle-levels.md` |
 | `tools/c3/try.mjs` | 设计时打印某关某解法的字符画和检查结果 |
-| `tools/c3/shots.mjs` | Playwright + 本机 Chrome，在真实页面导入关卡拍初始 / 通关画面 → `docs/puzzle-levels/*.png` |
+| `tools/c3/shots.mjs` | Playwright + 本机 Chrome，在真实页面导入关卡拍初始 / 通关画面 → `docs/puzzle-levels/*.png`（现有 60 张已随 PR #5 进仓库，以后重新截图不要再提交，见下方「截图约定」） |
 | `tests/suites/c3-levels.test.mjs` | node:test（自动发现）：30 关参考三星、空解失败、备选解法通关、文本齐全 |
 | `docs/puzzle-levels.md` | 每关机制、预期 / 备选解法、提示、难度指标、截图、难度曲线表、验证报告 |
 
 验证结果（每关随机机器人 200 次、规划关扰动 50 次）见 `docs/puzzle-levels.md` 的总表：30 关全部满足「参考三星、两次哈希一致、空解失败、随机通关 < 5%、规划关扰动通过 ≥ 80%」。
+
+## 截图约定
+
+**以后重新截图不要再提交进仓库。** 现有的 60 张（`docs/puzzle-levels/*.png`，约 3.5 MB）随 PR #5 合并进来了，保留不动；关卡改动后重新拍的图改用下面两种方式之一：
+
+- **本地生成**：`node tools/c3/shots.mjs` 只在本机看，生成后不要 `git add` `docs/puzzle-levels/`。需要时可以把输出目录改到被忽略的位置（比如加一个 `--out=` 参数），或者在 `.gitignore` 里加规则。
+- **作为 CI 产物上传**：在 CI 里构建后跑截图脚本（需要装 Chromium，`shots.mjs` 目前写死了 `channel: 'chrome'`，要改成可配置），用 `actions/upload-artifact` 上传，审阅时下载查看。
+
+`docs/puzzle-levels.md` 里的图片链接目前指向仓库里的旧截图；截图不再进仓库后，关卡改动会让这些图过时，届时把文档里的截图一栏改成说明「截图见 CI 产物或本地生成」。
 
 ## 重要决策和原因
 
@@ -87,4 +96,4 @@
 
 ## 最近更新
 
-2026-11-28 · Claude Code
+2026-11-28 · Claude Code（PR #5 合并后补充截图约定）
