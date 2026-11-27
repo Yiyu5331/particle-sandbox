@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "id": "water-lock",
+  "name": "蓄水闸",
+  "chapter": "第一章 · 重力",
+  "difficulty": 1,
+  "hint": "运行中在两堵墙之间注水。让 8 格水留在闸内，并坚持到第 30 步。",
+  "type": "realtime",
+  "world": {
+    "width": 80,
+    "height": 48,
+    "seed": 42,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 45,
+          "x1": 79,
+          "y1": 47
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 22,
+          "y0": 33,
+          "x1": 23,
+          "y1": 44
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 50,
+          "y0": 33,
+          "x1": 51,
+          "y1": 44
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "pool",
+      "type": "goal",
+      "x": 24,
+      "y": 36,
+      "w": 26,
+      "h": 9
+    },
+    {
+      "id": "floor",
+      "type": "protected",
+      "x": 0,
+      "y": 45,
+      "w": 80,
+      "h": 3
+    }
+  ],
+  "materials": {
+    "WATER": 25
+  },
+  "budget": 20,
+  "maxSteps": 900,
+  "goal": {
+    "op": "and",
+    "conditions": [
+      {
+        "op": "count",
+        "region": "pool",
+        "material": "WATER",
+        "compare": ">=",
+        "value": 8
+      },
+      {
+        "op": "survive",
+        "steps": 30
+      }
+    ]
+  },
+  "fail": null,
+  "stars": {
+    "two": {
+      "maxUsed": 19,
+      "maxSteps": 600
+    },
+    "three": {
+      "maxUsed": 15,
+      "maxSteps": 300
+    }
+  },
+  "reference": {
+    "steps": 30,
+    "log": [
+      {
+        "step": 5,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 29,
+          "y0": 30,
+          "x1": 33,
+          "y1": 30,
+          "size": 1
+        }
+      },
+      {
+        "step": 14,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 37,
+          "y0": 30,
+          "x1": 42,
+          "y1": 30,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

@@ -17,3 +17,6 @@ coverage/
 
 # 构建产物：CI 构建并作为 artifact 上传，不入库
 dist/
+
+/test-results/
+/playwright-report/

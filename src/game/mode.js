@@ -4,7 +4,7 @@
  *
  *   init(ctx, params)        进入模式：用 ctx.createWorld(...) 建自己的世界，搭界面
  *   每帧：preFrame?(now, dt) → [每个模拟步：beforeStep?() → world.step(1) → onEvent(e)… → update(step)] → 渲染 → renderOverlay?(g, view) → postFrame?(now)
- *   getHUD() → string | null  状态栏右侧显示的一行字
+ *   getHUD() → string | null；X4 在注册时适配结构化数据（见 docs/UI.md）
  *   checkOutcome() → {state:'playing'|'won'|'lost', score, detail}   每 30 步问一次；不是 playing 就暂停并广播 'outcome'
  *   serialize() → 可 JSON 的对象；deserialize(o)
  *   dispose()                离开模式：拆界面、释放世界

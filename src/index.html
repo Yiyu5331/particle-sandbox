@@ -2,10 +2,16 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>粒子沙盘</title>
 <style>
   :root {
+    --font-ui: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-display: "Bricolage Grotesque", "PingFang SC", var(--font-ui);
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --shadow-panel: 0 18px 50px rgba(0, 0, 0, 0.55);
+    --shadow-bar: 0 8px 30px rgba(0, 0, 0, 0.35);
+    --space: 16px;
     --bg: #0a0a0f;
     --panel: rgba(255, 255, 255, 0.05);
     --panel-strong: rgba(22, 22, 32, 0.82);
@@ -30,7 +36,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; overflow: hidden; }
   body {
-    font: 12.5px/1.35 system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    font: 12.5px/1.35 var(--font-ui);
     color: var(--text);
     background:
       radial-gradient(900px 420px at 12% -10%, rgba(90, 60, 200, 0.22), transparent 70%),
@@ -62,7 +68,7 @@
   /* ---------- 顶部控制条 ---------- */
   #topbar {
     grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap);
-    padding: 6px 10px; border-bottom: 1px solid var(--line); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35); z-index: 5;
+    padding: 6px 10px; border-bottom: 1px solid var(--line); box-shadow: var(--shadow-bar); z-index: 5;
   }
   .grp { display: flex; align-items: center; gap: var(--gap-sm); padding: 3px 5px; border: 1px solid var(--line); border-radius: var(--pill); background: rgba(255, 255, 255, 0.03); }
   .grp > .lbl { font-size: 11px; color: var(--muted); letter-spacing: 0.06em; padding: 0 3px 0 5px; white-space: nowrap; }
@@ -126,7 +132,7 @@
   .chip.hide { display: none; }
 
   /* ---------- 弹层与提示 ---------- */
-  .pop { position: fixed; z-index: 20; display: none; min-width: 220px; max-width: 320px; padding: 10px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--panel-strong); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); }
+  .pop { position: fixed; z-index: 20; display: none; min-width: 220px; max-width: 320px; padding: 10px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--panel-strong); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: var(--shadow-panel); }
   .pop.show { display: block; }
   .pop h4 { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.1em; margin: 2px 2px 8px; }
   .pop .col { display: flex; flex-direction: column; gap: var(--gap-sm); }
@@ -137,10 +143,12 @@
   .pop label { display: flex; align-items: center; gap: 8px; height: 26px; cursor: pointer; }
   .pop label input { accent-color: var(--accent); }
   .pop .note { color: var(--muted); font-size: 11px; margin-top: 8px; line-height: 1.5; white-space: normal; }
+  #popSave { max-height: 75vh; overflow-y: auto; }
+  #autoSeconds { width: 6em; }
   .slot { display: flex; gap: var(--gap-sm); align-items: center; }
   .slot .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; }
   .slot button { flex: none; text-align: center; }
-  #tip { position: fixed; z-index: 30; display: none; width: 250px; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--panel-strong); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); pointer-events: none; line-height: 1.55; }
+  #tip { position: fixed; z-index: 30; display: none; width: 250px; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--panel-strong); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: var(--shadow-panel); pointer-events: none; line-height: 1.55; }
   #tip h4 { font-size: 13px; color: var(--text-strong); margin-bottom: 2px; }
   #tip .sub { color: var(--muted); margin-bottom: 6px; }
   #tip dl { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; }
@@ -149,14 +157,6 @@
   #tip li { color: var(--text); } #tip li::before { content: '· '; color: var(--muted); }
 
   /* 主菜单 / 模式（C0） */
-  #menu { position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center; background: rgba(5, 5, 10, 0.55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-  #menu.show { display: flex; }
-  #menu .box { width: min(440px, calc(100% - 32px)); padding: 16px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--panel-strong); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); }
-  #menu h2 { font-size: 16px; color: var(--text-strong); margin-bottom: 10px; }
-  #menuList { display: flex; flex-direction: column; gap: var(--gap); }
-  #menuList button { height: auto; padding: 8px 12px; border-radius: var(--radius-sm); text-align: left; white-space: normal; display: flex; flex-direction: column; gap: 2px; }
-  #menuList small { color: var(--muted); }
-  #menu .foot { display: flex; justify-content: flex-end; margin-top: 12px; }
   #modeOverlay { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 16px; pointer-events: auto; }
   #modeOverlay h2 { font-size: 22px; color: var(--text-strong); }
   #modeOverlay .tag { padding: 2px 10px; border-radius: var(--pill); border: 1px solid var(--warn); color: #ffd98a; }
@@ -166,12 +166,121 @@
   body:not([data-mode="sandbox"]) .sbx { display: none !important; }
   body:not([data-mode="sandbox"]) #palette > * { visibility: hidden; }
 
+  [hidden] { display: none !important; }
+  body[data-mode="home"] #app { display:block; }
+  body[data-mode="home"] :is(#topbar,#palette,#status) { display:none; }
+  body[data-mode="home"] #stage,body[data-mode="home"] #viewport { width:100%; height:100%; }
+  body[data-mode="home"] #canvas { width:100% !important; height:100% !important; object-fit:cover; cursor:default; }
+  #ui-screen { position:fixed; inset:0; z-index:40; color:var(--text-strong); }
+  .ui-modal { height:100%; display:grid; align-items:center; justify-items:center; padding:clamp(12px,4vw,64px);
+    background:rgba(8,9,16,.7); backdrop-filter:var(--blur); overflow:auto; }
+  .ui-modal:focus { outline:none; }
+  .ui-panel { width:min(100%,480px); padding:clamp(20px,3vw,40px); border-radius:var(--radius);
+    background:var(--panel-strong); border:1px solid var(--line-strong); box-shadow:var(--shadow-panel); }
+  .ui-panel h2,.ui-hero h1 { font-family:var(--font-display); line-height:1.12; }
+  .ui-panel h2 { font-size:clamp(26px,3vw,40px); margin:0 0 24px; }
+  .ui-button { display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height:42px; height:auto; padding:10px 16px; font-size:14px; }
+  .ui-button:focus-visible,.ui-field :focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+  .ui-button.primary { background:var(--accent); border-color:var(--accent); color:#111628; font-weight:700; }
+  .ui-home { width:100%; height:100%; min-height:340px; display:grid; grid-template-rows:auto 1fr auto; gap:var(--space); }
+  #ui-screen[data-screen="home"] .ui-modal { padding:clamp(18px,4.5vw,72px); backdrop-filter:none;
+    background:linear-gradient(90deg,rgba(7,10,18,.87),rgba(8,12,24,.48) 43%,transparent 78%),linear-gradient(0deg,rgba(6,8,17,.64),transparent 28%); }
+  .ui-home-nav,.ui-actions,.ui-live { display:flex; align-items:center; gap:var(--gap); flex-wrap:wrap; }
+  .ui-home-nav { justify-content:flex-end; } .ui-home-nav .ui-button,.ui-live button { background:var(--panel-strong); }
+  .ui-hero { align-self:center; max-width:41em; }
+  .ui-hero h1 { font-size:clamp(60px,8.5vw,142px); letter-spacing:-.055em; font-weight:760; text-wrap:balance; }
+  .ui-hero p { color:#e1e3f0; font-size:clamp(15px,1.6vw,21px); margin:18px 0 34px; line-height:1.6; max-width:32em; }
+  .ui-hero .ui-button { min-height:46px; padding-inline:22px; } .ui-hero .ui-button:not(.primary) { background:var(--panel-strong); }
+  .ui-live { align-self:end; justify-self:end; border-top:1px solid var(--line-strong); padding-top:12px; }
+  .ui-live strong { font-size:16px; } .ui-live span { color:var(--text); } .ui-live button span {color:inherit;}
+  .ui-back { margin-bottom:18px; }
+  #ui-screen[data-screen="modes"] .ui-panel { width:min(100%,900px); }
+  .ui-card-grid { list-style:none; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+  .ui-card { width:100%; height:100%; align-items:flex-start; justify-content:flex-start; flex-direction:column; text-align:start;
+    padding:20px; border-radius:var(--radius); white-space:normal; gap:8px; }
+  .ui-card svg { width:29px; height:29px; color:var(--accent); margin-bottom:8px; }
+  .ui-card[data-mode=defense] svg { color:#f2a578; } .ui-card[data-mode=eco] svg {color:#83cca0;}
+  .ui-card[data-mode=puzzle] svg { color:#d2a5e7; } .ui-card[data-mode=civ] svg {color:#edcc80;}
+  .ui-card span { font-weight:650; font-size:18px; } .ui-card p { color:var(--text); font-size:13px; line-height:1.5; }
+  .ui-card small { color:var(--muted); margin-top:auto; padding-top:10px; }
+  .ui-guide-card { justify-content:center; border-style:dashed; }
+  .ui-list { list-style:none; display:grid; gap:var(--gap); } .ui-list .ui-button { width:100%; justify-content:flex-start; }
+  .ui-field,.ui-key { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .ui-field { font-size:15px; } .ui-field input[type=range] { width:35%; margin-left:auto; }
+  .ui-field select {padding-inline:12px;height:34px;} .ui-field output {min-width:3ch;font-variant-numeric:tabular-nums;}
+  .ui-key { padding-block:6px; } .ui-key kbd {font-family:var(--font-mono); color:var(--accent);}
+  .ui-tablist { display:flex; gap:var(--gap); padding-bottom:12px; } .ui-tablist [aria-selected=true] {border-color:var(--accent);color:var(--accent);}
+  .ui-specimen { margin-top:20px; } .ui-specimen h3 { font-size:22px; margin:12px 0 6px; }
+  .ui-swatch { height:52px; border-radius:var(--radius-sm); background:var(--sample); }
+  .ui-phase { margin-top:var(--gap); color:var(--text); }
+  .ui-progress { width:100%; accent-color:var(--accent); }
+  .ui-tooltip { background:var(--panel-strong); border:1px solid var(--line); padding:var(--gap); border-radius:var(--radius-sm); }
+  #ui-hud,.ui-hud-item { display:inline-flex; align-items:center; gap:var(--gap-sm); } #ui-hud { gap:var(--gap); overflow:auto; }
+  .ui-hud-item progress {width:64px;} .ui-hud-item button {min-height:24px;padding:2px 6px;}
+  #ui-screen[data-screen="result"] .ui-actions { margin-top:18px; }
+  html[lang="en"] #topbar {gap:4px;} html[lang="en"] #palette {--gap-sm:3px;}
+  @media (max-width:650px) { .ui-card-grid {grid-template-columns:repeat(2,minmax(0,1fr));} .ui-card {padding:12px;}
+    .ui-modal {align-items:safe center;} .ui-live {justify-self:start;} }
+  @media (max-width:370px) { .ui-card-grid {grid-template-columns:1fr;} }
   @media (max-width: 760px) {
     :root { --side: 104px; --ctl-h: 26px; }
     .cat .items { grid-template-columns: 1fr; }
     #brand small, .grp > .lbl { display: none; }
     #topbar { gap: 5px; padding: 5px; }
     #rngSize { width: 60px; }
+  }
+  /* 种子图册：沿用沙盘控件与材料配色，缩略图按模拟格展示。 */
+  body[data-page="mapgen"] {overflow:auto;user-select:text;}
+  body[data-page="mapgen"] :is(#app,#menu) {display:none;}
+  #mapgen {max-width:1500px;margin:auto;padding:clamp(16px,3vw,48px);line-height:1.5;}
+  #mapgen header {display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:14px;}
+  #mapgen h1 {font-size:clamp(26px,4vw,48px);letter-spacing:-.04em;color:var(--text-strong);}
+  #mapgen a {color:var(--accent);} #mapgen h2 {font-size:17px;margin-bottom:12px;}
+  .mg-controls {display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:20px 0 28px;}
+  .mg-controls label {display:flex;flex-wrap:wrap;align-items:center;gap:5px;color:var(--muted);}
+  .mg-controls label select,.mg-controls label input[type=number] {color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:4px 8px;height:32px;}
+  .mg-controls input[type=number] {width:8em;} .mg-controls input[type=range] {width:85px;}
+  .mg-work {display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:24px;align-items:start;}
+  .mg-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;}
+  .mg-grid button {height:auto;display:grid;text-align:left;padding:0;overflow:hidden;border-radius:var(--radius-sm);}
+  .mg-grid span {padding:6px 10px;} .mg-grid button[aria-pressed=true] {border-color:var(--accent);}
+  #mapgen canvas {display:block;width:100%;height:auto;image-rendering:pixelated;}
+  .mg-detail {position:sticky;top:14px;background:var(--panel);padding:16px;border:1px solid var(--line);border-radius:var(--radius);}
+  .mg-detail canvas {border-radius:var(--radius-sm);} .mg-detail h3 {font-size:20px;margin-top:12px;}
+  .mg-info,.mg-detail [role=status] {color:var(--muted);margin:6px 0 12px;}
+  .mg-legend {list-style:none;display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 16px;}
+  .mg-legend li::before {content:"";display:inline-block;width:8px;height:8px;margin-right:4px;background:#ffdb89;}
+  .mg-legend li:nth-child(2)::before {background:#7af2e7;} .mg-legend li:nth-child(3)::before {background:#8bb8ff;} .mg-legend li:nth-child(4)::before {background:#ff9979;}
+  @media(max-width:800px) { .mg-work {grid-template-columns:1fr;} .mg-detail {position:static;grid-row:1;} }
+  /* 解谜工作区与共享组件布局。 */
+  body[data-mode="puzzle"] { --side:clamp(195px,25vw,300px); }
+  body[data-mode="puzzle"] #palette > :not(#puzzle-tools) { display:none; }
+  body[data-mode="puzzle"] #palette > #puzzle-tools { visibility:visible; }
+  body[data-mode="puzzle"] #viewport { width:min(96%,calc(68vh * var(--puzzle-aspect,1.66)),900px); aspect-ratio:var(--puzzle-aspect,1.66); }
+  body[data-mode="puzzle"] :is(#canvas,#overlay) { width:100% !important; height:100% !important; image-rendering:pixelated; }
+  body[data-mode="puzzle"] #canvas { cursor:crosshair; }
+  #puzzle-tools .ui-panel { padding:var(--gap); display:grid; gap:var(--gap); }
+  #puzzle-tools .ui-panel h2 { font-size:20px; margin-bottom:4px; }
+  #puzzle-tools .ui-tablist { flex-wrap:wrap; gap:4px; }
+  #puzzle-tools .ui-button { white-space:normal; padding:6px 8px; min-height:34px; }
+  #puzzle-tools [role=tabpanel]:not([hidden]) { display:grid; gap:var(--gap); }
+  #puzzle-picker .ui-panel { width:min(100%,900px); margin:auto; }
+  #puzzle-picker .ui-card { display:flex; height:100%; }
+  #puzzle-tools [role=tabpanel], #puzzle-tools label { min-width:0; }
+  #puzzle-tools { padding:4px; line-height:1.5; }
+  #puzzle-tools :is(label,details) { display:grid; gap:4px; min-width:0; }
+  #puzzle-tools :is(input,textarea,select) { width:100%; min-width:0; }
+  #puzzle-tools textarea, #puzzle-tools input[type=number] { color:var(--text); background:var(--bg); border:1px solid var(--line-strong); border-radius:5px; padding:4px; }
+  #puzzle-tools output { white-space:pre-line; } #puzzle-tools [role=status]:empty { display:none; }
+  #puzzle-picker { position:absolute; inset:0; overflow:auto; background:var(--bg); padding:clamp(12px,4vw,56px); }
+  #puzzle-picker h3 { margin:18px 0 4px; }
+  #puzzle-picker button { text-align:left; height:auto; padding:10px 14px; }
+  #puzzle-picker button:disabled { opacity:.55; }
+  @media(max-width:620px) {
+    body[data-mode="puzzle"] #app {grid-template-columns: minmax(0,1fr);grid-template-rows:auto minmax(140px,1fr) minmax(100px,35vh) auto;}
+    body[data-mode="puzzle"] #stage {grid-row:2;}
+    body[data-mode="puzzle"] #palette {grid-row:3;}
+    body[data-mode="puzzle"] #viewport {width:min(96%,calc(40vh * var(--puzzle-aspect,1.66)));}
   }
 </style>
 </head>
@@ -235,7 +344,7 @@
     </div>
     <div id="debug" class="float"></div>
     <div id="testbox" class="float"></div>
-    <div id="toast" class="float"></div>
+    <div id="toast" role="status" aria-live="polite" class="float"></div>
     <div id="recdot" class="float">录制中</div>
     <div id="modeOverlay"><span class="tag">开发中</span><h2></h2><p></p><button id="btnModeExit">返回主菜单</button></div>
   </main>
@@ -247,7 +356,7 @@
     <span id="stInspect" class="sbx">—</span>
     <span id="stMode" class="chip"></span>
     <span class="sbx">粒子 <b id="stCount">0</b></span>
-    <span id="stModeHud"></span>
+    <span id="stModeHud"></span><div id="ui-hud" hidden></div>
   </footer>
 </div>
 
@@ -256,7 +365,11 @@
   <h4>存档槽位（浏览器本地）</h4>
   <div class="row"><input type="text" id="slotName" placeholder="存档名称" maxlength="24"><button id="btnSlotSave" style="flex:none;text-align:center">保存</button></div>
   <div class="col" id="slotList" style="margin-top:8px"></div>
-  <h4 style="margin-top:12px">文件</h4>
+  <label>自动存档间隔（秒，0 关闭）<input id="autoSeconds" type="number" min="0" max="2147483" value="0"></label>
+  <h4 style="margin-top:12px">玩家档案</h4>
+  <div class="row"><button id="btnProfileExport">导出档案</button><button id="btnProfileImport">导入档案</button></div>
+  <input type="file" id="profileFile" accept=".json,application/json" hidden>
+  <h4 style="margin-top:12px">世界文件</h4>
   <div class="row"><button id="btnExport" style="text-align:center">导出 JSON</button><button id="btnImport" style="text-align:center">导入 JSON</button></div>
   <h4 style="margin-top:12px">录制</h4>
   <div class="row"><button id="btnRecExport" style="text-align:center">导出录制</button><button id="btnPlayStop" style="text-align:center;display:none">停止回放</button></div>
@@ -269,6 +382,7 @@
     <select id="selQuality" aria-label="画质档位"><option value="low">低</option><option value="mid">中</option><option value="high" selected>高</option><option value="ultra">极致</option></select>
     <select id="selScale" aria-label="网格精度"><option value="2">每格 2 像素</option><option value="3" selected>每格 3 像素</option><option value="4">每格 4 像素</option></select>
   </div>
+  <label>语言 <select id="selLanguage"><option value="zh-CN">简体中文</option><option value="en" lang="en">English</option></select></label>
   <h4 style="margin-top:10px">画面效果</h4><div class="col" id="settingList"></div><div class="note" id="renderInfo"></div>
 </div>
 <div id="popEnv" class="pop">
@@ -287,8 +401,8 @@
   <label><input type="checkbox" id="envStruct" checked>结构力学（悬空的固体会塌）</label>
   <div class="row" style="margin-top:6px"><button id="envBolt" style="text-align:center">召唤闪电</button></div>
 </div>
-<div id="tip"></div>
-<div id="menu" role="dialog" aria-label="主菜单"><div class="box"><h2>选择模式</h2><div id="menuList"></div><div class="foot"><button id="btnMenuBack">继续当前模式（Esc）</button></div></div></div>
+<div id="tip" role="tooltip"></div>
+<div id="menu"><div id="ui-screen" data-screen="loading"><div class="ui-modal"><section class="ui-panel"><h2>引擎热身</h2><progress value="0" max="100" aria-label="引擎热身"></progress></section></div></div></div>
 
 <script>
 /*BUNDLE*/

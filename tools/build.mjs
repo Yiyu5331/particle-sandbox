@@ -21,7 +21,9 @@ const order = [], seen = new Set();
 function visit(file) {
   if (seen.has(file)) return;
   seen.add(file);
-  const src = readFileSync(file, 'utf8');
+  // 将标准 JSON 模块内联，使 Node 工具与离线页面使用同一份关卡和 schema。
+  const src = readFileSync(file, 'utf8').replace(/^import (\w+) from '([^']+\.json)' with \{ type: 'json' \};$/gm,
+    (_, name, spec) => 'const ' + name + ' = ' + JSON.stringify(JSON.parse(readFileSync(path.resolve(path.dirname(file), spec), 'utf8'))) + ';');
   for (const m of src.matchAll(DEP)) visit(path.resolve(path.dirname(file), m[1]));
   order.push({ file, src });
 }
