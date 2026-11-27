@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { openUIPage } from '../lib/ui-page.mjs';
 import { Window } from 'happy-dom';
 import { uiButton,uiCardGrid,uiIcon,uiList,uiModal,uiPanel,uiProgress,uiSelect,uiSlider,uiTabs,uiToast,uiToggle,uiTooltip } from '../../src/ui/components.js';
-import { uiHudRenderer } from '../../src/ui/hud.js';
+import { uiHudMode, uiHudRenderer } from '../../src/ui/hud.js';
 import { uiSetLanguage } from '../../src/ui/i18n.js';
 
 let win;
@@ -75,10 +75,12 @@ test('UI HUD 五种元素、旧文字模式、动作更新和键盘焦点', () =
   const hud = uiHudRenderer(el); let score = 1, clicks = 0;
   const items = () => [{id:'v',type:'value',label:'得分',value:score},{id:'p',type:'progress',label:'进度',value:1,max:3},
     {id:'t',type:'countdown',label:'时间',seconds:60.2},{id:'h',type:'hint',label:'继续'},{id:'a',type:'button',label:'暂停',onClick:()=>clicks+=score}];
-  const refresh=()=>hud.render({items:items()});
+  let samples=0;
+  const mode=uiHudMode({create:()=>({getHUD(){ samples++; return {items:items()}; }})},hud).create();
+  const refresh=()=>assert.equal(mode.getHUD(),null);
   refresh(); assert.equal(el.children.length,5); assert.match(el.textContent,/1:01/);
   const b = el.querySelector('button'); b.focus(); score = 2; refresh(); b.click();
-  assert.equal(clicks,2); assert.equal(document.activeElement,b);
+  assert.equal(samples,2); assert.equal(clicks,2); assert.equal(document.activeElement,b);
   hud.render('自由沙盒'); assert.equal(el.textContent,'自由沙盒'); hud.render(null); assert.ok(el.hidden);
 });
 

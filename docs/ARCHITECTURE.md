@@ -109,7 +109,7 @@ advanceTick → 分块唤醒计时 → 场景脚本 → 天气（风、水汽、
   update(step),            // 每个模拟步之后
   onEvent(e),              // 引擎事件（同时会以 'world:<type>' 转发到 game.bus）
   renderOverlay(g, view),  // 2D 叠加层（设置 wantsOverlay: true 才会调用）
-  getHUD(),                // 字符串、null 或结构化 items，见 docs/UI.md
+  getHUD(),                // X4 包装接收字符串、null 或结构化 items，见 docs/UI.md
   checkOutcome(),          // {state:'playing'|'won'|'lost', score, detail}，每 30 步问一次
   serialize(), deserialize(o), dispose(),
   // 可选：preFrame(now, dt)、beforeStep()、postRender(now)、postFrame(now, dt)、frameTiming(dt)
