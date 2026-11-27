@@ -424,12 +424,14 @@ export function fractureBody(b, impact) {
   for (let k = 0; k < b.stampN; k++) {
     const j = stamp[k];
     if (!((flags[j] & F_BODY) && life[j] === tag)) continue;
-    const x = j % W, y = (j / W) | 0;
-    flags[j] &= ~F_BODY; life[j] = 0; aux[j] = 255; markStruct(j);
+    const x = j % W, y = (j / W) | 0, l = b.stampL[k];
+    const lit = M_BLAST[type[j]] !== 0 && (b.lf[l] & F_BURN) !== 0;   // 引信在烧的炸药
+    flags[j] &= ~F_BODY; life[j] = lit ? fuseLeft(b, l) : 0; aux[j] = 255; markStruct(j);   // 还在烧的引信接着烧（和 freezeBody 一样）
     let onCut = false;
     for (let q = 0; q < cuts; q++) if (Math.abs((x + 0.5 - colX) * sa[q] - (y + 0.5 - colY) * ca[q]) < 0.8) { onCut = true; break; }
     if (!onCut) continue;
-    if (rnd() < 0.5) debrisCell(j, fracVX, fracVY);
+    const r = rnd();                                   // 先取随机数：随机序列和以前一样
+    if (lit || r < 0.5) debrisCell(j, fracVX, fracVY);  // 在裂缝上的点着的炸药当场引爆（以前有一半概率变成烟尘，引信就丢了）
     else {                                             // 扬起尘土
       type[j] = 0; flags[j] = parity; aux[j] = 0;
       put(j, SMOKE, x, y); seed[j] = 100 + rndi(50); life[j] = 30 + rndi(50);

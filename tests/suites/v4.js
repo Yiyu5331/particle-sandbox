@@ -6,6 +6,7 @@ import { ANCHOR, ASH, CHARCOAL, DEADPLANT, EMBER, EMPTY, FIRE, FLOWER, FOAM, GLA
 import { countType, fillRect, totalWater } from '../../src/engine/paint.js';
 import { FP_MAX, fpAlive, fpType, fpX, fpY } from '../../src/engine/particles.js';
 import { stemHeight } from '../../src/engine/plants.js';
+import { seedRng } from '../../src/engine/rng.js';
 import { buildDemolition, drawTree, setBurning, soakSoil } from '../../src/engine/scenes.js';
 import { simStep } from '../../src/engine/step.js';
 import { bodyCount, structStats } from '../../src/engine/structure.js';
@@ -534,8 +535,39 @@ defTest('昼夜：夜里更冷、蒸发更慢；时间流速可调', () => {
     if (m.state === S_GAS) return 'rise';
     return 'fall';                       // 粉末、液体、失去支撑的刚性固体、孤立的植物
   };
+  // 电火花：会分叉，单个种子下分叉火花的平均位置能偏到 ±5 格，所以用 30 个种子统计。
+  // 两条都要满足：(1) 最初那一格（寿命 200）在 70 步里一直是同一个火花（类型和 seed 不变）；
+  // (2) 分叉火花相对起点的平均位移，沿重力方向的分量在 30 个种子上平均 < 1.5 格（单种子标准差约 2.2，30 个种子的标准误约 0.4）。
+  //     如果火花顺着重力漂，四个方向都会是同号的大位移，这里能抓到。
+  const sparkGravity = () => {
+    const notes = [];
+    let ok = true;
+    for (const dir of DIRS) {
+      let sumAlong = 0, withBranches = 0, stayed = 0;
+      for (let k = 1; k <= 30; k++) {
+        tArena();
+        env.structure = true;
+        setGravity(dir);
+        seedRng(k * 7919);
+        const cx = W >> 1, cy = H >> 1, i0 = cx + cy * W;
+        put(i0, SPARK, cx, cy); life[i0] = 200;
+        const sd = seed[i0];
+        let still = true;
+        for (let s = 0; s < 70; s++) { simStep(); if (type[i0] !== SPARK || seed[i0] !== sd) still = false; }
+        if (still) stayed++;
+        let sx = 0, sy = 0, n = 0;
+        for (let i = 0; i < N; i++) if (type[i] === SPARK && i !== i0) { sx += i % W - cx; sy += ((i / W) | 0) - cy; n++; }
+        if (n > 0) { sumAlong += (sx / n) * gx + (sy / n) * gy; withBranches++; }
+      }
+      const mean = withBranches ? sumAlong / withBranches : 0;
+      if (stayed !== 30 || Math.abs(mean) >= 1.5) ok = false;
+      notes.push(dir + ' 平均 ' + mean.toFixed(2) + '（' + withBranches + ' 个种子有分叉，初始格不动 ' + stayed + '/30）');
+    }
+    setGravity('down');
+    return { ok, info: '不受重力；分叉火花沿重力方向的平均位移：' + notes.join('，') };
+  };
   for (let t = 1; t < NT; t++) {
-    defTest('重力四向：' + MATERIALS[t].name, () => {
+    defTest('重力四向：' + MATERIALS[t].name, t === SPARK ? sparkGravity : () => {
       const exp = expectOf(t), notes = [];
       let ok = true;
       for (const dir of DIRS) {

@@ -228,9 +228,13 @@ defTest('水下落有加速度，水面能静止并休眠', () => {
   const fallSteps = tUntil(200, 1, () => type[cx + (floorY - 1) * W] === WATER || countType(WATER, cx - 19, floorY - 2, cx + 19, floorY - 1) > 0);
   fillRect(WATER, cx - 19, floorY - 6, cx + 19, floorY - 1);
   runSteps(600);
-  const asleep = perf.activeChunks === 0;
+  // 水面会被慢过程偶尔蒸掉一格（每格约每秒轮到一次），补水时唤醒一两个块几百步，这是正常的。
+  // 所以不取某一个瞬间，而是在之后的 1200 步里统计：大部分时间是全休眠的，而且从来没有一大片醒着
+  let asleepSteps = 0, maxActive = 0;
+  for (let s = 0; s < 1200; s++) { runSteps(1); if (perf.activeChunks === 0) asleepSteps++; if (perf.activeChunks > maxActive) maxActive = perf.activeChunks; }
+  const asleep = asleepSteps >= 1200 * 0.7 && maxActive <= 4;
   return { ok: fallSteps > 0 && fallSteps < 30 && asleep,
-           info: '下落 ' + (floorY - 1 - top) + ' 格用 ' + fallSteps + ' 步；静止后活跃块 ' + perf.activeChunks };
+           info: '下落 ' + (floorY - 1 - top) + ' 格用 ' + fallSteps + ' 步；静止后 1200 步里全休眠 ' + asleepSteps + ' 步，最多 ' + maxActive + ' 个活跃块' };
 });
 
 defTest('沙沉进水里，交界处没有空腔', () => {
