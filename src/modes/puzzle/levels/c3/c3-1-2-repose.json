@@ -128,5 +128,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第一章 · 粉末与重力",
+    "en": "Chapter 1 · Powder and gravity"
+  },
+  "nameI18n": {
+    "zh-CN": "靠墙堆沙",
+    "en": "Lean on the Wall"
+  },
+  "desc": {
+    "zh-CN": "让沙堆高到下面的金框里（至少 6 格），上面的金框要留空，沙子不能滚进花园。",
+    "en": "Pile sand up into the lower gold frame (at least 6 grains), keep the upper frame empty, and keep sand out of the garden."
+  },
+  "hints": [
+    {
+      "zh-CN": "沙堆的坡度是固定的：堆得越高，底就越宽。",
+      "en": "A sand pile always has the same slope: the higher it is, the wider its base."
+    },
+    {
+      "zh-CN": "墙可以替你挡住沙堆的一半。",
+      "en": "The wall can hold up half of the pile for you."
+    },
+    {
+      "zh-CN": "在金框正上方、紧贴石墙竖着倒四十来格沙。",
+      "en": "Pour about forty grains straight down right next to the stone wall, above the gold frame."
+    }
+  ]
 }

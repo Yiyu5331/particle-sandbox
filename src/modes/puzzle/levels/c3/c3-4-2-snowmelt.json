@@ -293,5 +293,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第四章 · 相变",
+    "en": "Chapter 4 · Phase changes"
+  },
+  "nameI18n": {
+    "zh-CN": "化雪",
+    "en": "Snowmelt"
+  },
+  "desc": {
+    "zh-CN": "天冷，雪不会自己化。把两边雪池里的雪各化成至少 55 格水；中间冰窖的雪要留着，木棚顶不能烧着。",
+    "en": "It is freezing, so snow will not melt by itself. Melt each of the two outer snow pools into at least 55 cells of water, but keep the snow in the icehouse between them and do not set the wooden roofs on fire."
+  },
+  "hints": [
+    {
+      "zh-CN": "雪要吸够热才会化成水，火焰一飘就走，热量不够。",
+      "en": "Snow needs plenty of heat to melt; flames just drift away without giving enough."
+    },
+    {
+      "zh-CN": "熔岩落到雪上，会一边往下沉一边把周围的雪化掉；落到木棚顶上就会着火。",
+      "en": "Lava dropped on snow sinks in and melts the snow around it; dropped on a wooden roof it sets it alight."
+    },
+    {
+      "zh-CN": "从两个烟囱口各竖着投六格熔岩就够了。",
+      "en": "Drop a vertical line of six lava cells through each chimney; that is enough."
+    }
+  ]
 }

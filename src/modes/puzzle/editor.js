@@ -17,7 +17,7 @@ export function puzzleEditedLevel(next) {
   try { return puzzleValidateLevel(next); } catch { return blank; }
 }
 
-export function puzzleEditRect(draft, tool, a, b, material, regionId) {
+export function puzzleEditRect(draft, tool, a, b, material, regionId, allow) {
   const next = structuredClone(draft);
   const x = Math.min(a.x,b.x), y = Math.min(a.y,b.y);
   const right = Math.max(a.x,b.x), bottom = Math.max(a.y,b.y);
@@ -25,14 +25,14 @@ export function puzzleEditRect(draft, tool, a, b, material, regionId) {
     const args = {mat:material,x0:x,y0:y,x1:right,y1:bottom};
     if (next.world.commands) next.world.commands.push({command:'fillRect',args});
     else {
-      const {world} = puzzleWorld({...puzzleEditedLevel(next),regions:[]});
+      const {world} = puzzleWorld({...puzzleEditedLevel(next),regions:[]},undefined,{applyEnvironment:false});
       try {
         world.exec('fillRect',{...args,mat:puzzleMaterial(material)});
         next.world.serialized = world.serialize();
       } finally { world.dispose(); }
     }
   } else {
-    const region = {id:regionId,type:tool,x,y,w:right-x+1,h:bottom-y+1};
+    const region = {id:regionId,type:tool,x,y,w:right-x+1,h:bottom-y+1,...(allow === undefined ? {} : {allow})};
     next.regions = next.regions.filter(r=>r.id !== regionId).concat(region);
   }
   return puzzleEditedLevel(next);

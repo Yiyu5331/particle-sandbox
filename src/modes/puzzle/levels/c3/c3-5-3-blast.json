@@ -189,5 +189,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第五章 · 结构与爆破",
+    "en": "Chapter 5 · Structures and demolition"
+  },
+  "nameI18n": {
+    "zh-CN": "定点爆破",
+    "en": "Controlled Demolition"
+  },
+  "desc": {
+    "zh-CN": "炸掉中间的砖墙（至少毁掉四分之三），两边的木屋要保住。",
+    "en": "Blow up the brick wall in the middle (at least three quarters of it) while keeping both wooden houses intact."
+  },
+  "hints": [
+    {
+      "zh-CN": "TNT 不怕热也不怕水，直接拿熔岩烤不着，得有东西先炸起来引爆它。",
+      "en": "TNT shrugs off heat and water; lava alone will not set it off, so something has to explode next to it first."
+    },
+    {
+      "zh-CN": "火药一碰熔岩就燃爆，正好用来当引子。TNT 的爆炸半径大约 15 格。",
+      "en": "Gunpowder flares up the moment lava touches it, which makes a good primer. TNT blasts reach about 15 cells."
+    },
+    {
+      "zh-CN": "紧贴墙根竖着放一排七格 TNT，旁边地上铺四格火药，再在火药上方点两格熔岩。",
+      "en": "Stack a column of seven TNT cells against the foot of the wall, lay four cells of gunpowder beside it on the ground, and put two cells of lava above the powder."
+    }
+  ]
 }

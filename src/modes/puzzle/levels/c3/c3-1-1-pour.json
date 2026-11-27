@@ -138,5 +138,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第一章 · 粉末与重力",
+    "en": "Chapter 1 · Powder and gravity"
+  },
+  "nameI18n": {
+    "zh-CN": "一斗沙",
+    "en": "A Bucket of Sand"
+  },
+  "desc": {
+    "zh-CN": "把至少 30 格沙倒进石槽，别撒到两边的草地上。",
+    "en": "Pour at least 30 grains of sand into the stone trough without spilling onto the lawns."
+  },
+  "hints": [
+    {
+      "zh-CN": "沙子会笔直往下落。",
+      "en": "Sand falls straight down."
+    },
+    {
+      "zh-CN": "在虚线禁建区上面、正对着槽口倒沙。",
+      "en": "Pour above the dashed no-build zone, right over the trough."
+    },
+    {
+      "zh-CN": "在槽中线上方竖着画一道两格粗的沙，大约 30 格就够。",
+      "en": "Draw a vertical two-cell-wide line of sand over the middle of the trough; about 30 grains is enough."
+    }
+  ]
 }

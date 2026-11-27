@@ -1,26 +1,51 @@
 import { uiT } from '../../ui/i18n.js';
-import { createWorld, FIRE, F_BODY } from '../../engine/index.js';
+import { COMMANDS, createWorld, FIRE, F_BODY } from '../../engine/index.js';
 import { createBudget } from '../../game/budget.js';
 import { puzzleCheckStroke, puzzleMaterial, puzzleValidateLevel } from './format.js';
 
-export function puzzleWorld(level, factory = createWorld) {
+function puzzleExecAction(world, {command,args}) {
+  const normalized = {...args};
+  if ('mat' in args) normalized.mat = puzzleMaterial(args.mat);
+  if ('tool' in args) normalized.tool = puzzleMaterial(args.tool);
+  world.exec(command,normalized);
+}
+
+function puzzleApplyEnvironment(world, environment) {
+  if (!environment) return;
+  if (environment.weather !== undefined) world.exec('setWeather',{key:environment.weather});
+  if (environment.time !== undefined) {
+    world.exec('setEnv',{key:'dayNight',value:true});
+    world.exec('setEnv',{key:'timeScale',value:0});
+  }
+  for (const key of ['time','temp','wind','windPower']) {
+    if (environment[key] !== undefined) world.exec('setEnv',{key,value:environment[key]});
+  }
+}
+
+export function puzzleWorld(level, factory = createWorld, {applyEnvironment = true} = {}) {
   const w = factory(level.world);
   try {
     if (level.world.serialized) {
       const data = JSON.parse(level.world.serialized);
       w.exec('restoreFull',{json:level.world.serialized});
       // C0 的完整读档命令只处理物理状态。用公开接口重新注册存档中的区域规则。
-      for (const region of data.regions) w.addRegion(region);
+      if (!COMMANDS.regionAdd) for (const region of data.regions) w.addRegion(region);
     }
-    for (const {command,args} of level.world.commands || []) {
-      const normalized = {...args};
-      if ('mat' in args) normalized.mat = puzzleMaterial(args.mat);
-      if ('tool' in args) normalized.tool = puzzleMaterial(args.tool);
-      w.exec(command,normalized);
+    const setup = level.world.commands || [];
+    for (const action of setup) puzzleExecAction(w,action);
+    // C0 回放会从头套用全部区域规则。先记录搭建结果，避免倒过来过滤已经画好的地形。
+    if (!COMMANDS.regionAdd && setup.some(a=>a.command === 'stroke') &&
+      level.regions.some(r=>r.allow || r.type === 'noBuild' || r.type === 'protected')) {
+      const json = w.serialize();
+      w.replayBegin({seed:w.seed,w:w.width,h:w.height,log:[],steps:0});
+      w.replayEnd(false);
+      w.exec('restoreFull',{json});
     }
+    if (applyEnvironment) puzzleApplyEnvironment(w,level.environment);
     const ids = new Map();
     for (const r of level.regions) {
       const rules = r.type === 'protected' ? {protect:true} : r.type === 'noBuild' ? {paint:false} : {};
+      if (r.allow) rules.allow = r.allow.map(puzzleMaterial);
       ids.set(r.id,w.addRegion({...r, tag:r.id, rules}));
     }
     return {world:w, ids};
@@ -29,6 +54,13 @@ export function puzzleWorld(level, factory = createWorld) {
 
 // 编译一次条件树。每个时间叶有独立计数器，同一步的区域统计在胜/败两棵树间共享。
 export function puzzleConditions(level, world, ids) {
+  function hold(test, steps) {
+    let streak = 0;
+    return frame => {
+      streak = test(frame) ? streak + 1 : 0;
+      return streak >= steps;
+    };
+  }
   function compile(c) {
     const id = ids.get(c.region);
     switch (c.op) {
@@ -48,6 +80,7 @@ export function puzzleConditions(level, world, ids) {
         const inner = compile(c.condition);
         return frame => inner(frame) && frame.step <= c.steps;
       }
+      case 'hold': return hold(compile(c.condition),c.steps);
       case 'survive': return frame => frame.step >= c.steps;
       case 'count': {
         const mat = puzzleMaterial(c.material);
@@ -56,14 +89,14 @@ export function puzzleConditions(level, world, ids) {
           return c.compare === '>=' ? n >= c.value : n <= c.value;
         };
       }
-      case 'noFire': {
-        let streak = 0;
-        return frame => {
-          const stats = frame.query(id);
-          streak = !stats.counts[FIRE] && !stats.burning ? streak + 1 : 0;
-          return streak >= c.steps;
-        };
-      }
+      case 'burning': return frame => {
+        const n = frame.query(id).burning;
+        return c.compare === '>=' ? n >= c.value : n <= c.value;
+      };
+      case 'noFire': return hold(frame => {
+        const stats = frame.query(id);
+        return !stats.counts[FIRE] && !stats.burning;
+      },c.steps);
       case 'cooler': return frame => frame.query(id).maxTemp < c.temperature;
       case 'integrity': {
         const mat = puzzleMaterial(c.material), footprint = [];
@@ -113,8 +146,20 @@ export function puzzleSession(level, factory = createWorld) {
   catch (error) { world.dispose(); throw error; }
   const budget = createBudget(Object.fromEntries(Object.entries(level.materials).map(([key,n])=>[puzzleMaterial(key),n])));
   const origin = world.tick, log = [];
+  const events = (level.events || []).slice().sort((a,b)=>a.step-b.step);
+  const fixedWeatherFields = ['temp','windPower'].filter(key=>level.environment?.[key] !== undefined);
+  let nextEvent = 0, hintsUsed = 0;
   let used = 0, elapsed = 0, phase = level.type === 'planning' ? 'planning' : 'running';
   let outcome = {state:'playing',score:0,detail:''};
+  function beforeStep() {
+    if (phase !== 'running') return;
+    while (events[nextEvent]?.step === elapsed+1) {
+      const {action} = events[nextEvent++];
+      const keep = action.command === 'setWeather' && fixedWeatherFields.length ? world.getEnv() : null;
+      puzzleExecAction(world,action);
+      if (keep) for (const key of fixedWeatherFields) world.exec('setEnv',{key,value:keep[key]});
+    }
+  }
   function afterStep() {
     if (phase !== 'running') return outcome;
     if (world.tick !== origin + elapsed + 1) throw new Error(uiT('解谜必须逐步采样'));
@@ -129,9 +174,15 @@ export function puzzleSession(level, factory = createWorld) {
     }
     return outcome;
   }
+  const recording = () => ({steps:elapsed, log:structuredClone(log)});
   return {
     world,level, get phase() { return phase; }, get elapsed() { return elapsed; }, get used() { return used; },
+    get hintsUsed() { return hintsUsed; },
     get outcome() { return outcome; }, left:key => budget.left(puzzleMaterial(key)),
+    revealHint() {
+      if ((phase === 'planning' || phase === 'running') && hintsUsed < (level.hints?.length || 0)) hintsUsed++;
+      return hintsUsed;
+    },
     run() { if (phase === 'planning') phase = 'running'; },
     stroke(args) {
       if (phase !== 'planning' && !(phase === 'running' && level.type === 'realtime')) throw new Error(uiT('当前阶段不能放置材料'));
@@ -143,21 +194,25 @@ export function puzzleSession(level, factory = createWorld) {
       log.push({step:elapsed,command:'stroke',args:{...args,tool}});
       return res;
     },
-    afterStep,
-    advance() { if (phase === 'running') { world.step(); afterStep(); } return outcome; },
-    recording() { return {steps:elapsed, log:structuredClone(log)}; },
+    beforeStep, afterStep,
+    advance() { if (phase === 'running') { beforeStep(); world.step(); afterStep(); } return outcome; },
+    recording,
+    progress() { return {...recording(),hintsUsed}; },
     dispose() { world.dispose(); },
   };
 }
 
 // 前缀回放也用于模式恢复。最后一步后的未运行笔画可存在于进行中的存档。
 export function puzzleRestore(level, record, phase, factory) {
+  const hintsUsed = record?.hintsUsed === undefined ? 0 : record.hintsUsed;
   if (!Number.isInteger(record?.steps) || record.steps < 0 || record.steps > level.maxSteps ||
-      !Array.isArray(record.log) || record.log.length > 36000 || !['planning','running','won','lost'].includes(phase)) {
+      !Array.isArray(record.log) || record.log.length > 36000 || !['planning','running','won','lost'].includes(phase) ||
+      !Number.isInteger(hintsUsed) || hintsUsed < 0 || hintsUsed > (level?.hints?.length || 0)) {
     throw new Error(uiT('无效的解谜进度'));
   }
   const s = puzzleSession(level,factory);
   try {
+    for (let i=0;i<hintsUsed;i++) s.revealHint();
     let i = 0;
     for (let step=0;step<=record.steps;step++) {
       while (record.log[i]?.step === step) {

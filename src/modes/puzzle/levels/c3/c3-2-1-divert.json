@@ -148,5 +148,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第二章 · 水与流体",
+    "en": "Chapter 2 · Water and fluids"
+  },
+  "nameI18n": {
+    "zh-CN": "改道",
+    "en": "Divert the Water"
+  },
+  "desc": {
+    "zh-CN": "水池满了，水会从两边漫出来。让水只流向右边的田（至少 32 格），左边的村子一滴都不能进。",
+    "en": "The pool is overflowing on both sides. Send the water only to the field on the right (at least 32 cells) and keep it out of the village."
+  },
+  "hints": [
+    {
+      "zh-CN": "水往低处流，哪边的池壁矮就从哪边漫出去。",
+      "en": "Water runs downhill and spills over whichever wall is lower."
+    },
+    {
+      "zh-CN": "只要把左边的池壁垒高，水就只能往右流。",
+      "en": "Raise the left wall of the pool and the water can only go right."
+    },
+    {
+      "zh-CN": "在左池壁正上方竖着画一道两格粗、六七格高的石头。",
+      "en": "Draw a two-cell-wide, six- or seven-cell-tall line of stone right on top of the left wall."
+    }
+  ]
 }

@@ -8,6 +8,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { discoverPuzzleLevels } from './puzzle-catalog.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map(a => { const m = a.match(/^--([^=]+)(?:=(.*))?$/); return m ? [m[1], m[2] ?? true] : [a, true]; }));
@@ -22,8 +23,10 @@ function visit(file) {
   if (seen.has(file)) return;
   seen.add(file);
   // 将标准 JSON 模块内联，使 Node 工具与离线页面使用同一份关卡和 schema。
-  const src = readFileSync(file, 'utf8').replace(/^import (\w+) from '([^']+\.json)' with \{ type: 'json' \};$/gm,
-    (_, name, spec) => 'const ' + name + ' = ' + JSON.stringify(JSON.parse(readFileSync(path.resolve(path.dirname(file), spec), 'utf8'))) + ';');
+  const src = file === path.join(ROOT, 'src/modes/puzzle/catalog.js')
+    ? 'export const puzzleLevels = ' + JSON.stringify(discoverPuzzleLevels().map(({level})=>level)) + ';'
+    : readFileSync(file, 'utf8').replace(/^import (\w+) from '([^']+\.json)' with \{ type: 'json' \};$/gm,
+      (_, name, spec) => 'const ' + name + ' = ' + JSON.stringify(JSON.parse(readFileSync(path.resolve(path.dirname(file), spec), 'utf8'))) + ';');
   for (const m of src.matchAll(DEP)) visit(path.resolve(path.dirname(file), m[1]));
   order.push({ file, src });
 }

@@ -358,5 +358,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第一章 · 粉末与重力",
+    "en": "Chapter 1 · Powder and gravity"
+  },
+  "nameI18n": {
+    "zh-CN": "沙之考场",
+    "en": "Sand Finals"
+  },
+  "desc": {
+    "zh-CN": "三个考点一次过：填平坑、把沙送进细管、靠墙把沙堆到金框里。三处都不能撒到草地。",
+    "en": "Pass all three tests at once: level the pothole, feed the narrow tube and pile sand into the frame by the wall, without spilling on any lawn."
+  },
+  "hints": [
+    {
+      "zh-CN": "三个考点各对应前面一关学过的办法，预算只够每处都省着用。",
+      "en": "Each test matches an earlier level; the budget only works if you are thrifty everywhere."
+    },
+    {
+      "zh-CN": "坑要横着铺，漏斗挑陡的一边，堆沙要贴着墙。",
+      "en": "Spread across the pit, use the steep side of the funnel, and pile against the wall."
+    },
+    {
+      "zh-CN": "左坑铺三行和坑一样宽的细线；漏斗左侧上方倒二十来格；墙边金框正上方竖着倒四十格左右。",
+      "en": "Lay three thin rows as wide as the pit; pour about twenty grains above the left side of the funnel; pour about forty grains straight down above the frame by the wall."
+    }
+  ]
 }

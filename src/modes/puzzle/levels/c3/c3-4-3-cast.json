@@ -167,5 +167,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第四章 · 相变",
+    "en": "Chapter 4 · Phase changes"
+  },
+  "nameI18n": {
+    "zh-CN": "浇铸石板",
+    "en": "Cast a Slab"
+  },
+  "desc": {
+    "zh-CN": "在 150 步之内，用模子浇出一块石板（至少 30 格石头），两边的木棚不能着火。",
+    "en": "Within 150 steps, cast a stone slab of at least 30 cells in the mold, without setting the wooden sheds on fire."
+  },
+  "hints": [
+    {
+      "zh-CN": "熔岩冷到 850°C 以下就凝成石头，可是自己冷得太慢。",
+      "en": "Lava turns to stone below 850°C, but it cools too slowly on its own."
+    },
+    {
+      "zh-CN": "往熔岩上浇水，水会瞬间汽化，把热量一起带走。",
+      "en": "Water poured on lava flashes into steam and carries the heat away."
+    },
+    {
+      "zh-CN": "模子里倒一排熔岩，上方再画一排同样长的水。",
+      "en": "Pour one row of lava into the mold and draw an equally long row of water above it."
+    }
+  ]
 }

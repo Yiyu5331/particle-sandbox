@@ -179,5 +179,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第六章 · 天气与电",
+    "en": "Chapter 6 · Weather and electricity"
+  },
+  "nameI18n": {
+    "zh-CN": "水渠导电",
+    "en": "The Wet Wire"
+  },
+  "desc": {
+    "zh-CN": "TNT 埋在水渠尽头的干沟里。让电火花传过去引爆它，炸开巨石。",
+    "en": "The TNT is buried in a dry ditch at the end of the canal. Send a spark there to set it off and blast the boulder."
+  },
+  "hints": [
+    {
+      "zh-CN": "水也导电，只是每走一格都会损耗，大约能传四十格。",
+      "en": "Water conducts too, but it loses strength each cell and only carries about forty cells."
+    },
+    {
+      "zh-CN": "水渠和 TNT 之间还隔着一段干沟，要先接上。TNT 不怕水。",
+      "en": "A dry ditch separates the canal from the TNT and has to be bridged first. TNT does not mind getting wet."
+    },
+    {
+      "zh-CN": "往干沟里灌满水，再在左边金属桩旁点电火花。",
+      "en": "Fill the ditch with water, then put a spark next to the metal post on the left."
+    }
+  ]
 }

@@ -42,15 +42,17 @@ test('C3 关卡：30 个文件、6 章各 5 关、与 meta.json 一致，id 不�
   for (const id of meta.order) assert.ok(!builtin.includes(id));
 });
 
-test('C3 关卡：按 meta.json 的顺序登记在内置目录里，选关页显示的章名、关名、目标都有英文', async () => {
+test('C3 关卡：按 meta.json 顺序登记，关卡文件含双语章名、关名、目标和三级提示', async () => {
   const { puzzleLevels } = await import('../../src/modes/puzzle/catalog.js');
-  const { uiEnglish } = await import('../../src/ui/catalog.js');
-  assert.deepEqual(puzzleLevels.map(l => l.id).filter(id => id.startsWith('c3-')), meta.order);
-  for (const [zh, en] of Object.values(meta.chapters)) assert.equal(uiEnglish[zh], en);
-  for (const id of meta.order) {
-    const m = meta.levels[id];
-    assert.equal(uiEnglish[m.name[0]], m.name[1], id + ' 关名英文不一致');
-    assert.equal(uiEnglish[m.desc[0]], m.desc[1], id + ' 目标英文不一致');
+  const levels = puzzleLevels.filter(l => l.id.startsWith('c3-'));
+  const localized = ([zh, en]) => ({ 'zh-CN': zh, en });
+  assert.deepEqual(levels.map(l => l.id), meta.order);
+  for (const level of levels) {
+    const m = meta.levels[level.id];
+    assert.deepEqual(level.chapterI18n, localized(m.chapter));
+    assert.deepEqual(level.nameI18n, localized(m.name));
+    assert.deepEqual(level.desc, localized(m.desc));
+    assert.deepEqual(level.hints, m.hints.map(localized));
   }
 });
 

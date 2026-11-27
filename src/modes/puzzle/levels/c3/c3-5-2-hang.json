@@ -147,5 +147,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第五章 · 结构与爆破",
+    "en": "Chapter 5 · Structures and demolition"
+  },
+  "nameI18n": {
+    "zh-CN": "吊灯",
+    "en": "Hang the Lamp"
+  },
+  "desc": {
+    "zh-CN": "一块石灯悬在温室上方，开始后会掉下来。用绳子把它吊在顶上的锚点上。",
+    "en": "A stone lamp hangs above the greenhouse and will fall when time starts. Hang it from the anchor overhead with rope."
+  },
+  "hints": [
+    {
+      "zh-CN": "锚点固定不动，连着它的东西都不会掉。",
+      "en": "Anchors never move, and anything connected to them stays put."
+    },
+    {
+      "zh-CN": "温室上方不能垫东西，只能从上面吊；沙子撑不住它。",
+      "en": "You cannot prop it up from the greenhouse, only hang it from above; sand will not hold it."
+    },
+    {
+      "zh-CN": "从锚点正下方竖着画一根绳子，一直连到石灯顶上。",
+      "en": "Draw a vertical rope from right under the anchor down to the top of the lamp."
+    }
+  ]
 }
