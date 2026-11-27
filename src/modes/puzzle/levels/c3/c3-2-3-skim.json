@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "id": "c3-2-3-skim",
+  "name": "撇油",
+  "chapter": "第二章 · 水与流体",
+  "difficulty": 2,
+  "hint": "把罐里浮着的油顶出出油口，至少 18 格流进右边的油缸；水和沙子都不能流进去。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 23,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 20,
+          "y0": 8,
+          "x1": 21,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 32,
+          "y0": 25,
+          "x1": 33,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WATER",
+          "x0": 22,
+          "y0": 33,
+          "x1": 31,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "OIL",
+          "x0": 22,
+          "y0": 29,
+          "x1": 31,
+          "y1": 32
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 34,
+          "y0": 33,
+          "x1": 49,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 48,
+          "y0": 26,
+          "x1": 49,
+          "y1": 32
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "jar",
+      "type": "goal",
+      "x": 34,
+      "y": 26,
+      "w": 14,
+      "h": 7
+    },
+    {
+      "id": "tank",
+      "type": "noBuild",
+      "x": 22,
+      "y": 12,
+      "w": 10,
+      "h": 25
+    },
+    {
+      "id": "drain",
+      "type": "protected",
+      "x": 50,
+      "y": 31,
+      "w": 14,
+      "h": 6
+    }
+  ],
+  "materials": {
+    "WATER": 90,
+    "SALTWATER": 90,
+    "SAND": 40
+  },
+  "budget": 90,
+  "maxSteps": 600,
+  "goal": {
+    "op": "within",
+    "steps": 550,
+    "condition": {
+      "op": "count",
+      "region": "jar",
+      "material": "OIL",
+      "compare": ">=",
+      "value": 18
+    }
+  },
+  "fail": {
+    "op": "or",
+    "conditions": [
+      {
+        "op": "count",
+        "region": "jar",
+        "material": "WATER",
+        "compare": ">=",
+        "value": 4
+      },
+      {
+        "op": "count",
+        "region": "jar",
+        "material": "SALTWATER",
+        "compare": ">=",
+        "value": 4
+      },
+      {
+        "op": "count",
+        "region": "jar",
+        "material": "SAND",
+        "compare": ">=",
+        "value": 4
+      }
+    ]
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 86,
+      "maxSteps": 550
+    },
+    "three": {
+      "maxUsed": 78,
+      "maxSteps": 450
+    }
+  },
+  "reference": {
+    "steps": 58,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 26,
+          "y0": 2,
+          "x1": 26,
+          "y1": 8,
+          "size": 4
+        }
+      }
+    ]
+  }
+}

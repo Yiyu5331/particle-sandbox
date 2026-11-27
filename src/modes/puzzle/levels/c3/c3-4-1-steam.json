@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "id": "c3-4-1-steam",
+  "name": "蒸汽搬水",
+  "chapter": "第四章 · 相变",
+  "difficulty": 2,
+  "hint": "高处的蓄水池够不着。让至少 30 格水进到池里。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 41,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 9,
+          "y0": 8,
+          "x1": 9,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 21,
+          "y0": 12,
+          "x1": 21,
+          "y1": 32
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "LAVA",
+          "x0": 10,
+          "y0": 33,
+          "x1": 20,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 21,
+          "y0": 33,
+          "x1": 21,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 9,
+          "y0": 7,
+          "x1": 46,
+          "y1": 7
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 22,
+          "y0": 18,
+          "x1": 46,
+          "y1": 18
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 46,
+          "y0": 8,
+          "x1": 46,
+          "y1": 17
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 22,
+          "y0": 19,
+          "x1": 23,
+          "y1": 36
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "cistern",
+      "type": "goal",
+      "x": 22,
+      "y": 8,
+      "w": 24,
+      "h": 10
+    },
+    {
+      "id": "lid",
+      "type": "noBuild",
+      "x": 22,
+      "y": 0,
+      "w": 26,
+      "h": 19
+    },
+    {
+      "id": "furnace",
+      "type": "protected",
+      "x": 10,
+      "y": 33,
+      "w": 11,
+      "h": 4
+    }
+  ],
+  "materials": {
+    "WATER": 90
+  },
+  "budget": 90,
+  "maxSteps": 900,
+  "goal": {
+    "op": "within",
+    "steps": 850,
+    "condition": {
+      "op": "count",
+      "region": "cistern",
+      "material": "WATER",
+      "compare": ">=",
+      "value": 30
+    }
+  },
+  "fail": null,
+  "stars": {
+    "two": {
+      "maxUsed": 80,
+      "maxSteps": 850
+    },
+    "three": {
+      "maxUsed": 70,
+      "maxSteps": 700
+    }
+  },
+  "reference": {
+    "steps": 205,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 11,
+          "y0": 20,
+          "x1": 19,
+          "y1": 26,
+          "size": 3
+        }
+      }
+    ]
+  }
+}

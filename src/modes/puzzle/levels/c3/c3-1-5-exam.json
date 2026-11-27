@@ -1,0 +1,362 @@
+{
+  "version": 1,
+  "id": "c3-1-5-exam",
+  "name": "沙之考场",
+  "chapter": "第一章 · 粉末与重力",
+  "difficulty": 3,
+  "hint": "三个考点一次过：填平坑、把沙送进细管、靠墙把沙堆到金框里。三处都不能撒到草地。",
+  "type": "planning",
+  "world": {
+    "width": 96,
+    "height": 40,
+    "seed": 15,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 95,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 31,
+          "x1": 27,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "EMPTY",
+          "x0": 10,
+          "y0": 31,
+          "x1": 17,
+          "y1": 33
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 28,
+          "y0": 18,
+          "x1": 29,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 62,
+          "y0": 18,
+          "x1": 63,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 43,
+          "y0": 29,
+          "x1": 43,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 47,
+          "y0": 29,
+          "x1": 47,
+          "y1": 36
+        }
+      },
+      {
+        "command": "stroke",
+        "args": {
+          "tool": "STONE",
+          "x0": 34,
+          "y0": 8,
+          "x1": 43,
+          "y1": 28,
+          "size": 2
+        }
+      },
+      {
+        "command": "stroke",
+        "args": {
+          "tool": "STONE",
+          "x0": 60,
+          "y0": 21,
+          "x1": 47,
+          "y1": 28,
+          "size": 2
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 90,
+          "y0": 22,
+          "x1": 91,
+          "y1": 36
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "pit",
+      "type": "goal",
+      "x": 10,
+      "y": 31,
+      "w": 8,
+      "h": 3
+    },
+    {
+      "id": "road",
+      "type": "noBuild",
+      "x": 0,
+      "y": 24,
+      "w": 28,
+      "h": 7
+    },
+    {
+      "id": "tube",
+      "type": "goal",
+      "x": 44,
+      "y": 29,
+      "w": 3,
+      "h": 8
+    },
+    {
+      "id": "throat",
+      "type": "noBuild",
+      "x": 42,
+      "y": 0,
+      "w": 7,
+      "h": 37
+    },
+    {
+      "id": "lawnL",
+      "type": "protected",
+      "x": 30,
+      "y": 31,
+      "w": 12,
+      "h": 6
+    },
+    {
+      "id": "lawnR",
+      "type": "protected",
+      "x": 49,
+      "y": 31,
+      "w": 13,
+      "h": 6
+    },
+    {
+      "id": "mark",
+      "type": "goal",
+      "x": 86,
+      "y": 31,
+      "w": 4,
+      "h": 3
+    },
+    {
+      "id": "markNB",
+      "type": "noBuild",
+      "x": 86,
+      "y": 31,
+      "w": 4,
+      "h": 3
+    },
+    {
+      "id": "clear",
+      "type": "goal",
+      "x": 86,
+      "y": 24,
+      "w": 4,
+      "h": 5
+    },
+    {
+      "id": "garden",
+      "type": "protected",
+      "x": 64,
+      "y": 31,
+      "w": 12,
+      "h": 6
+    }
+  ],
+  "materials": {
+    "SAND": 130
+  },
+  "budget": 130,
+  "maxSteps": 600,
+  "goal": {
+    "op": "within",
+    "steps": 500,
+    "condition": {
+      "op": "and",
+      "conditions": [
+        {
+          "op": "count",
+          "region": "pit",
+          "material": "SAND",
+          "compare": ">=",
+          "value": 20
+        },
+        {
+          "op": "count",
+          "region": "road",
+          "material": "SAND",
+          "compare": "<=",
+          "value": 6
+        },
+        {
+          "op": "count",
+          "region": "tube",
+          "material": "SAND",
+          "compare": ">=",
+          "value": 18
+        },
+        {
+          "op": "count",
+          "region": "mark",
+          "material": "SAND",
+          "compare": ">=",
+          "value": 6
+        },
+        {
+          "op": "count",
+          "region": "clear",
+          "material": "SAND",
+          "compare": "<=",
+          "value": 0
+        }
+      ]
+    }
+  },
+  "fail": {
+    "op": "or",
+    "conditions": [
+      {
+        "op": "count",
+        "region": "lawnL",
+        "material": "SAND",
+        "compare": ">=",
+        "value": 4
+      },
+      {
+        "op": "count",
+        "region": "lawnR",
+        "material": "SAND",
+        "compare": ">=",
+        "value": 4
+      },
+      {
+        "op": "count",
+        "region": "garden",
+        "material": "SAND",
+        "compare": ">=",
+        "value": 3
+      }
+    ]
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 108,
+      "maxSteps": 500
+    },
+    "three": {
+      "maxUsed": 88,
+      "maxSteps": 400
+    }
+  },
+  "reference": {
+    "steps": 35,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 11,
+          "y0": 2,
+          "x1": 16,
+          "y1": 2,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 11,
+          "y0": 5,
+          "x1": 16,
+          "y1": 5,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 11,
+          "y0": 8,
+          "x1": 16,
+          "y1": 8,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 11,
+          "y0": 11,
+          "x1": 16,
+          "y1": 11,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 39,
+          "y0": 1,
+          "x1": 39,
+          "y1": 7,
+          "size": 2
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 88,
+          "y0": 2,
+          "x1": 88,
+          "y1": 12,
+          "size": 2
+        }
+      }
+    ]
+  }
+}

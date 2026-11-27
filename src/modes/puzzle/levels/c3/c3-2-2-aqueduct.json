@@ -1,0 +1,172 @@
+{
+  "version": 1,
+  "id": "c3-2-2-aqueduct",
+  "name": "渡槽",
+  "chapter": "第二章 · 水与流体",
+  "difficulty": 2,
+  "hint": "把高台水池漫出来的水引过深谷，送进右边的田（至少 30 格），谷底的矿井不能进水。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 22,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 20,
+          "x1": 20,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 42,
+          "y0": 20,
+          "x1": 63,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "EMPTY",
+          "x0": 43,
+          "y0": 20,
+          "x1": 52,
+          "y1": 23
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 2,
+          "y0": 8,
+          "x1": 3,
+          "y1": 19
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 15,
+          "y0": 15,
+          "x1": 16,
+          "y1": 19
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WATER",
+          "x0": 4,
+          "y0": 8,
+          "x1": 14,
+          "y1": 19
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 30,
+          "y0": 30,
+          "x1": 32,
+          "y1": 36
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "field",
+      "type": "goal",
+      "x": 43,
+      "y": 20,
+      "w": 10,
+      "h": 4
+    },
+    {
+      "id": "mine",
+      "type": "protected",
+      "x": 21,
+      "y": 31,
+      "w": 21,
+      "h": 6
+    },
+    {
+      "id": "rock",
+      "type": "protected",
+      "x": 30,
+      "y": 30,
+      "w": 3,
+      "h": 7
+    }
+  ],
+  "materials": {
+    "STONE": 70
+  },
+  "budget": 70,
+  "maxSteps": 500,
+  "goal": {
+    "op": "within",
+    "steps": 450,
+    "condition": {
+      "op": "count",
+      "region": "field",
+      "material": "WATER",
+      "compare": ">=",
+      "value": 25
+    }
+  },
+  "fail": {
+    "op": "count",
+    "region": "mine",
+    "material": "WATER",
+    "compare": ">=",
+    "value": 4
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 40,
+      "maxSteps": 450
+    },
+    "three": {
+      "maxUsed": 24,
+      "maxSteps": 350
+    }
+  },
+  "reference": {
+    "steps": 99,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "STONE",
+          "x0": 19,
+          "y0": 20,
+          "x1": 43,
+          "y1": 20,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

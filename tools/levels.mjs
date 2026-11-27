@@ -8,7 +8,8 @@ if (process.argv[2] !== 'validate') {
 } else {
   const dir = new URL('../src/modes/puzzle/levels/', import.meta.url);
   const named = process.argv.slice(3);
-  const files = named.length ? named : readdirSync(dir).filter(f=>f.endsWith('.json')).sort().map(f=>new URL(f,dir));
+  // 包括子目录（如 levels/c3/），跳过不是关卡的 meta.json
+  const files = named.length ? named : readdirSync(dir,{recursive:true}).filter(f=>f.endsWith('.json') && !f.endsWith('meta.json')).sort().map(f=>new URL(f,dir));
   const ids = new Set();
   for (const file of files) {
     try {

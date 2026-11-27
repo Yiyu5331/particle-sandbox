@@ -2,7 +2,7 @@
   "version": 1,
   "id": "water-lock",
   "name": "蓄水闸",
-  "chapter": "第一章 · 重力",
+  "chapter": "序章 · 示例",
   "difficulty": 1,
   "hint": "运行中在两堵墙之间注水。让 8 格水留在闸内，并坚持到第 30 步。",
   "type": "realtime",

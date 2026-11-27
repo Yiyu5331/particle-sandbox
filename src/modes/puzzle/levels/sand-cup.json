@@ -2,7 +2,7 @@
   "version": 1,
   "id": "sand-cup",
   "name": "一捧落沙",
-  "chapter": "第一章 · 重力",
+  "chapter": "序章 · 示例",
   "difficulty": 1,
   "hint": "在金框上方画一小横排沙，再点击运行。至少 8 格沙要落进框里。",
   "type": "planning",

@@ -1,0 +1,242 @@
+{
+  "version": 1,
+  "id": "c3-5-4-fuses",
+  "name": "掐断引线",
+  "chapter": "第五章 · 结构与爆破",
+  "difficulty": 3,
+  "hint": "两条干草引线从中间烧起来，正往两边的炸药库烧。在火烧到之前把它们掐断，引线上至少留下 60 格干草。",
+  "type": "realtime",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 54,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "SOIL",
+          "x0": 0,
+          "y0": 35,
+          "x1": 63,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "TNT",
+          "x0": 1,
+          "y0": 31,
+          "x1": 4,
+          "y1": 34
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "TNT",
+          "x0": 59,
+          "y0": 31,
+          "x1": 62,
+          "y1": 34
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "DEADPLANT",
+          "x0": 7,
+          "y0": 33,
+          "x1": 56,
+          "y1": 34
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "GUNPOWDER",
+          "x0": 5,
+          "y0": 33,
+          "x1": 6,
+          "y1": 34
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "GUNPOWDER",
+          "x0": 57,
+          "y0": 33,
+          "x1": 58,
+          "y1": 34
+        }
+      },
+      {
+        "command": "ignite",
+        "args": {
+          "x": 31,
+          "y": 33
+        }
+      },
+      {
+        "command": "ignite",
+        "args": {
+          "x": 32,
+          "y": 34
+        }
+      },
+      {
+        "command": "ignite",
+        "args": {
+          "x": 31,
+          "y": 34
+        }
+      },
+      {
+        "command": "ignite",
+        "args": {
+          "x": 32,
+          "y": 33
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "depotL",
+      "type": "protected",
+      "x": 0,
+      "y": 28,
+      "w": 6,
+      "h": 7
+    },
+    {
+      "id": "depotR",
+      "type": "protected",
+      "x": 58,
+      "y": 28,
+      "w": 6,
+      "h": 7
+    },
+    {
+      "id": "fire",
+      "type": "protected",
+      "x": 29,
+      "y": 29,
+      "w": 6,
+      "h": 6
+    },
+    {
+      "id": "fuse",
+      "type": "goal",
+      "x": 7,
+      "y": 33,
+      "w": 50,
+      "h": 2
+    }
+  ],
+  "materials": {
+    "WATER": 16,
+    "SAND": 40
+  },
+  "budget": 40,
+  "maxSteps": 1500,
+  "goal": {
+    "op": "and",
+    "conditions": [
+      {
+        "op": "survive",
+        "steps": 1400
+      },
+      {
+        "op": "count",
+        "region": "depotL",
+        "material": "TNT",
+        "compare": ">=",
+        "value": 16
+      },
+      {
+        "op": "count",
+        "region": "depotR",
+        "material": "TNT",
+        "compare": ">=",
+        "value": 16
+      },
+      {
+        "op": "count",
+        "region": "fuse",
+        "material": "DEADPLANT",
+        "compare": ">=",
+        "value": 60
+      }
+    ]
+  },
+  "fail": {
+    "op": "or",
+    "conditions": [
+      {
+        "op": "count",
+        "region": "depotL",
+        "material": "TNT",
+        "compare": "<=",
+        "value": 10
+      },
+      {
+        "op": "count",
+        "region": "depotR",
+        "material": "TNT",
+        "compare": "<=",
+        "value": 10
+      }
+    ]
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 24,
+      "maxSteps": 1500
+    },
+    "three": {
+      "maxUsed": 14,
+      "maxSteps": 1500
+    }
+  },
+  "reference": {
+    "steps": 1400,
+    "log": [
+      {
+        "step": 40,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 22,
+          "y0": 30,
+          "x1": 26,
+          "y1": 30,
+          "size": 1
+        }
+      },
+      {
+        "step": 40,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 37,
+          "y0": 30,
+          "x1": 41,
+          "y1": 30,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

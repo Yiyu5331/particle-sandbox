@@ -1,0 +1,151 @@
+{
+  "version": 1,
+  "id": "c3-5-2-hang",
+  "name": "吊灯",
+  "chapter": "第五章 · 结构与爆破",
+  "difficulty": 2,
+  "hint": "一块石灯悬在温室上方，开始后会掉下来。用绳子把它吊在顶上的锚点上。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 52,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "ANCHOR",
+          "x0": 30,
+          "y0": 1,
+          "x1": 33,
+          "y1": 1
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 27,
+          "y0": 15,
+          "x1": 36,
+          "y1": 18
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "GLASS",
+          "x0": 18,
+          "y0": 30,
+          "x1": 45,
+          "y1": 30
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "GLASS",
+          "x0": 18,
+          "y0": 31,
+          "x1": 18,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "GLASS",
+          "x0": 45,
+          "y0": 31,
+          "x1": 45,
+          "y1": 36
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "lamp",
+      "type": "goal",
+      "x": 27,
+      "y": 15,
+      "w": 10,
+      "h": 4
+    },
+    {
+      "id": "greenhouse",
+      "type": "protected",
+      "x": 14,
+      "y": 19,
+      "w": 36,
+      "h": 18
+    }
+  ],
+  "materials": {
+    "ROPE": 40,
+    "SAND": 40
+  },
+  "budget": 40,
+  "maxSteps": 400,
+  "goal": {
+    "op": "and",
+    "conditions": [
+      {
+        "op": "survive",
+        "steps": 300
+      },
+      {
+        "op": "integrity",
+        "region": "lamp",
+        "material": "STONE",
+        "percent": 95
+      }
+    ]
+  },
+  "fail": {
+    "op": "not",
+    "condition": {
+      "op": "integrity",
+      "region": "lamp",
+      "material": "STONE",
+      "percent": 80
+    }
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 28,
+      "maxSteps": 400
+    },
+    "three": {
+      "maxUsed": 14,
+      "maxSteps": 400
+    }
+  },
+  "reference": {
+    "steps": 300,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "ROPE",
+          "x0": 31,
+          "y0": 1,
+          "x1": 31,
+          "y1": 15,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

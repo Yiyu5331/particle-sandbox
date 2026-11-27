@@ -2,7 +2,7 @@
   "version": 1,
   "id": "quiet-pier",
   "name": "冷却桥墩",
-  "chapter": "第二章 · 守护",
+  "chapter": "序章 · 示例",
   "difficulty": 2,
   "hint": "在桥墩两侧补水。保持墩身完好，让周围连续 12 步无火，至少留下 5 格水。",
   "type": "planning",

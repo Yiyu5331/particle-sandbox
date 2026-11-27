@@ -1,0 +1,232 @@
+{
+  "version": 1,
+  "id": "c3-5-5-breach",
+  "name": "炸坝引水",
+  "chapter": "第五章 · 结构与爆破",
+  "difficulty": 4,
+  "hint": "炸开砖坝，让至少 30 格湖水流进田里。田上方悬空的石桥要先撑住，右边的木屋也要保住。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 55,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WATER",
+          "x0": 0,
+          "y0": 20,
+          "x1": 21,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "BRICK",
+          "x0": 22,
+          "y0": 16,
+          "x1": 23,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 56,
+          "y0": 28,
+          "x1": 56,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 59,
+          "y0": 30,
+          "x1": 63,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 40,
+          "y0": 6,
+          "x1": 58,
+          "y1": 7
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "field",
+      "type": "goal",
+      "x": 24,
+      "y": 30,
+      "w": 32,
+      "h": 7
+    },
+    {
+      "id": "bridge",
+      "type": "goal",
+      "x": 40,
+      "y": 6,
+      "w": 19,
+      "h": 2
+    },
+    {
+      "id": "house",
+      "type": "protected",
+      "x": 59,
+      "y": 30,
+      "w": 5,
+      "h": 7
+    },
+    {
+      "id": "lake",
+      "type": "protected",
+      "x": 0,
+      "y": 0,
+      "w": 22,
+      "h": 37
+    }
+  ],
+  "materials": {
+    "TNT": 10,
+    "GUNPOWDER": 10,
+    "LAVA": 4,
+    "STONE": 70
+  },
+  "budget": 80,
+  "maxSteps": 900,
+  "goal": {
+    "op": "and",
+    "conditions": [
+      {
+        "op": "survive",
+        "steps": 700
+      },
+      {
+        "op": "count",
+        "region": "field",
+        "material": "WATER",
+        "compare": ">=",
+        "value": 30
+      },
+      {
+        "op": "integrity",
+        "region": "bridge",
+        "material": "STONE",
+        "percent": 80
+      },
+      {
+        "op": "integrity",
+        "region": "house",
+        "material": "WOOD",
+        "percent": 80
+      }
+    ]
+  },
+  "fail": {
+    "op": "or",
+    "conditions": [
+      {
+        "op": "not",
+        "condition": {
+          "op": "integrity",
+          "region": "bridge",
+          "material": "STONE",
+          "percent": 50
+        }
+      },
+      {
+        "op": "not",
+        "condition": {
+          "op": "integrity",
+          "region": "house",
+          "material": "WOOD",
+          "percent": 60
+        }
+      }
+    ]
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 60,
+      "maxSteps": 900
+    },
+    "three": {
+      "maxUsed": 45,
+      "maxSteps": 900
+    }
+  },
+  "reference": {
+    "steps": 700,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "STONE",
+          "x0": 57,
+          "y0": 37,
+          "x1": 57,
+          "y1": 5,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "TNT",
+          "x0": 25,
+          "y0": 31,
+          "x1": 26,
+          "y1": 36,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "GUNPOWDER",
+          "x0": 27,
+          "y0": 35,
+          "x1": 30,
+          "y1": 35,
+          "size": 1
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "LAVA",
+          "x0": 29,
+          "y0": 33,
+          "x1": 30,
+          "y1": 33,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

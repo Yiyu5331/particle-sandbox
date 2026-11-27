@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "id": "c3-6-2-canal",
+  "name": "水渠导电",
+  "chapter": "第六章 · 天气与电",
+  "difficulty": 2,
+  "hint": "TNT 埋在水渠尽头的干沟里。让电火花传过去引爆它，炸开巨石。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 62,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 31,
+          "x1": 63,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "EMPTY",
+          "x0": 12,
+          "y0": 31,
+          "x1": 51,
+          "y1": 33
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WATER",
+          "x0": 12,
+          "y0": 31,
+          "x1": 43,
+          "y1": 33
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "TNT",
+          "x0": 50,
+          "y0": 31,
+          "x1": 51,
+          "y1": 33
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "BRICK",
+          "x0": 53,
+          "y0": 22,
+          "x1": 58,
+          "y1": 30
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 59,
+          "y0": 14,
+          "x1": 63,
+          "y1": 30
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "METAL",
+          "x0": 11,
+          "y0": 24,
+          "x1": 11,
+          "y1": 33
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "boulder",
+      "type": "goal",
+      "x": 53,
+      "y": 22,
+      "w": 6,
+      "h": 9
+    },
+    {
+      "id": "cliff",
+      "type": "protected",
+      "x": 50,
+      "y": 20,
+      "w": 14,
+      "h": 11
+    },
+    {
+      "id": "far",
+      "type": "noBuild",
+      "x": 13,
+      "y": 0,
+      "w": 30,
+      "h": 31
+    }
+  ],
+  "materials": {
+    "WATER": 30,
+    "METAL": 30,
+    "SAND": 30,
+    "SPARK": 3
+  },
+  "budget": 34,
+  "maxSteps": 500,
+  "goal": {
+    "op": "within",
+    "steps": 450,
+    "condition": {
+      "op": "not",
+      "condition": {
+        "op": "integrity",
+        "region": "boulder",
+        "material": "BRICK",
+        "percent": 30
+      }
+    }
+  },
+  "fail": null,
+  "stars": {
+    "two": {
+      "maxUsed": 30,
+      "maxSteps": 450
+    },
+    "three": {
+      "maxUsed": 24,
+      "maxSteps": 300
+    }
+  },
+  "reference": {
+    "steps": 105,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 43,
+          "y0": 32,
+          "x1": 50,
+          "y1": 32,
+          "size": 2
+        }
+      },
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SPARK",
+          "x0": 10,
+          "y0": 27,
+          "x1": 12,
+          "y1": 27,
+          "size": 1
+        }
+      }
+    ]
+  }
+}

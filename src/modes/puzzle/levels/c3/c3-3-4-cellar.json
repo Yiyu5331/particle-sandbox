@@ -1,0 +1,213 @@
+{
+  "version": 1,
+  "id": "c3-3-4-cellar",
+  "name": "地窖失火",
+  "chapter": "第三章 · 火与热",
+  "difficulty": 3,
+  "hint": "地窖里的木箱着火了。从屋顶的进水口灌水把火淹灭，至少保住七成木箱。",
+  "type": "realtime",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 34,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 16,
+          "y0": 20,
+          "x1": 17,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 46,
+          "y0": 20,
+          "x1": 47,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 16,
+          "y0": 20,
+          "x1": 47,
+          "y1": 21
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "EMPTY",
+          "x0": 30,
+          "y0": 20,
+          "x1": 33,
+          "y1": 21
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 22,
+          "y0": 30,
+          "x1": 27,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 30,
+          "y0": 28,
+          "x1": 35,
+          "y1": 36
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "WOOD",
+          "x0": 38,
+          "y0": 31,
+          "x1": 42,
+          "y1": 36
+        }
+      },
+      {
+        "command": "ignite",
+        "args": {
+          "x": 22,
+          "y": 30
+        }
+      },
+      {
+        "command": "ignite",
+        "args": {
+          "x": 27,
+          "y": 30
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "crates",
+      "type": "goal",
+      "x": 22,
+      "y": 28,
+      "w": 21,
+      "h": 9
+    },
+    {
+      "id": "cellar",
+      "type": "goal",
+      "x": 18,
+      "y": 22,
+      "w": 28,
+      "h": 15
+    },
+    {
+      "id": "roofL",
+      "type": "noBuild",
+      "x": 14,
+      "y": 0,
+      "w": 16,
+      "h": 22
+    },
+    {
+      "id": "roofR",
+      "type": "noBuild",
+      "x": 34,
+      "y": 0,
+      "w": 16,
+      "h": 22
+    }
+  ],
+  "materials": {
+    "WATER": 220
+  },
+  "budget": 220,
+  "maxSteps": 1200,
+  "goal": {
+    "op": "and",
+    "conditions": [
+      {
+        "op": "noFire",
+        "region": "cellar",
+        "steps": 120
+      },
+      {
+        "op": "integrity",
+        "region": "crates",
+        "material": "WOOD",
+        "percent": 70
+      }
+    ]
+  },
+  "fail": {
+    "op": "not",
+    "condition": {
+      "op": "integrity",
+      "region": "crates",
+      "material": "WOOD",
+      "percent": 55
+    }
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 200,
+      "maxSteps": 500
+    },
+    "three": {
+      "maxUsed": 180,
+      "maxSteps": 320
+    }
+  },
+  "reference": {
+    "steps": 195,
+    "log": [
+      {
+        "step": 20,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 31,
+          "y0": 2,
+          "x1": 32,
+          "y1": 16,
+          "size": 4
+        }
+      },
+      {
+        "step": 40,
+        "command": "stroke",
+        "args": {
+          "tool": "WATER",
+          "x0": 31,
+          "y0": 2,
+          "x1": 32,
+          "y1": 14,
+          "size": 4
+        }
+      }
+    ]
+  }
+}

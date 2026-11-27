@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "id": "c3-1-2-repose",
+  "name": "靠墙堆沙",
+  "chapter": "第一章 · 粉末与重力",
+  "difficulty": 1,
+  "hint": "让沙堆高到下面的金框里（至少 6 格），上面的金框要留空，沙子不能滚进花园。",
+  "type": "planning",
+  "world": {
+    "width": 64,
+    "height": 40,
+    "seed": 12,
+    "commands": [
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 0,
+          "y0": 37,
+          "x1": 63,
+          "y1": 39
+        }
+      },
+      {
+        "command": "fillRect",
+        "args": {
+          "mat": "STONE",
+          "x0": 44,
+          "y0": 20,
+          "x1": 45,
+          "y1": 36
+        }
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "mark",
+      "type": "goal",
+      "x": 40,
+      "y": 29,
+      "w": 4,
+      "h": 3
+    },
+    {
+      "id": "markNB",
+      "type": "noBuild",
+      "x": 40,
+      "y": 29,
+      "w": 4,
+      "h": 3
+    },
+    {
+      "id": "clear",
+      "type": "goal",
+      "x": 40,
+      "y": 22,
+      "w": 4,
+      "h": 5
+    },
+    {
+      "id": "garden",
+      "type": "protected",
+      "x": 0,
+      "y": 31,
+      "w": 28,
+      "h": 6
+    }
+  ],
+  "materials": {
+    "SAND": 70
+  },
+  "budget": 70,
+  "maxSteps": 450,
+  "goal": {
+    "op": "within",
+    "steps": 400,
+    "condition": {
+      "op": "and",
+      "conditions": [
+        {
+          "op": "count",
+          "region": "mark",
+          "material": "SAND",
+          "compare": ">=",
+          "value": 6
+        },
+        {
+          "op": "count",
+          "region": "clear",
+          "material": "SAND",
+          "compare": "<=",
+          "value": 0
+        }
+      ]
+    }
+  },
+  "fail": {
+    "op": "count",
+    "region": "garden",
+    "material": "SAND",
+    "compare": ">=",
+    "value": 3
+  },
+  "stars": {
+    "two": {
+      "maxUsed": 56,
+      "maxSteps": 380
+    },
+    "three": {
+      "maxUsed": 44,
+      "maxSteps": 300
+    }
+  },
+  "reference": {
+    "steps": 12,
+    "log": [
+      {
+        "step": 0,
+        "command": "stroke",
+        "args": {
+          "tool": "SAND",
+          "x0": 42,
+          "y0": 2,
+          "x1": 42,
+          "y1": 14,
+          "size": 2
+        }
+      }
+    ]
+  }
+}
