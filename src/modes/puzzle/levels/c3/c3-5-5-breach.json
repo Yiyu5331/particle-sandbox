@@ -228,5 +228,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第五章 · 结构与爆破",
+    "en": "Chapter 5 · Structures and demolition"
+  },
+  "nameI18n": {
+    "zh-CN": "炸坝引水",
+    "en": "Breach the Dam"
+  },
+  "desc": {
+    "zh-CN": "炸开砖坝，让至少 30 格湖水流进田里。田上方悬空的石桥要先撑住，右边的木屋也要保住。",
+    "en": "Blow open the brick dam so at least 30 cells of lake water flow into the field. Hold up the stone bridge hanging over the field first, and keep the wooden house on the right intact."
+  },
+  "hints": [
+    {
+      "zh-CN": "石桥一开始就会掉下来；TNT 要靠火药引爆。",
+      "en": "The bridge falls as soon as time starts, and TNT needs gunpowder to set it off."
+    },
+    {
+      "zh-CN": "柱子立在离坝远的一端，爆炸就伤不到它。",
+      "en": "Put the column at the end of the bridge far from the dam so the blast cannot reach it."
+    },
+    {
+      "zh-CN": "在石桥右端下面（木屋左边）立一根石柱；坝脚右侧竖放一排 TNT，旁边铺四格火药，上面点两格熔岩。",
+      "en": "Stand a stone column under the right end of the bridge, just left of the house; stack a column of TNT against the right foot of the dam, lay four cells of gunpowder beside it and put two cells of lava above."
+    }
+  ]
 }

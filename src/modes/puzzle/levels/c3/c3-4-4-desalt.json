@@ -246,5 +246,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第四章 · 相变",
+    "en": "Chapter 4 · Phase changes"
+  },
+  "nameI18n": {
+    "zh-CN": "海水淡化",
+    "en": "Desalination"
+  },
+  "desc": {
+    "zh-CN": "海水会从高台上漫出来白白流走。想办法让蓄水池里攒下至少 20 格淡水，一点盐水都不能有。",
+    "en": "Seawater spills off the cliff and runs to waste. Collect at least 20 cells of fresh water in the cistern, with no salt water at all."
+  },
+  "hints": [
+    {
+      "zh-CN": "盐水碰到熔岩也会变成蒸汽，凝结下来的却是淡水。",
+      "en": "Salt water also boils into steam on lava, but what condenses is fresh water."
+    },
+    {
+      "zh-CN": "把漫出来的海水引进炉子竖井：从海边搭一段石槽，伸进竖井左墙上方的窗口。",
+      "en": "Lead the overflow into the furnace shaft: build a stone trough from the sea into the window above the left wall of the shaft."
+    },
+    {
+      "zh-CN": "紧贴着海的右壁，往右画一条五格长的石线，一直伸进竖井左墙上方的窗口。",
+      "en": "Right against the sea wall, draw a five-cell stone line to the right, reaching into the window above the left wall of the shaft."
+    }
+  ]
 }

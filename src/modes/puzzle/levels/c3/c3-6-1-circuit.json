@@ -159,5 +159,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第六章 · 天气与电",
+    "en": "Chapter 6 · Weather and electricity"
+  },
+  "nameI18n": {
+    "zh-CN": "接通电路",
+    "en": "Close the Circuit"
+  },
+  "desc": {
+    "zh-CN": "电线断了一截。接上它，让电火花顺着电线跑到另一头，引爆 TNT 炸开巨石。",
+    "en": "A stretch of the wire is missing. Repair it so a spark can run along the wire to the far end, set off the TNT and blast the boulder."
+  },
+  "hints": [
+    {
+      "zh-CN": "电火花会顺着金属一路跑过去，跑到头就点着挨着的炸药。",
+      "en": "A spark races along metal and sets off whatever explosive it reaches at the end."
+    },
+    {
+      "zh-CN": "电线中间缺了六格，金属必须连成一条线才导电。",
+      "en": "Six cells of wire are missing; the metal has to be continuous to conduct."
+    },
+    {
+      "zh-CN": "用两格粗的笔刷把缺口补上，再在左边金属桩旁边点电火花。",
+      "en": "Fill the gap with a two-cell-thick stroke of metal, then put a spark next to the metal post on the left."
+    }
+  ]
 }

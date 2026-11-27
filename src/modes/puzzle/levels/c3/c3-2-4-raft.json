@@ -156,5 +156,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第二章 · 水与流体",
+    "en": "Chapter 2 · Water and fluids"
+  },
+  "nameI18n": {
+    "zh-CN": "升筏",
+    "en": "Raise the Raft"
+  },
+  "desc": {
+    "zh-CN": "抬高闸里的水位，让木筏浮进金框并停稳；水不能漫过右边的闸墙淹到村子。",
+    "en": "Raise the water in the lock until the raft floats up into the gold frame and stays there, without spilling over the right wall into the village."
+  },
+  "hints": [
+    {
+      "zh-CN": "木头比水轻，水涨它就跟着往上浮。",
+      "en": "Wood is lighter than water, so it rises as the water rises."
+    },
+    {
+      "zh-CN": "木筏正上方不能倒，在它两边倒；油比木头重，也能托起它。",
+      "en": "You cannot pour right above the raft, so pour on both sides of it; oil is heavier than wood and lifts it too."
+    },
+    {
+      "zh-CN": "在木筏左右各画一道三格粗的短横线，一共八十格左右，水位正好升到闸墙下面。",
+      "en": "Draw a short three-cell-thick line on each side of the raft, about 80 cells in all, which brings the level just below the top of the wall."
+    }
+  ]
 }

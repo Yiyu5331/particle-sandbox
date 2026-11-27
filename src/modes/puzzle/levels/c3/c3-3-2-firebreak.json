@@ -200,5 +200,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第三章 · 火与热",
+    "en": "Chapter 3 · Fire and heat"
+  },
+  "nameI18n": {
+    "zh-CN": "防火带",
+    "en": "Firebreak"
+  },
+  "desc": {
+    "zh-CN": "草原中间起火了。拦住往两边烧的火：两座木屋都不能烧着，屋前的草场各留下至少 20 格干草。",
+    "en": "The middle of the meadow is on fire. Stop it spreading both ways: neither cabin may burn, and each pasture in front of them must keep at least 20 cells of hay."
+  },
+  "hints": [
+    {
+      "zh-CN": "湿的草点不着。",
+      "en": "Wet grass will not burn."
+    },
+    {
+      "zh-CN": "在火头前面浇一道水，把草地从上到下浇透，就成了防火带。",
+      "en": "Pour a strip of water ahead of the fire, soaking the grass all the way down, and it becomes a firebreak."
+    },
+    {
+      "zh-CN": "火刚烧起来时，在它左右两边几格外的草上各横着画一道七格的水。",
+      "en": "As soon as the fire starts, draw a seven-cell line of water on the grass a few cells to each side of it."
+    }
+  ]
 }

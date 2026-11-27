@@ -168,5 +168,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第二章 · 水与流体",
+    "en": "Chapter 2 · Water and fluids"
+  },
+  "nameI18n": {
+    "zh-CN": "渡槽",
+    "en": "The Aqueduct"
+  },
+  "desc": {
+    "zh-CN": "把高台水池漫出来的水引过深谷，送进右边的田（至少 30 格），谷底的矿井不能进水。",
+    "en": "Carry the overflow from the high pool across the gorge to the field on the right (at least 30 cells) without flooding the mine below."
+  },
+  "hints": [
+    {
+      "zh-CN": "水需要一条连着两岸的路，否则就掉进谷底。",
+      "en": "Water needs a path that joins both sides, or it falls into the gorge."
+    },
+    {
+      "zh-CN": "石头连到两边的崖壁上就不会塌，一格厚就够。",
+      "en": "Stone that touches both cliffs will not fall; one cell thick is enough."
+    },
+    {
+      "zh-CN": "从左崖顶一直到右崖边，画一条和崖顶齐平的一格石线。",
+      "en": "Draw a one-cell line of stone level with the top of the cliff, from the left cliff edge to the right one."
+    }
+  ]
 }

@@ -172,5 +172,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第四章 · 相变",
+    "en": "Chapter 4 · Phase changes"
+  },
+  "nameI18n": {
+    "zh-CN": "蒸汽搬水",
+    "en": "Steam Lift"
+  },
+  "desc": {
+    "zh-CN": "高处的蓄水池够不着。让至少 30 格水进到池里。",
+    "en": "You cannot reach the high cistern. Get at least 30 cells of water into it."
+  },
+  "hints": [
+    {
+      "zh-CN": "水碰到熔岩会变成蒸汽，蒸汽会往上升。",
+      "en": "Water that touches lava turns into steam, and steam rises."
+    },
+    {
+      "zh-CN": "蒸汽碰到凉的石顶会重新凝成水珠，顺着石顶流进蓄水池。",
+      "en": "When steam meets the cool stone roof it condenses back into water and runs into the cistern."
+    },
+    {
+      "zh-CN": "在左边竖井里、熔岩正上方画一大块水，七十格左右。",
+      "en": "Draw a big block of water, about seventy cells, in the left shaft right above the lava."
+    }
+  ]
 }

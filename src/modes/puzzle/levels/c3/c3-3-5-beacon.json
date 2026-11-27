@@ -218,5 +218,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第三章 · 火与热",
+    "en": "Chapter 3 · Fire and heat"
+  },
+  "nameI18n": {
+    "zh-CN": "烽火台",
+    "en": "Signal Beacon"
+  },
+  "desc": {
+    "zh-CN": "点燃烽火台上的柴堆，烧掉一半以上；紧挨着的木岗亭不能烧着。",
+    "en": "Light the woodpile on the beacon and burn more than half of it, without setting fire to the wooden hut right next to it."
+  },
+  "hints": [
+    {
+      "zh-CN": "只有四格火，直接点柴堆点不着，需要先烧着更容易着的东西。",
+      "en": "Four cells of fire are not enough to light the woodpile; first set fire to something that catches more easily."
+    },
+    {
+      "zh-CN": "枯枝一点就着、烧得又旺又久；岗亭要先浇湿，水只能顺着斜槽流过去。",
+      "en": "Dead branches catch at once and burn hot and long. Soak the hut first; water can only reach it down the chute."
+    },
+    {
+      "zh-CN": "炉膛里铺一排枯枝，往上隔一两格放四格火；在斜槽高处倒二十来格水。",
+      "en": "Lay a row of dead branches in the hearth, put the four fire cells a row or two above it, and pour about twenty cells of water at the high end of the chute."
+    }
+  ]
 }

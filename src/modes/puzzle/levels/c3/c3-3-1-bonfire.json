@@ -136,5 +136,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第三章 · 火与热",
+    "en": "Chapter 3 · Fire and heat"
+  },
+  "nameI18n": {
+    "zh-CN": "篝火",
+    "en": "The Bonfire"
+  },
+  "desc": {
+    "zh-CN": "点燃炉栅上的木堆，烧出至少 5 格木炭。",
+    "en": "Light the woodpile on the grate and burn it until at least 5 cells of charcoal form."
+  },
+  "hints": [
+    {
+      "zh-CN": "火焰是热气，会往上飘：放在木头上面或旁边，一下就飘走了。",
+      "en": "Flames are hot gas and rise: put them above or beside the wood and they just float away."
+    },
+    {
+      "zh-CN": "炉栅下面有一个三格高的炉膛，火放在那里会往上烤着木堆。",
+      "en": "Under the grate is a hearth three cells high; fire placed there rises into the woodpile."
+    },
+    {
+      "zh-CN": "在炉膛里横着画一排八格的火。",
+      "en": "Draw a row of eight fire cells inside the hearth."
+    }
+  ]
 }

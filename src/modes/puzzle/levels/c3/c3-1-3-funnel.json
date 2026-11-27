@@ -160,5 +160,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第一章 · 粉末与重力",
+    "en": "Chapter 1 · Powder and gravity"
+  },
+  "nameI18n": {
+    "zh-CN": "漏斗",
+    "en": "The Funnel"
+  },
+  "desc": {
+    "zh-CN": "把至少 24 格沙送进中间的细管，不能撒到草地上。",
+    "en": "Get at least 24 grains of sand into the narrow tube without spilling onto the lawns."
+  },
+  "hints": [
+    {
+      "zh-CN": "斜面够陡，沙才会滑下去；太缓的斜面会把沙留住。",
+      "en": "Sand only slides down a steep slope; a gentle slope keeps some of it."
+    },
+    {
+      "zh-CN": "漏斗左右两边的坡度不一样。",
+      "en": "The two sides of the funnel have different slopes."
+    },
+    {
+      "zh-CN": "在左边陡坡的上方倒三十来格沙。",
+      "en": "Pour about thirty grains above the steep left side."
+    }
+  ]
 }

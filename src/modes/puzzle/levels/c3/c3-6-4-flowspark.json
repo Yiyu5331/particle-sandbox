@@ -238,5 +238,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第六章 · 天气与电",
+    "en": "Chapter 6 · Weather and electricity"
+  },
+  "nameI18n": {
+    "zh-CN": "顺水通电",
+    "en": "Current on the Tide"
+  },
+  "desc": {
+    "zh-CN": "泉水正在灌满水渠。等水接到另一头的 TNT，再放电火花引爆它炸开巨石；水渠满了会漫进左边的村子。",
+    "en": "The spring is filling the canal. Once the water reaches the TNT at the far end, send a spark to set it off and blast the boulder; when the canal is full it will spill into the village on the left."
+  },
+  "hints": [
+    {
+      "zh-CN": "电火花只闪一下：水还没连到 TNT 时放，电会半路断掉。",
+      "en": "A spark only flashes once: if the water has not reached the TNT yet, the current dies on the way."
+    },
+    {
+      "zh-CN": "看着水头走到 TNT 跟前，再在泡在水里的金属桩旁放火花；别等水渠漫出来。",
+      "en": "Watch the waterfront reach the TNT, then put a spark next to the metal post standing in the water, before the canal overflows."
+    },
+    {
+      "zh-CN": "大约第 120 步水会碰到 TNT，之后在金属桩旁横着点三格电火花。",
+      "en": "The water touches the TNT around step 120; after that, put a row of three sparks across the metal post."
+    }
+  ]
 }

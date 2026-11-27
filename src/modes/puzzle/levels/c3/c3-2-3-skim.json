@@ -179,5 +179,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第二章 · 水与流体",
+    "en": "Chapter 2 · Water and fluids"
+  },
+  "nameI18n": {
+    "zh-CN": "撇油",
+    "en": "Skim the Oil"
+  },
+  "desc": {
+    "zh-CN": "把罐里浮着的油顶出出油口，至少 18 格流进右边的油缸；水和沙子都不能流进去。",
+    "en": "Push the floating oil out over the spout so at least 18 cells reach the oil tank on the right, without any water or sand following it."
+  },
+  "hints": [
+    {
+      "zh-CN": "油比水轻，总是浮在最上面。",
+      "en": "Oil is lighter than water and always floats on top."
+    },
+    {
+      "zh-CN": "往罐里加更重的液体，它会沉到油下面，把油整个往上顶。沙子会把水吸走，不管用。",
+      "en": "Any heavier liquid you add sinks below the oil and lifts it. Sand just soaks up the water."
+    },
+    {
+      "zh-CN": "罐里离出油口还差四行，往罐里倒七十格左右的水或盐水，油会先溢出来。",
+      "en": "The liquid is four rows below the spout; pour about seventy cells of water or brine into the tank and the oil spills first."
+    }
+  ]
 }

@@ -1,27 +1,21 @@
 // node tools/levels.mjs validate [关卡.json ...]
-import { readFileSync, readdirSync } from 'node:fs';
 import { puzzleVerify } from '../src/modes/puzzle/session.js';
-import { puzzleLevels } from '../src/modes/puzzle/catalog.js';
+import { puzzleLevelLabel } from '../src/modes/puzzle/format.js';
+import { discoverPuzzleLevels, readPuzzleJson } from './puzzle-catalog.mjs';
 
 if (process.argv[2] !== 'validate') {
   console.error('用法：node tools/levels.mjs validate [关卡.json ...]'); process.exitCode = 2;
 } else {
-  const dir = new URL('../src/modes/puzzle/levels/', import.meta.url);
   const named = process.argv.slice(3);
-  // 包括子目录（如 levels/c3/），跳过不是关卡的 meta.json
-  const files = named.length ? named : readdirSync(dir,{recursive:true}).filter(f=>f.endsWith('.json') && !f.endsWith('meta.json')).sort().map(f=>new URL(f,dir));
+  const files = named.length ? named.map(path=>({path})) : discoverPuzzleLevels();
   const ids = new Set();
-  for (const file of files) {
+  for (const {path,level:builtIn} of files) {
     try {
-      const level = JSON.parse(readFileSync(file,'utf8'));
+      const level = builtIn ?? readPuzzleJson(path);
       if (ids.has(level.id)) throw new Error('关卡 id 重复：'+level.id);
       ids.add(level.id);
       const r = puzzleVerify(level);
-      console.log(`通过  ${level.id} · ${level.name}：${r.stars} 星，${r.steps} 步，用料 ${r.used} 格，双播哈希 ${r.hash}`);
-    } catch (e) { console.error('失败  '+file+'：'+e.message); process.exitCode = 1; }
-  }
-  const registered = new Set(puzzleLevels.map(l=>l.id));
-  if (!named.length && (registered.size !== puzzleLevels.length || ids.size !== registered.size || [...ids].some(id=>!registered.has(id)))) {
-    console.error('内置选关目录与 JSON 文件不一致'); process.exitCode = 1;
+      console.log(`通过  ${level.id} · ${puzzleLevelLabel(level,'name')}：${r.stars} 星，${r.steps} 步，用料 ${r.used} 格，双播哈希 ${r.hash}`);
+    } catch (e) { console.error('失败  '+path+'：'+e.message); process.exitCode = 1; }
   }
 }

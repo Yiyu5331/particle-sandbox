@@ -245,5 +245,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第六章 · 天气与电",
+    "en": "Chapter 6 · Weather and electricity"
+  },
+  "nameI18n": {
+    "zh-CN": "绕开木屋",
+    "en": "Reroute the Line"
+  },
+  "desc": {
+    "zh-CN": "引爆右边的 TNT 炸开巨石。旧电线从木屋底下穿过，通了电会把木屋烤着。",
+    "en": "Set off the TNT on the right to blast the boulder. The old wire runs under the wooden houses and would set them alight if it carried current."
+  },
+  "hints": [
+    {
+      "zh-CN": "通电的金属会烤热紧挨着的可燃物，木头碰着就着。",
+      "en": "Live metal heats anything flammable touching it; wood catches fire."
+    },
+    {
+      "zh-CN": "别去接旧电线的缺口，从电桩另拉一条不碰木头的新线到 TNT。",
+      "en": "Do not repair the gap in the old wire; run a new line from the post to the TNT that touches no wood."
+    },
+    {
+      "zh-CN": "从电桩中段往右拉一条横线，比屋顶高出两格以上，到 TNT 上方再往下拐，贴到 TNT 旁边。",
+      "en": "Run a horizontal line right from the middle of the post, at least two cells above the roofs, then turn down beside the TNT."
+    }
+  ]
 }

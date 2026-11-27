@@ -6,7 +6,13 @@
     "version": {"const": 1},
     "id": {"$ref": "#/$defs/id"},
     "name": {"type": "string", "minLength": 1, "maxLength": 100},
+    "nameI18n": {"$ref": "#/$defs/localizedName"},
+    "desc": {"$ref": "#/$defs/localizedText"},
+    "hints": {"type": "array", "items": {"$ref": "#/$defs/localizedText"}, "minItems": 1, "maxItems": 3},
+    "environment": {"$ref": "#/$defs/environment"},
+    "events": {"type": "array", "items": {"$ref": "#/$defs/event"}, "minItems": 0, "maxItems": 4096},
     "chapter": {"type": "string", "minLength": 1, "maxLength": 100},
+    "chapterI18n": {"$ref": "#/$defs/localizedName"},
     "difficulty": {"type": "integer", "minimum": 1, "maximum": 5},
     "hint": {"type": "string", "minLength": 1, "maxLength": 1000},
     "type": {"enum": ["planning", "realtime"]},
@@ -60,7 +66,6 @@
     "name",
     "chapter",
     "difficulty",
-    "hint",
     "type",
     "world",
     "regions",
@@ -74,6 +79,45 @@
   ],
   "additionalProperties": false,
   "$defs": {
+    "localizedName": {
+      "type": "object",
+      "properties": {
+        "zh-CN": {"type": "string", "minLength": 1, "maxLength": 100},
+        "en": {"type": "string", "minLength": 1, "maxLength": 100}
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "localizedText": {
+      "type": "object",
+      "properties": {
+        "zh-CN": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "en": {"type": "string", "minLength": 1, "maxLength": 1000}
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "environment": {
+      "type": "object",
+      "properties": {
+        "weather": {"$ref": "#/$defs/weatherKey"},
+        "time": {"type": "number", "minimum": 0, "exclusiveMaximum": 1},
+        "temp": {"type": "number"},
+        "wind": {"type": "number", "minimum": -1, "maximum": 1},
+        "windPower": {"type": "number", "minimum": 0, "maximum": 1}
+      },
+      "additionalProperties": false
+    },
+    "event": {
+      "type": "object",
+      "properties": {
+        "step": {"type": "integer", "minimum": 1, "maximum": 36000},
+        "action": {"$ref": "#/$defs/eventAction"}
+      },
+      "required": ["step", "action"],
+      "additionalProperties": false
+    },
+    "weatherKey": {"enum": ["clear", "cloudy", "rain", "storm", "snow"]},
     "id": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"},
     "material": {
       "oneOf": [
@@ -97,159 +141,241 @@
     },
     "setup": {
       "oneOf": [
-        {
+        {"$ref": "#/$defs/fillRectCommand"},
+        {"$ref": "#/$defs/fillCircleCommand"},
+        {"$ref": "#/$defs/setGravityCommand"},
+        {"$ref": "#/$defs/setWeatherCommand"},
+        {"$ref": "#/$defs/loadSceneCommand"},
+        {"$ref": "#/$defs/igniteCommand"},
+        {"$ref": "#/$defs/clearCommand"},
+        {"$ref": "#/$defs/strokeCommand"},
+        {"$ref": "#/$defs/setEnvCommand"},
+        {"$ref": "#/$defs/lightningCommand"},
+        {"$ref": "#/$defs/spawnCommand"},
+        {"$ref": "#/$defs/explodeCommand"}
+      ]
+    },
+    "eventAction": {
+      "oneOf": [
+        {"$ref": "#/$defs/fillRectCommand"},
+        {"$ref": "#/$defs/fillCircleCommand"},
+        {"$ref": "#/$defs/setGravityCommand"},
+        {"$ref": "#/$defs/setWeatherCommand"},
+        {"$ref": "#/$defs/igniteCommand"},
+        {"$ref": "#/$defs/clearCommand"},
+        {"$ref": "#/$defs/strokeCommand"},
+        {"$ref": "#/$defs/setEnvCommand"},
+        {"$ref": "#/$defs/lightningCommand"},
+        {"$ref": "#/$defs/spawnCommand"},
+        {"$ref": "#/$defs/explodeCommand"}
+      ]
+    },
+    "fillRectCommand": {
+      "type": "object",
+      "properties": {
+        "command": {"const": "fillRect"},
+        "args": {
           "type": "object",
           "properties": {
-            "command": {"const": "fillRect"},
-            "args": {
-              "type": "object",
-              "properties": {
-                "mat": {"$ref": "#/$defs/material"},
-                "x0": {"type": "integer", "minimum": 0, "maximum": 511},
-                "y0": {"type": "integer", "minimum": 0, "maximum": 511},
-                "x1": {"type": "integer", "minimum": 0, "maximum": 511},
-                "y1": {"type": "integer", "minimum": 0, "maximum": 511}
-              },
-              "required": ["mat", "x0", "y0", "x1", "y1"],
-              "additionalProperties": false
-            }
+            "mat": {"$ref": "#/$defs/material"},
+            "x0": {"type": "integer", "minimum": 0, "maximum": 511},
+            "y0": {"type": "integer", "minimum": 0, "maximum": 511},
+            "x1": {"type": "integer", "minimum": 0, "maximum": 511},
+            "y1": {"type": "integer", "minimum": 0, "maximum": 511}
           },
-          "required": ["command", "args"],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "command": {"const": "fillCircle"},
-            "args": {
-              "type": "object",
-              "properties": {
-                "mat": {"$ref": "#/$defs/material"},
-                "cx": {"type": "integer", "minimum": 0, "maximum": 511},
-                "cy": {"type": "integer", "minimum": 0, "maximum": 511},
-                "r": {"type": "integer", "minimum": 1, "maximum": 64}
-              },
-              "required": ["mat", "cx", "cy", "r"],
-              "additionalProperties": false
-            }
-          },
-          "required": ["command", "args"],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "command": {"const": "setGravity"},
-            "args": {
-              "type": "object",
-              "properties": {"dir": {"enum": ["down", "up", "left", "right"]}},
-              "required": ["dir"],
-              "additionalProperties": false
-            }
-          },
-          "required": ["command", "args"],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "command": {"const": "setWeather"},
-            "args": {
-              "type": "object",
-              "properties": {"key": {"enum": ["clear", "cloudy", "rain", "storm", "snow"]}},
-              "required": ["key"],
-              "additionalProperties": false
-            }
-          },
-          "required": ["command", "args"],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "command": {"const": "loadScene"},
-            "args": {
-              "type": "object",
-              "properties": {"index": {"type": "integer", "minimum": 0, "maximum": 9}},
-              "required": ["index"],
-              "additionalProperties": false
-            }
-          },
-          "required": ["command", "args"],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "command": {"const": "ignite"},
-            "args": {
-              "type": "object",
-              "properties": {
-                "x": {"type": "integer", "minimum": 0, "maximum": 511},
-                "y": {"type": "integer", "minimum": 0, "maximum": 511}
-              },
-              "required": ["x", "y"],
-              "additionalProperties": false
-            }
-          },
-          "required": ["command", "args"],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "command": {"const": "clear"},
-            "args": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
-          },
-          "required": ["command", "args"],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {"command": {"const": "stroke"}, "args": {"$ref": "#/$defs/stroke"}},
-          "required": ["command", "args"],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "command": {"const": "setEnv"},
-            "args": {
-              "oneOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "key": {
-                      "enum": ["wind", "windPower", "temp", "time", "timeScale", "moistPerMin", "atmosCap"]
-                    },
-                    "value": {"type": "number"}
-                  },
-                  "required": ["key", "value"],
-                  "additionalProperties": false
-                },
-                {
-                  "type": "object",
-                  "properties": {"key": {"enum": ["dayNight", "structure"]}, "value": {"type": "boolean"}},
-                  "required": ["key", "value"],
-                  "additionalProperties": false
-                }
-              ]
-            }
-          },
-          "required": ["command", "args"],
+          "required": ["mat", "x0", "y0", "x1", "y1"],
           "additionalProperties": false
         }
-      ]
+      },
+      "required": ["command", "args"],
+      "additionalProperties": false
+    },
+    "fillCircleCommand": {
+      "type": "object",
+      "properties": {
+        "command": {"const": "fillCircle"},
+        "args": {
+          "type": "object",
+          "properties": {
+            "mat": {"$ref": "#/$defs/material"},
+            "cx": {"type": "integer", "minimum": 0, "maximum": 511},
+            "cy": {"type": "integer", "minimum": 0, "maximum": 511},
+            "r": {"type": "integer", "minimum": 1, "maximum": 64}
+          },
+          "required": ["mat", "cx", "cy", "r"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["command", "args"],
+      "additionalProperties": false
+    },
+    "setGravityCommand": {
+      "type": "object",
+      "properties": {
+        "command": {"const": "setGravity"},
+        "args": {
+          "type": "object",
+          "properties": {"dir": {"enum": ["down", "up", "left", "right"]}},
+          "required": ["dir"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["command", "args"],
+      "additionalProperties": false
+    },
+    "setWeatherCommand": {
+      "type": "object",
+      "properties": {
+        "command": {"const": "setWeather"},
+        "args": {
+          "type": "object",
+          "properties": {"key": {"$ref": "#/$defs/weatherKey"}},
+          "required": ["key"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["command", "args"],
+      "additionalProperties": false
+    },
+    "loadSceneCommand": {
+      "type": "object",
+      "properties": {
+        "command": {"const": "loadScene"},
+        "args": {
+          "type": "object",
+          "properties": {"index": {"type": "integer", "minimum": 0, "maximum": 9}},
+          "required": ["index"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["command", "args"],
+      "additionalProperties": false
+    },
+    "igniteCommand": {
+      "type": "object",
+      "properties": {
+        "command": {"const": "ignite"},
+        "args": {
+          "type": "object",
+          "properties": {
+            "x": {"type": "integer", "minimum": 0, "maximum": 511},
+            "y": {"type": "integer", "minimum": 0, "maximum": 511}
+          },
+          "required": ["x", "y"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["command", "args"],
+      "additionalProperties": false
+    },
+    "clearCommand": {
+      "type": "object",
+      "properties": {
+        "command": {"const": "clear"},
+        "args": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
+      },
+      "required": ["command", "args"],
+      "additionalProperties": false
+    },
+    "strokeCommand": {
+      "type": "object",
+      "properties": {"command": {"const": "stroke"}, "args": {"$ref": "#/$defs/stroke"}},
+      "required": ["command", "args"],
+      "additionalProperties": false
+    },
+    "setEnvCommand": {
+      "type": "object",
+      "properties": {
+        "command": {"const": "setEnv"},
+        "args": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "enum": ["wind", "windPower", "temp", "time", "timeScale", "moistPerMin", "atmosCap"]
+                },
+                "value": {"type": "number"}
+              },
+              "required": ["key", "value"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {"key": {"enum": ["dayNight", "structure"]}, "value": {"type": "boolean"}},
+              "required": ["key", "value"],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": ["command", "args"],
+      "additionalProperties": false
+    },
+    "lightningCommand": {
+      "type": "object",
+      "properties": {
+        "command": {"const": "lightning"},
+        "args": {
+          "type": "object",
+          "properties": {
+          "x": {"type": "integer", "minimum": 0, "maximum": 511}
+          },
+          "required": ["x"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["command", "args"],
+      "additionalProperties": false
+    },
+    "spawnCommand": {
+      "type": "object",
+      "properties": {
+        "command": {"const": "spawn"},
+        "args": {
+          "type": "object",
+          "properties": {
+          "mat": {"$ref": "#/$defs/material"},
+          "x": {"type": "integer", "minimum": 0, "maximum": 511},
+          "y": {"type": "integer", "minimum": 0, "maximum": 511},
+          "r": {"type": "integer", "minimum": 1, "maximum": 64}
+          },
+          "required": ["mat", "x", "y"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["command", "args"],
+      "additionalProperties": false
+    },
+    "explodeCommand": {
+      "type": "object",
+      "properties": {
+        "command": {"const": "explode"},
+        "args": {
+          "type": "object",
+          "properties": {
+          "x": {"type": "integer", "minimum": 0, "maximum": 511},
+          "y": {"type": "integer", "minimum": 0, "maximum": 511},
+          "r": {"type": "integer", "minimum": 1, "maximum": 64},
+          "p": {"type": "number", "exclusiveMinimum": 0, "maximum": 4}
+          },
+          "required": ["x", "y"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["command", "args"],
+      "additionalProperties": false
     },
     "region": {
       "type": "object",
       "properties": {
         "id": {"$ref": "#/$defs/id"},
-        "type": {"enum": ["goal", "noBuild", "protected"]},
+        "type": {"enum": ["goal", "noBuild", "protected", "zone"]},
         "x": {"type": "integer", "minimum": 0, "maximum": 511},
         "y": {"type": "integer", "minimum": 0, "maximum": 511},
         "w": {"type": "integer", "minimum": 1, "maximum": 512},
-        "h": {"type": "integer", "minimum": 1, "maximum": 512}
+        "h": {"type": "integer", "minimum": 1, "maximum": 512},
+        "allow": {"type": "array", "items": {"$ref": "#/$defs/material"}, "minItems": 0, "maxItems": 256}
       },
       "required": ["id", "type", "x", "y", "w", "h"],
       "additionalProperties": false
@@ -266,6 +392,17 @@
             "value": {"type": "integer", "minimum": 0, "maximum": 1000000}
           },
           "required": ["op", "region", "material", "compare", "value"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {"const": "burning"},
+            "region": {"$ref": "#/$defs/id"},
+            "compare": {"enum": [">=", "<="]},
+            "value": {"type": "integer", "minimum": 0, "maximum": 1000000}
+          },
+          "required": ["op", "region", "compare", "value"],
           "additionalProperties": false
         },
         {
@@ -309,6 +446,16 @@
           "type": "object",
           "properties": {
             "op": {"const": "within"},
+            "steps": {"type": "integer", "minimum": 1, "maximum": 36000},
+            "condition": {"$ref": "#/$defs/condition"}
+          },
+          "required": ["op", "steps", "condition"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {"const": "hold"},
             "steps": {"type": "integer", "minimum": 1, "maximum": 36000},
             "condition": {"$ref": "#/$defs/condition"}
           },

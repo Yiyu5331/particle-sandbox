@@ -209,5 +209,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第三章 · 火与热",
+    "en": "Chapter 3 · Fire and heat"
+  },
+  "nameI18n": {
+    "zh-CN": "地窖失火",
+    "en": "Cellar Fire"
+  },
+  "desc": {
+    "zh-CN": "地窖里的木箱着火了。从屋顶的进水口灌水把火淹灭，至少保住七成木箱。",
+    "en": "The crates in the cellar are on fire. Pour water through the hole in the roof to drown the fire and save at least 70% of the crates."
+  },
+  "hints": [
+    {
+      "zh-CN": "从上面泼水只能浇到表面，火会在里面接着烧。",
+      "en": "Splashing water from above only wets the surface; the fire keeps burning inside."
+    },
+    {
+      "zh-CN": "把整个地窖灌满，让水漫过燃烧的木箱，火就没有空气了。",
+      "en": "Fill the whole cellar so the water covers the burning crates and the fire has no air."
+    },
+    {
+      "zh-CN": "火一着就在进水口正上方画两道粗水柱，一共一百八十格左右。",
+      "en": "As soon as the fire starts, draw two thick columns of water right above the hole, about 180 cells in all."
+    }
+  ]
 }

@@ -136,5 +136,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第五章 · 结构与爆破",
+    "en": "Chapter 5 · Structures and demolition"
+  },
+  "nameI18n": {
+    "zh-CN": "支柱",
+    "en": "The Pillar"
+  },
+  "desc": {
+    "zh-CN": "石台悬在半空，一开始就会掉下来砸坏温室。给它撑住。",
+    "en": "The stone ledge is hanging in mid-air and will fall onto the greenhouse as soon as time starts. Hold it up."
+  },
+  "hints": [
+    {
+      "zh-CN": "没有和地面或锚点连起来的石头会整块掉下来。",
+      "en": "Stone that is not connected to the ground or an anchor falls as one piece."
+    },
+    {
+      "zh-CN": "柱子只要从地面一直连到石台底下就行，温室上方不能放东西。",
+      "en": "A column only needs to connect the ground to the underside of the ledge; you cannot build above the greenhouse."
+    },
+    {
+      "zh-CN": "在石台左端下面，从地面竖着画一根一格粗的石柱。",
+      "en": "Draw a one-cell-thick stone column from the ground up to the left end of the ledge."
+    }
+  ]
 }

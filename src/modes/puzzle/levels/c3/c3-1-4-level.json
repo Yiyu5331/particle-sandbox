@@ -269,5 +269,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第一章 · 粉末与重力",
+    "en": "Chapter 1 · Powder and gravity"
+  },
+  "nameI18n": {
+    "zh-CN": "填平路面",
+    "en": "Level the Road"
+  },
+  "desc": {
+    "zh-CN": "把路上的两个坑填平：坑里要填满，路面上不能堆出沙包。",
+    "en": "Fill both potholes in the road: they must be full, with no mound of sand left on the road."
+  },
+  "hints": [
+    {
+      "zh-CN": "往一个点倒沙会堆成尖堆，坑角还空着，中间已经冒出来了。",
+      "en": "Pouring at one point makes a peak: the middle overflows while the corners are still empty."
+    },
+    {
+      "zh-CN": "按坑的宽度横着铺，用量和坑的格数差不多。",
+      "en": "Spread the sand across the width of each pit, using about as many grains as the pit holds."
+    },
+    {
+      "zh-CN": "左坑 10×4、右坑 6×5：各画一道和坑一样宽的横线，用量刚好够填满。",
+      "en": "The left pit is 10×4 and the right one 6×5: draw one horizontal line as wide as each pit, with just enough sand to fill it."
+    }
+  ]
 }

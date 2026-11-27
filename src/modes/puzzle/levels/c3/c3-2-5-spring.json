@@ -244,5 +244,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第二章 · 水与流体",
+    "en": "Chapter 2 · Water and fluids"
+  },
+  "nameI18n": {
+    "zh-CN": "分水",
+    "en": "Share the Spring"
+  },
+  "desc": {
+    "zh-CN": "泉水先流进左边的田。田灌满（80 格）以后及时把水改到右边，让闸里的木筏浮进金框。左边的村子不能进水。",
+    "en": "The spring first runs into the left field. Once it holds 80 cells, switch the flow to the right so the raft in the lock floats into the gold frame. Keep the village dry."
+  },
+  "hints": [
+    {
+      "zh-CN": "分水台右端有沿，水只会从左端流下去；左端要是更高，水就改从右端流。",
+      "en": "The ledge has a lip on the right, so water only falls off the left end; make the left end higher and it falls off the right."
+    },
+    {
+      "zh-CN": "太早改道，左田灌不满；太晚，左田满出来淹到村子。",
+      "en": "Switch too early and the left field never fills; too late and it overflows into the village."
+    },
+    {
+      "zh-CN": "看左田的水快到槽口时（大约第 330 步），在分水台左端竖着加三格高的石头。",
+      "en": "When the left field is almost full (around step 330), add a three-cell-tall stone lip on the left end of the ledge."
+    }
+  ]
 }

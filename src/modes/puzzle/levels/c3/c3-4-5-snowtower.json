@@ -218,5 +218,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第四章 · 相变",
+    "en": "Chapter 4 · Phase changes"
+  },
+  "nameI18n": {
+    "zh-CN": "雪水上楼",
+    "en": "Snow to the Rooftop"
+  },
+  "desc": {
+    "zh-CN": "竖井里塞满了冻雪。让至少 25 格水进到高处的蓄水池，旁边的木仓不能着火。",
+    "en": "The shaft is packed with frozen snow. Get at least 25 cells of water into the high cistern, without setting the wooden barn on fire."
+  },
+  "hints": [
+    {
+      "zh-CN": "雪要先化成水，水还得再变成蒸汽才能升上去。",
+      "en": "The snow has to melt into water first, and the water has to turn into steam to rise."
+    },
+    {
+      "zh-CN": "熔岩一样东西就能把两件事都办了：先化雪，再把化出的水烧开。",
+      "en": "Lava alone can do both jobs: melt the snow, then boil the meltwater."
+    },
+    {
+      "zh-CN": "在竖井雪面上方画三排熔岩，一共二十七格。",
+      "en": "Draw three rows of lava above the snow in the shaft, twenty-seven cells in all."
+    }
+  ]
 }

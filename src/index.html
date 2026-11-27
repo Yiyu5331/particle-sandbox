@@ -272,6 +272,8 @@
   #puzzle-tools :is(input,textarea,select) { width:100%; min-width:0; }
   #puzzle-tools textarea, #puzzle-tools input[type=number] { color:var(--text); background:var(--bg); border:1px solid var(--line-strong); border-radius:5px; padding:4px; }
   #puzzle-tools output { white-space:pre-line; } #puzzle-tools [role=status]:empty { display:none; }
+  #puzzle-tools .puzzle-timeline { max-height:13rem; overflow:auto; padding-inline-start:1.5rem; }
+  #puzzle-tools .puzzle-timeline code { display:block; overflow-wrap:anywhere; }
   #puzzle-picker { position:absolute; inset:0; overflow:auto; background:var(--bg); padding:clamp(12px,4vw,56px); }
   #puzzle-picker h3 { margin:18px 0 4px; }
   #puzzle-picker button { text-align:left; height:auto; padding:10px 14px; }

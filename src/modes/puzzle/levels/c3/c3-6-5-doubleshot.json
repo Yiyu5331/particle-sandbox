@@ -332,5 +332,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第六章 · 天气与电",
+    "en": "Chapter 6 · Weather and electricity"
+  },
+  "nameI18n": {
+    "zh-CN": "一火双响",
+    "en": "One Spark, Two Blasts"
+  },
+  "desc": {
+    "zh-CN": "用电火花把高处和水渠尽头的两包 TNT 都引爆。泉水正在灌渠，渠满了会淹到村子。",
+    "en": "Use sparks to set off both charges of TNT: the one up high and the one at the end of the canal. The spring is filling the canal, which will flood the village when full."
+  },
+  "hints": [
+    {
+      "zh-CN": "电桩同时连着上面的电线和下面的水渠，一个火花两头都能跑。",
+      "en": "The post connects to both the wire above and the canal below, so one spark can run both ways."
+    },
+    {
+      "zh-CN": "上面的电线断了一截要补上；下面要等水流到 TNT 跟前才导得通。",
+      "en": "The upper wire is missing a stretch that must be repaired, and the lower route only conducts once the water reaches the TNT."
+    },
+    {
+      "zh-CN": "一开始就用一排金属补上高线缺口，等到第 120 步以后，在电桩旁点三格电火花。",
+      "en": "At the start, fill the gap in the high wire with a row of metal; after step 120, put three sparks beside the post."
+    }
+  ]
 }

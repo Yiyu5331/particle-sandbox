@@ -238,5 +238,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第五章 · 结构与爆破",
+    "en": "Chapter 5 · Structures and demolition"
+  },
+  "nameI18n": {
+    "zh-CN": "掐断引线",
+    "en": "Cut the Fuses"
+  },
+  "desc": {
+    "zh-CN": "两条干草引线从中间烧起来，正往两边的炸药库烧。在火烧到之前把它们掐断，引线上至少留下 60 格干草。",
+    "en": "Two hay fuses are burning outward from the middle toward the explosives depots on both sides. Cut them before the fire gets there, keeping at least 60 cells of the fuses unburnt."
+  },
+  "hints": [
+    {
+      "zh-CN": "沙子盖在草上挡不住火，草下面还是干的。",
+      "en": "Sand on top of the hay will not stop the fire; the hay underneath stays dry."
+    },
+    {
+      "zh-CN": "湿草点不着：在两边火头前各浇一段水，把草浇透。",
+      "en": "Wet hay will not burn: soak a stretch of each fuse ahead of the fire."
+    },
+    {
+      "zh-CN": "一开始就在中间火堆左右各十格左右的草上，各画一道五格的水。",
+      "en": "Right at the start, draw a five-cell line of water on the hay about ten cells to each side of the fire."
+    }
+  ]
 }

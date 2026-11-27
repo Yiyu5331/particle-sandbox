@@ -37,7 +37,7 @@ function puzzleMode() {
   function playParams() { return { screen,level,official }; }
   function reset(keep) {
     const log = keep ? session.recording().log.filter(e=>e.step === 0) : [];
-    go({...playParams(),saved:{steps:0,log},phase:level.type === 'planning' ? 'planning' : 'running'});
+    go({...playParams(),saved:{steps:0,log,hintsUsed:session.hintsUsed},phase:level.type === 'planning' ? 'planning' : 'running'});
   }
   function prepare(params) {
     const scene = params.screen ?? (params.levelId ? 'play' : 'select');
@@ -115,6 +115,7 @@ function puzzleMode() {
       },controller.signal);
       try { mount(params[puzzlePrepared] ?? prepare(params)); } catch (e) { mount(prepare({screen:'select'})); view.note(e.message); }
     },
+    beforeStep() { session?.beforeStep(); },
     update() {
       if (!session || session.phase !== 'running') return;
       session.afterStep();
@@ -134,8 +135,9 @@ function puzzleMode() {
         g.strokeRect(r.x*sx+1,r.y*sy+1,Math.max(1,r.w*sx-2),Math.max(1,r.h*sy-2));
       }
       for (const r of level.regions) {
-        g.setLineDash(r.type === 'noBuild' ? [4,4] : []);
-        outline(r,{goal:'#ffd66d',noBuild:'#ea91a1',protected:'#97caff'}[r.type]);
+        if (r.type === 'zone' && screen !== 'edit') continue;
+        g.setLineDash(r.type === 'noBuild' || r.type === 'zone' ? [4,4] : []);
+        outline(r,{goal:'#ffd66d',noBuild:'#ea91a1',protected:'#97caff',zone:'#b8bcc699'}[r.type]);
       }
       g.setLineDash([]); const rect = view.previewRect(); if (rect) outline(rect,'white');
     },
@@ -152,16 +154,17 @@ function puzzleMode() {
     checkOutcome() {
       if (!session || saving || session.phase === 'planning' || session.phase === 'running') return OUTCOME_PLAYING;
       const actions = [{label:'返回选关',onClick:()=>go({screen:'select'})}];
-      if (saveError && ctx.profile) actions.unshift({label:'重试保存',onClick:()=>go({...playParams(),saved:session.recording(),phase:session.phase})});
+      if (saveError && ctx.profile) actions.unshift({label:'重试保存',onClick:()=>go({...playParams(),saved:session.progress(),phase:session.phase})});
       if (screen === 'record') {
         if (session.phase === 'won') actions.unshift({label:'采用本次录制',onClick:adopt});
         actions.push({label:'返回编辑器',onClick:()=>go({screen:'edit',level})});
       }
       return {...session.outcome,detail:saveError || session.outcome.detail,
-        stats:[{label:'星级',value:'★'.repeat(session.outcome.score)+'☆'.repeat(3-session.outcome.score)},{label:'用料',value:session.used}],actions};
+        stats:[{label:'星级',value:'★'.repeat(session.outcome.score)+'☆'.repeat(3-session.outcome.score)},{label:'用料',value:session.used},
+          ...(level.hints ? [{label:'已查看提示',value:session.hintsUsed}] : [])],actions};
     },
     serialize() {
-      return {screen,official,level:structuredClone(form ? form() : level),...(session ? {saved:session.recording(),phase:session.phase} : {})};
+      return {screen,official,level:structuredClone(form ? form() : level),...(session ? {saved:session.progress(),phase:session.phase} : {})};
     },
     deserialize(data) {
       if (!['select','edit','play','record'].includes(data?.screen)) throw new Error('无效的解谜存档页面');

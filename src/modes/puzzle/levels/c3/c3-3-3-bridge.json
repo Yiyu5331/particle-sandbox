@@ -180,5 +180,31 @@
         }
       }
     ]
-  }
+  },
+  "chapterI18n": {
+    "zh-CN": "第三章 · 火与热",
+    "en": "Chapter 3 · Fire and heat"
+  },
+  "nameI18n": {
+    "zh-CN": "烧桥",
+    "en": "Burn the Bridge"
+  },
+  "desc": {
+    "zh-CN": "烧掉峡谷上的木桥，但旁边的木塔必须保住。",
+    "en": "Burn down the wooden bridge over the gorge, but keep the wooden tower next to it standing."
+  },
+  "hints": [
+    {
+      "zh-CN": "桥一烧，火会顺着木头烧到木塔上。",
+      "en": "Once the bridge burns, fire will creep along the wood to the tower."
+    },
+    {
+      "zh-CN": "湿木头点不着：先把木塔浇湿，再点火。火要放在桥下面。",
+      "en": "Wet wood will not light: soak the tower first, then light the fire under the bridge."
+    },
+    {
+      "zh-CN": "在木塔顶上画两行水，在桥中间正下方的峡谷里画两排八格的火。",
+      "en": "Draw two rows of water on top of the tower and two rows of eight fire cells in the gorge right under the middle of the bridge."
+    }
+  ]
 }
