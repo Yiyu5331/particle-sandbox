@@ -96,7 +96,7 @@ node tools/golden.mjs check
 | [蓄水闸](../src/modes/puzzle/levels/water-lock.json) | 实时，在第 5 和 14 步分批注水 | 3 | 30 | 11 |
 | [冷却桥墩](../src/modes/puzzle/levels/quiet-pier.json) | 规划，同时检查水量、火、温度和结构 | 3 | 73 | 10 |
 
-发布新的内置关卡时，把导出的 JSON 放入 `src/modes/puzzle/levels/`，在同级 [catalog.js](../src/modes/puzzle/catalog.js) 中按解锁顺序注册。CI 会在 PR 和推送时扫描所有关卡，检查目录并双播。单文件构建会内联 JSON 和 schema，浏览器可以离线加载。
+发布新的内置关卡时，把导出的 JSON 放入 `src/modes/puzzle/levels/`（可以放子目录，例如 C3 的 30 关在 `levels/c3/`），在 [catalog.js](../src/modes/puzzle/catalog.js) 中按解锁顺序注册。CI 会在 PR 和推送时递归扫描所有关卡（跳过 `meta.json`），检查目录并双播；引擎改动让任何一关解不开都会失败。C3 关卡的设计、验证数据和截图见 [puzzle-levels.md](puzzle-levels.md)。单文件构建会内联 JSON 和 schema，浏览器可以离线加载。
 
 选关和编辑器使用共享面板、卡片网格、标签页和表单，预算与剩余时间由结构化 HUD 显示。内置标题、提示、规则和控件随语言实时更新；自制关内容和未提交的草稿保持原文。
 

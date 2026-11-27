@@ -46,9 +46,11 @@ node tools/levels.mjs validate src/modes/puzzle/levels/c3/c3-*.json
 node --test tests/suites/c3-levels.test.mjs
 \`\`\`
 
-关卡放在 \`levels/c3/\` 子目录而不是 \`levels/\` 根下：\`tools/levels.mjs validate\`（CI 也跑）会要求 \`levels/\` 根下的文件和 \`catalog.js\` 的注册表一一对应，而这个分支不允许改 \`catalog.js\`。接入时把文件挪上去并注册，英文文本从 meta.json 合进 \`src/ui/catalog.js\`，见交接文件。
+30 关登记在 \`src/modes/puzzle/catalog.js\`，排在序章的三个示例关之后，选关页按章显示，上一关至少一星解锁下一关。\`node tools/levels.mjs validate\`（CI 也跑）会递归扫描 \`levels/\` 下的所有关卡（包括 \`levels/c3/\`，跳过 meta.json），逐关双播验证并核对目录登记，所以引擎改动只要让任何一关解不开，CI 就会失败。
 
-关卡 JSON 的 \`hint\` 字段放的是一句话目标（中文），选关卡片和游戏里显示的就是它。格式只有一个 \`hint\` 字符串，没有英文字段、也没有分级提示，所以英文和三级提示放在 meta.json。
+关卡留在 \`levels/c3/\` 子目录：这一批关卡和它的 meta.json 由 \`tools/c3/build.mjs\` 整批生成，重新生成时会先清空这个目录；放在根下会和手写的示例关混在一起，清理时容易误删。工具、用例、文档和截图也都按这个路径引用。
+
+关卡 JSON 的 \`hint\` 字段放的是一句话目标（中文），选关卡片和游戏里显示的就是它。格式只有一个 \`hint\` 字符串，没有英文字段、也没有分级提示，所以英文和三级提示放在 meta.json，等关卡格式扩展后再迁移。选关页实际显示的章名、关名和一句话目标，按现有机制在 \`src/ui/catalog.js\` 里加了英文词条（英文界面检查要求），c3 用例会核对它们和 meta.json 一致；三级提示目前不在界面上显示。
 
 ## 验证方法
 

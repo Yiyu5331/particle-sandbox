@@ -42,6 +42,18 @@ test('C3 关卡：30 个文件、6 章各 5 关、与 meta.json 一致，id 不�
   for (const id of meta.order) assert.ok(!builtin.includes(id));
 });
 
+test('C3 关卡：按 meta.json 的顺序登记在内置目录里，选关页显示的章名、关名、目标都有英文', async () => {
+  const { puzzleLevels } = await import('../../src/modes/puzzle/catalog.js');
+  const { uiEnglish } = await import('../../src/ui/catalog.js');
+  assert.deepEqual(puzzleLevels.map(l => l.id).filter(id => id.startsWith('c3-')), meta.order);
+  for (const [zh, en] of Object.values(meta.chapters)) assert.equal(uiEnglish[zh], en);
+  for (const id of meta.order) {
+    const m = meta.levels[id];
+    assert.equal(uiEnglish[m.name[0]], m.name[1], id + ' 关名英文不一致');
+    assert.equal(uiEnglish[m.desc[0]], m.desc[1], id + ' 目标英文不一致');
+  }
+});
+
 for (const f of files) {
   test('C3 关卡 ' + f + '：参考解法三星双播一致，空解失败，备选解法通关', () => {
     const level = puzzleValidateLevel(JSON.parse(readFileSync(new URL(f, dir), 'utf8')));
